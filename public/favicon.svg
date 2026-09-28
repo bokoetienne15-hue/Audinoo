@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="main" x1="32" y1="8" x2="32" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9547ff"/>
+      <stop offset="1" stop-color="#ff267e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#090716"/>
+  <!-- Le même monogramme à trois traits que dans l’en-tête Audinoo. -->
+  <g transform="translate(10 8) skewX(-12)">
+    <path d="M14 0h13L22 42H9L14 0Z" fill="url(#main)" transform="skewX(12)"/>
+    <path d="M0 42V27L13 8v15L0 42Z" fill="#6427ff" transform="skewX(12)"/>
+    <path d="M10 24h19v5H10z" rx="2.5" fill="#ff8c2a" transform="skewX(12)"/>
+  </g>
+</svg>

@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function validUsername(username) {
+      return username is string
+        && username.size() >= 5
+        && username.size() <= 32
+        && username.matches('^@[a-z0-9]+(_[a-z0-9]+)+$');
+    }
+
+    function validNewProfile(userId) {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt'
+        ])
+        && request.resource.data.uid == userId
+        && validUsername(request.resource.data.username)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.displayName is string
+        && request.resource.data.photoURL is string
+        && request.resource.data.provider in ['google.com', 'password']
+        && request.resource.data.createdAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && validNewProfile(userId)
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == userId;
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']);
+      allow delete: if false;
+    }
+
+    match /usernames/{username} {
+      // A direct read is public only to check whether a chosen pseudo is available.
+      // Listing the registry remains forbidden.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && validUsername(username)
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == username;
+      allow update, delete: if false;
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
