@@ -104,8 +104,19 @@ app.innerHTML = `
   <main class="workspace" id="workspace" hidden>
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
-      <aside class="workspace-sidebar"><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Créer</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#profile"><span>◌</span> Mon profil</a><div class="workspace-side-note"><span>Crédits disponibles</span><strong>3</strong><small>Commence ta première création</small></div></aside>
+      <aside class="workspace-sidebar"><a class="workspace-nav is-active" href="#studio" data-workspace-page="studio"><span>⌁</span> Créer</a><a class="workspace-nav" href="#models" data-workspace-page="models"><span>✦</span> Modèles</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#profile"><span>◌</span> Mon profil</a><div class="workspace-side-note"><span>Crédits disponibles</span><strong>3</strong><small>Commence ta première création</small></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Plus ta description est précise, meilleur sera le résultat.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty"><span class="workspace-empty-icon">♫</span><h2>Ta bibliothèque t’attend.</h2><p>Les morceaux que tu créeras apparaîtront ici.</p></section></section>
+      <section class="workspace-content workspace-page" id="models-page" hidden>
+        <p class="workspace-kicker">Modèles Audinoo</p>
+        <h1>Pars d’un <span>modèle</span>.</h1>
+        <p class="workspace-intro">Choisis une direction musicale et adapte-la à ton idée en quelques secondes.</p>
+        <div class="model-grid">
+          <button class="model-card" type="button" data-model-prompt="Un afrobeat joyeux et dansant, énergie solaire, basse entraînante et percussions africaines" data-model-style="Afrobeat, énergique, percussions africaines"><span class="model-card-icon">☀</span><strong>Afrobeat solaire</strong><small>Énergique · Dansant</small><b>Utiliser ce modèle →</b></button>
+          <button class="model-card" type="button" data-model-prompt="Une ballade française mélancolique, piano doux, voix émotionnelle et ambiance intime" data-model-style="Ballade française, piano, voix émotionnelle"><span class="model-card-icon">♫</span><strong>Ballade émotionnelle</strong><small>Douce · Mélancolique</small><b>Utiliser ce modèle →</b></button>
+          <button class="model-card" type="button" data-model-prompt="Une ambiance lo-fi chaleureuse pour travailler, batterie légère, piano et textures relaxantes" data-model-style="Lo-fi, piano, relaxant, batterie légère"><span class="model-card-icon">◌</span><strong>Lo-fi Focus</strong><small>Calme · Chill</small><b>Utiliser ce modèle →</b></button>
+          <button class="model-card" type="button" data-model-prompt="Un morceau amapiano moderne avec une basse profonde, percussions et une énergie de soirée" data-model-style="Amapiano, basse profonde, moderne, énergique"><span class="model-card-icon">◈</span><strong>Amapiano Night</strong><small>Moderne · Puissant</small><b>Utiliser ce modèle →</b></button>
+        </div>
+      </section>
     </section>
   </main>
   <div class="auth-overlay" id="auth-overlay" aria-hidden="true">
@@ -668,13 +679,46 @@ sidebarToggle.addEventListener('click', () => {
   sidebarToggle.setAttribute('aria-label', isCollapsed ? 'Ouvrir le menu' : 'Réduire le menu')
 })
 
-document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', () => {
+const studioPage = document.querySelector('.workspace-content:not(#models-page)')
+const modelsPage = document.querySelector('#models-page')
+
+function showWorkspacePage(page) {
+  const isModels = page === 'models'
+  if (studioPage) studioPage.hidden = isModels
+  if (modelsPage) modelsPage.hidden = !isModels
+  document.querySelectorAll('.workspace-nav').forEach((link) => {
+    link.classList.toggle('is-active', link.dataset.workspacePage === page)
+  })
+}
+
+document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', (event) => {
+  const page = link.dataset.workspacePage
+  if (page) {
+    event.preventDefault()
+    showWorkspacePage(page)
+    window.history.replaceState(null, '', '#' + page)
+  }
+
   if (window.matchMedia('(max-width: 760px)').matches) {
     workspaceLayout.classList.remove('is-mobile-open')
     workspaceLayout.classList.add('is-mobile-closed')
     sidebarToggle.setAttribute('aria-expanded', 'false')
     sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
   }
+}))
+
+document.querySelectorAll('.model-card').forEach((card) => card.addEventListener('click', () => {
+  const prompt = card.dataset.modelPrompt || ''
+  const style = card.dataset.modelStyle || ''
+  studioPrompt.value = prompt
+  advancedPrompt.value = prompt
+  advancedStyle.value = style
+  showWorkspacePage('studio')
+  window.history.replaceState(null, '', '#studio')
+  toast.textContent = 'Modèle sélectionné. Tu peux maintenant personnaliser ta création.'
+  toast.classList.add('show')
+  window.setTimeout(() => toast.classList.remove('show'), 3000)
+  studioPrompt.focus()
 }))
 
 studioForm.addEventListener('submit', (event) => {
