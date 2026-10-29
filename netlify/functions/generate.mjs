@@ -27,7 +27,7 @@ export const handler = async (event) => {
     if (prompt.length < 10) return jsonResponse(400, { error: 'prompt-too-short' })
     if (customMode && (prompt.length > 5000 || style.length > 1000 || title.length > 80)) return jsonResponse(400, { error: 'prompt-too-long' })
     if (customMode && (!style || !title)) return jsonResponse(400, { error: 'advanced-fields-required' })
-    if (!customMode && prompt.length > 400) return jsonResponse(400, { error: 'prompt-too-long' })
+    if (!customMode && prompt.length > 3000) return jsonResponse(400, { error: 'prompt-too-long' })
 
     const profileRef = db.collection('users').doc(user.uid)
     const lockRef = db.collection('generationLocks').doc(user.uid)
@@ -86,7 +86,7 @@ export const handler = async (event) => {
           ...(customMode ? { style, title } : {}),
           customMode,
           instrumental: false,
-          model: 'V4_5PLUS',
+          model: 'V6',
           callBackUrl: `${process.env.URL || 'https://audinoo.netlify.app'}/api/suno-callback`
         }),
         signal: AbortSignal.timeout(25000)
