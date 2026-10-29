@@ -15,6 +15,23 @@
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      (() => {
+        let reported = false
+        const reportStartupError = (error) => {
+          if (reported) return
+          reported = true
+          const message = error instanceof Error ? error.message : String(error || 'Erreur inconnue')
+          const notice = document.createElement('div')
+          notice.setAttribute('role', 'alert')
+          notice.style.cssText = 'position:fixed;z-index:99999;left:12px;right:12px;bottom:12px;padding:14px 16px;border:1px solid #ff7588;border-radius:12px;background:#25121b;color:#fff;font:14px/1.5 system-ui,sans-serif;box-shadow:0 8px 30px #0009'
+          notice.textContent = `Erreur Audinoo : ${message}. Recharge la page; si cela continue, envoie cette erreur au support.`
+          document.body.append(notice)
+        }
+        window.addEventListener('error', (event) => reportStartupError(event.error || event.message))
+        window.addEventListener('unhandledrejection', (event) => reportStartupError(event.reason))
+      })()
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
