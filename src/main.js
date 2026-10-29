@@ -53,7 +53,7 @@ app.innerHTML = `
             <div class="prompt-tools">
               <button class="prompt-advanced" type="button" aria-label="Mode avancé" title="Mode avancé"><span class="prompt-gear" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg></span><span>Mode avancé</span></button>
             </div>
-            <button class="create-button" type="submit" aria-label="Créer ma musique" title="Créer ma musique"><span aria-hidden="true">↑</span></button>
+            <button class="create-button" type="button" aria-label="Créer ma musique" title="Créer ma musique"><span aria-hidden="true">↑</span></button>
           </div>
         </form>
         <p class="form-note"><span>↗</span> Aucune compétence musicale requise</p>
@@ -2109,14 +2109,17 @@ function requireAccount() {
   return false
 }
 
-form.addEventListener('submit', (event) => {
+function handleLandingPromptSubmit(event) {
   event.preventDefault()
   if (!requireAccount()) return
   const prompt = input.value.trim()
   toast.textContent = prompt ? `On prépare ton morceau « ${prompt} »...` : 'Décris une ambiance pour commencer ta création.'
   toast.classList.add('show')
   window.setTimeout(() => toast.classList.remove('show'), 3200)
-})
+}
+
+form.querySelector('.create-button').addEventListener('click', handleLandingPromptSubmit)
+form.addEventListener('submit', handleLandingPromptSubmit)
 
 promptAdvancedButton.addEventListener('click', () => {
   if (!requireAccount()) return
