@@ -23,8 +23,13 @@
         document.addEventListener('click', (event) => {
           let target = event.target
           if (target && target.nodeType !== 1) target = target.parentElement
-          const control = target && target.closest('button, [role="button"], input[type="submit"]')
-          if (!control) return
+          let control = target
+          while (control && control !== document) {
+            const tagName = String(control.tagName || '').toLowerCase()
+            if (tagName === 'button' || (tagName === 'input' && control.type === 'submit') || control.getAttribute('role') === 'button') break
+            control = control.parentElement
+          }
+          if (!control || control === document) return
           latestAction = (control.getAttribute('aria-label') || control.innerText || control.textContent || control.id || 'bouton sans libellé').trim().slice(0, 100)
           latestActionAt = Date.now()
         }, true)

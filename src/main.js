@@ -1496,7 +1496,7 @@ const openAuth = (mode) => {
   usernameIsAvailable = false
   // On mobile, focusing an input as soon as the modal opens can make the
   // browser scroll the underlying page to that field. Let the user tap it.
-  if (!window.matchMedia('(max-width: 640px)').matches) {
+  if (typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 640px)').matches) {
     document.querySelector('#auth-email').focus({ preventScroll: true })
   }
 }
@@ -1826,10 +1826,22 @@ function openLanding() {
   window.history.replaceState(null, '', '#top')
 }
 
-document.querySelectorAll('.auth-trigger, a[href="#signup"], a[href="#login"]').forEach((trigger) => trigger.addEventListener('click', (event) => {
+let lastAuthTouchAt = 0
+function activateAuthTrigger(trigger, event) {
+  if (event.type === 'touchend') {
+    event.preventDefault()
+    lastAuthTouchAt = Date.now()
+  } else if (Date.now() - lastAuthTouchAt < 800) {
+    event.preventDefault()
+    return
+  }
   event.preventDefault()
   openAuth(trigger.dataset.auth || (trigger.getAttribute('href') === '#signup' ? 'signup' : 'login'))
-}))
+}
+document.querySelectorAll('.auth-trigger, a[href="#signup"], a[href="#login"]').forEach((trigger) => {
+  trigger.addEventListener('click', (event) => activateAuthTrigger(trigger, event))
+  trigger.addEventListener('touchend', (event) => activateAuthTrigger(trigger, event), { passive: false })
+})
 
 document.querySelector('.auth-close').addEventListener('click', closeAuth)
 authOverlay.addEventListener('click', (event) => { if (event.target === authOverlay) closeAuth() })
