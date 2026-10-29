@@ -17,19 +17,56 @@
     <div id="app"></div>
     <script>
       (() => {
-        let reported = false
-        const reportStartupError = (error) => {
-          if (reported) return
-          reported = true
-          const message = error instanceof Error ? error.message : String(error || 'Erreur inconnue')
-          const notice = document.createElement('div')
-          notice.setAttribute('role', 'alert')
-          notice.style.cssText = 'position:fixed;z-index:99999;left:12px;right:12px;bottom:12px;padding:14px 16px;border:1px solid #ff7588;border-radius:12px;background:#25121b;color:#fff;font:14px/1.5 system-ui,sans-serif;box-shadow:0 8px 30px #0009'
-          notice.textContent = `Erreur Audinoo : ${message}. Recharge la page; si cela continue, envoie cette erreur au support.`
-          document.body.append(notice)
+        let notice
+        let latestAction = ''
+        let latestActionAt = 0
+        document.addEventListener('click', (event) => {
+          let target = event.target
+          if (target && target.nodeType !== 1) target = target.parentElement
+          const control = target && target.closest('button, [role="button"], input[type="submit"]')
+          if (!control) return
+          latestAction = (control.getAttribute('aria-label') || control.innerText || control.textContent || control.id || 'bouton sans libellé').trim().slice(0, 100)
+          latestActionAt = Date.now()
+        }, true)
+
+        const reportClientError = (error, source = '') => {
+          const message = error && typeof error.message === 'string' ? error.message : String(error || 'Erreur inconnue')
+          const stack = error && typeof error.stack === 'string' ? error.stack : ''
+          if (!notice) {
+            notice = document.createElement('section')
+            notice.setAttribute('role', 'alert')
+            notice.style.cssText = 'position:fixed;z-index:99999;left:12px;right:12px;bottom:12px;max-height:min(55vh,420px);overflow:auto;padding:14px 16px;border:1px solid #ff7588;border-radius:12px;background:#25121b;color:#fff;font:14px/1.5 system-ui,sans-serif;box-shadow:0 8px 30px #0009'
+            const heading = document.createElement('strong')
+            heading.textContent = 'Erreur Audinoo — action interrompue'
+            const action = document.createElement('p')
+            const detail = document.createElement('p')
+            const location = document.createElement('small')
+            const disclosure = document.createElement('details')
+            const summary = document.createElement('summary')
+            const stackText = document.createElement('pre')
+            const close = document.createElement('button')
+            summary.textContent = 'Détails techniques'
+            stackText.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 monospace;max-height:180px;overflow:auto;user-select:text'
+            disclosure.append(summary, stackText)
+            close.type = 'button'
+            close.textContent = 'Fermer'
+            close.style.cssText = 'margin-top:8px;padding:7px 12px;border:1px solid #ffffff55;border-radius:8px;background:#ffffff12;color:white;font:inherit'
+            close.addEventListener('click', () => { notice.hidden = true })
+            notice.append(heading, action, detail, location, disclosure, close)
+            document.body.append(notice)
+            notice._errorFields = { action, detail, location, disclosure, stackText }
+          }
+          const fields = notice._errorFields
+          fields.action.textContent = Date.now() - latestActionAt < 15000 ? `Bouton/action : ${latestAction}` : 'Action : erreur JavaScript'
+          fields.detail.textContent = `${error && error.name ? `${error.name}: ` : ''}${message}`
+          fields.location.textContent = source ? `Emplacement : ${source}` : ''
+          fields.location.hidden = !source
+          fields.stackText.textContent = stack || message
+          fields.disclosure.hidden = !stack
+          notice.hidden = false
         }
-        window.addEventListener('error', (event) => reportStartupError(event.error || event.message))
-        window.addEventListener('unhandledrejection', (event) => reportStartupError(event.reason))
+        window.addEventListener('error', (event) => reportClientError(event.error || event.message, event.filename ? `${event.filename}:${event.lineno || 0}:${event.colno || 0}` : ''))
+        window.addEventListener('unhandledrejection', (event) => reportClientError(event.reason))
       })()
     </script>
     <script type="module" src="/src/main.js"></script>

@@ -15,6 +15,13 @@ function replaceNodeChildren(node, ...children) {
   })
 }
 
+function exactErrorDetails(error) {
+  if (!error) return 'Erreur inconnue'
+  const message = typeof error.message === 'string' ? error.message : String(error)
+  const code = typeof error.code === 'string' ? `Code : ${error.code}` : ''
+  return [message, code].filter(Boolean).join(' · ')
+}
+
 function readBrowserStorage(storage, key) {
   try {
     return window[storage].getItem(key)
@@ -217,7 +224,7 @@ logoutDialog.querySelector('.logout-confirm-button').addEventListener('click', a
     window.setTimeout(() => toast.classList.remove('show'), 2600)
   } catch (error) {
     console.error('[Audinoo logout] Sign out failed', error)
-    logoutDialogError.textContent = 'La déconnexion a échoué. Vérifie ta connexion puis réessaie.'
+    logoutDialogError.textContent = `La déconnexion a échoué. Détail exact : ${exactErrorDetails(error)}`
     logoutDialogError.hidden = false
   } finally {
     confirmButton.disabled = false
@@ -528,7 +535,7 @@ modelSuggestionForm.addEventListener('submit', async (event) => {
     modelSuggestionStatus.textContent = 'Merci ! Ta suggestion a bien été envoyée à Audinoo.'
   } catch (error) {
     console.error('[Audinoo model suggestion] Could not submit suggestion', error)
-    modelSuggestionStatus.textContent = 'Envoi impossible pour le moment. Réessaie un peu plus tard.'
+    modelSuggestionStatus.textContent = `Envoi impossible. Détail exact : ${exactErrorDetails(error)}`
   } finally {
     submitButton.disabled = false
   }
@@ -605,7 +612,7 @@ function listenToFreeCreditPolicy(profile) {
     renderAdminCreditPolicy()
   }, (error) => {
     console.error('[Audinoo credits] Could not load free-credit policy', error)
-    adminCreditNote.textContent = 'Impossible de synchroniser le réglage des crédits.'
+    adminCreditNote.textContent = `Synchronisation impossible. Détail exact : ${exactErrorDetails(error)}`
   })
 }
 adminCreditToggle.addEventListener('click', async () => {
@@ -634,7 +641,7 @@ adminCreditToggle.addEventListener('click', async () => {
       : 'Nouvelle offre activée pour les prochains comptes créés.'
   } catch (error) {
     console.error('[Audinoo credits] Could not update free-credit policy', error)
-    adminCreditNote.textContent = 'Modification refusée. Vérifie les règles Firestore et ton accès admin.'
+    adminCreditNote.textContent = `Modification refusée. Détail exact : ${exactErrorDetails(error)}`
     adminCreditToggle.disabled = false
   }
 })
@@ -870,7 +877,7 @@ async function downloadAdminReport(exportKind) {
     reportExportStatus.textContent = `Rapport ${exportKind === 'excel' ? 'Excel' : 'PDF'} téléchargé.`
   } catch (error) {
     console.error('[Audinoo admin] Could not export report', error)
-    reportExportStatus.textContent = 'Export impossible. Réessaie ou consulte la console pour le détail.'
+    reportExportStatus.textContent = `Export impossible. Détail exact : ${exactErrorDetails(error)}`
   } finally {
     buttons.forEach((item) => { item.disabled = false })
   }
@@ -890,7 +897,7 @@ function startAdminStatsListeners(uid) {
   }
   const onError = (error) => {
     console.error('[Audinoo admin] Could not load live statistics', error)
-    adminStatsStatus.textContent = 'Chargement refusé. Vérifie que les règles Firestore mises à jour sont déployées.'
+    adminStatsStatus.textContent = `Chargement refusé. Détail exact : ${exactErrorDetails(error)}`
   }
   const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => { latestUsers = snapshot; renderWhenReady() }, onError)
   const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => { latestVisitors = snapshot; renderWhenReady() }, onError)
@@ -964,7 +971,7 @@ async function loadAdminSuggestions() {
     renderAdminSuggestions(suggestions)
   } catch (error) {
     console.error('[Audinoo admin] Could not load model suggestions', error)
-    adminSuggestionStatus.textContent = 'Impossible de charger les suggestions. Vérifie les règles Firestore.'
+    adminSuggestionStatus.textContent = `Chargement impossible. Détail exact : ${exactErrorDetails(error)}`
   }
 }
 adminWorkspacePage.querySelector('#admin-refresh-suggestions').addEventListener('click', loadAdminSuggestions)
@@ -992,7 +999,7 @@ adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('s
     adminNotificationStatus.textContent = 'Notification publiée.'
   } catch (error) {
     console.error('[Audinoo admin] Could not publish notification', error)
-    adminNotificationStatus.textContent = 'Publication refusée. Vérifie les règles Firestore et ton accès admin.'
+    adminNotificationStatus.textContent = `Publication refusée. Détail exact : ${exactErrorDetails(error)}`
   } finally {
     submitButton.disabled = false
   }
@@ -1171,7 +1178,7 @@ async function pollGeneration(taskId, card) {
       upsertGenerationCard(libraryGenerationList, generation)
       if (result.completed || result.failed) return
     } catch (error) {
-      card.querySelector('.generation-status').textContent = generationErrorMessage(error.message)
+      card.querySelector('.generation-status').textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
       return
     }
   }
@@ -1215,7 +1222,7 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
       ? ` Motif SunoAPI : ${error.providerMessage}`
       : ''
-    toast.textContent = `${generationErrorMessage(error.message)}${providerDetail}`
+    toast.textContent = `${generationErrorMessage(error.message)}${providerDetail} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 4500)
   } finally {
@@ -1238,7 +1245,7 @@ async function loadUserLibrary() {
     })
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
   } catch (error) {
-    toast.textContent = generationErrorMessage(error.message)
+    toast.textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 3500)
   }
@@ -1520,7 +1527,7 @@ function showAuthError(error, mode, operationStep = '') {
     : 'La connexion a échoué. Vérifie ton adresse e-mail, ton mot de passe et ta connexion Internet.'
   const explanation = messages[code] || error.message || fallback
   const step = operationStep ? ` Étape : ${operationStep}.` : ''
-  authFeedback.textContent = `${explanation}${step} (code : ${code})`
+  authFeedback.textContent = `${explanation}${step} (code : ${code}) Détail exact : ${exactErrorDetails(error)}`
   authFeedback.hidden = false
   authOverlay.classList.add('open')
   authOverlay.setAttribute('aria-hidden', 'false')
