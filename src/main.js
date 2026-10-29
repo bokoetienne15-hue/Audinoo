@@ -1311,6 +1311,12 @@ let heroSequenceComplete = false
 function runHeroSequence() {
   if (heroSequenceComplete) return
 
+  if (window.matchMedia('(max-width: 640px)').matches) {
+    heroHeadline.textContent = 'Imagine ta musique. L’IA s’occupe du reste.'
+    heroSequenceComplete = true
+    return
+  }
+
   const current = heroMessages[heroIndex]
 
   typeText(heroHeadline, current, 52, () => {
@@ -2005,8 +2011,9 @@ sidebarToggle.addEventListener('click', () => {
   sidebarToggle.setAttribute('aria-label', isOpen ? 'Ouvrir le menu' : 'Fermer le menu')
 })
 
-workspaceLayout.addEventListener('click', (event) => {
-  if (event.target !== workspaceLayout || !workspaceLayout.classList.contains('is-mobile-open')) return
+document.addEventListener('click', (event) => {
+  if (!workspaceLayout.classList.contains('is-mobile-open')) return
+  if (workspaceSidebar.contains(event.target) || sidebarToggle.contains(event.target)) return
   workspaceLayout.classList.remove('is-mobile-open')
   workspaceLayout.classList.add('is-mobile-closed')
   sidebarToggle.setAttribute('aria-expanded', 'false')
