@@ -48,7 +48,11 @@ export const handler = async (event) => {
         const policy = policySnapshot.exists
           ? policySnapshot.data()
           : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
-        const campaignId = profile.freeCreditCampaignId || null
+        // Keep the server-side entitlement check in sync with the workspace UI:
+        // older profiles without an explicit policy assignment belong to the
+        // default welcome-credit campaign.
+        const campaignId = profile.freeCreditCampaignId
+          || (!profile.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
         if (!policy.enabled || !campaignId || campaignId !== policy.activeCampaignId || profile.freeCreditUsed === true) {
           throw new Error('no-free-credit')
         }
