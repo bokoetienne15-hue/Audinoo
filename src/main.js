@@ -678,8 +678,8 @@ function advanceBucket(date, unit, amount = 1) {
   if (unit === 'year') next.setFullYear(next.getFullYear() + amount)
   return next
 }
-function makeSeries(records, unit, count, countryCode = 'all') {
-  const latest = dateBucket(new Date(), unit)
+function makeSeries(records, unit, count, countryCode = 'all', referenceDate = new Date()) {
+  const latest = dateBucket(referenceDate, unit)
   const first = advanceBucket(latest, unit, -(count - 1))
   const bins = Array.from({ length: count }, (_, index) => {
     const start = advanceBucket(first, unit, index)
@@ -742,6 +742,9 @@ let stopAdminStatsListeners = null
 function renderAdminStats(userSnapshots, visitorSnapshots) {
   latestAdminUsers = userSnapshots.docs.map((snapshot) => snapshot.data())
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => snapshot.data())
+  adminReportDataReady = true
+  excelReportButton.disabled = false
+  pdfReportButton.disabled = false
   renderAdminDashboard()
 }
 function renderAdminDashboard() {
@@ -796,47 +799,77 @@ function renderAdminDashboard() {
 }
 adminPeriodFilter.addEventListener('change', renderAdminDashboard)
 adminCountryFilter.addEventListener('change', renderAdminDashboard)
-adminWorkspacePage.querySelector('#admin-export-report').addEventListener('click', () => {
+const excelReportButton = adminWorkspacePage.querySelector('#admin-export-report')
+excelReportButton.innerHTML = '<span aria-hidden="true">▦</span> Excel (.xlsx)'
+excelReportButton.disabled = true
+const pdfReportButton = document.createElement('button')
+pdfReportButton.className = 'admin-export-button admin-export-pdf'
+pdfReportButton.type = 'button'
+pdfReportButton.disabled = true
+pdfReportButton.innerHTML = '<span aria-hidden="true">▤</span> PDF'
+excelReportButton.after(pdfReportButton)
+const reportExportStatus = document.createElement('span')
+reportExportStatus.className = 'admin-export-status'
+reportExportStatus.setAttribute('role', 'status')
+reportExportStatus.setAttribute('aria-live', 'polite')
+pdfReportButton.after(reportExportStatus)
+let adminReportDataReady = false
+function makeAdminReportData() {
   const period = adminPeriods[adminPeriodFilter.value] || adminPeriods.day
   const countryCode = adminCountryFilter.value || 'all'
-  const signups = makeSeries(latestAdminUsers, period.unit, period.count, countryCode)
-  const visits = makeSeries(latestAdminVisitors, period.unit, period.count)
-  const countryCounts = new Map()
-  latestAdminUsers.forEach((user) => {
-    if (countryCode !== 'all' && user.countryCode !== countryCode) return
-    const name = user.country || 'Pays non renseigné'
-    const key = `${user.countryCode || ''}|${name}`
-    const entry = countryCounts.get(key) || { name, code: user.countryCode || '', count: 0 }
+  const users = latestAdminUsers.filter((user) => countryCode === 'all' || user.countryCode === countryCode)
+  const signups = makeSeries(users, period.unit, period.count)
+  const visitors = makeSeries(latestAdminVisitors, period.unit, period.count)
+  const previousAnchor = advanceBucket(signups[0].start, period.unit, -1)
+  const previousSignups = makeSeries(users, period.unit, period.count, 'all', previousAnchor)
+  const previousVisitors = makeSeries(latestAdminVisitors, period.unit, period.count, 'all', previousAnchor)
+  const countries = new Map()
+  users.forEach((user) => {
+    const name = typeof user.country === 'string' && user.country.trim() ? user.country.trim() : 'Pays non renseigné'
+    const code = typeof user.countryCode === 'string' ? user.countryCode.toUpperCase() : ''
+    const key = `${code}|${name}`
+    const entry = countries.get(key) || { name, code, count: 0 }
     entry.count += 1
-    countryCounts.set(key, entry)
+    countries.set(key, entry)
   })
-  const csvCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
-  const rows = [
-    ['Rapport Audinoo — Centre de pilotage'],
-    ['Période', period.label],
-    ['Pays', countryCode === 'all' ? 'Tous les pays' : countryCode],
-    ['Généré le', new Intl.DateTimeFormat('fr-FR', { dateStyle: 'full', timeStyle: 'short' }).format(new Date())],
-    [],
-    ['Indicateur', 'Période', 'Valeur'],
-    ['Comptes inscrits au total', 'Toutes périodes', latestAdminUsers.length],
-    ['Sessions anonymes au total', 'Toutes périodes', latestAdminVisitors.length],
-    ...signups.map((bin) => ['Inscriptions', bin.label, bin.value]),
-    ...visits.map((bin) => ['Visites anonymes', bin.label, bin.value]),
-    [],
-    ['Drapeau', 'Pays', 'Code', 'Comptes inscrits'],
-    ...[...countryCounts.values()].map((country) => [countryFlag(country.code), country.name, country.code, country.count]),
-    [],
-    ['Signature éditoriale', 'Audinoo — Administration'],
-    ['Note', 'Rapport généré automatiquement; cette mention ne constitue pas une signature cryptographique ou juridique.']
-  ]
-  const content = `\uFEFF${rows.map((row) => row.map(csvCell).join(';')).join('\r\n')}`
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `audinoo-rapport-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
-})
+  const generatedAt = new Date()
+  return {
+    generatedAt,
+    generatedLabel: new Intl.DateTimeFormat('fr-FR', { dateStyle: 'full', timeStyle: 'short' }).format(generatedAt),
+    periodLabel: period.label,
+    countryLabel: countryCode === 'all' ? 'Tous les pays' : (users.find((user) => user.countryCode === countryCode)?.country || countryCode),
+    totalUsers: users.length,
+    signupTotal: signups.reduce((sum, bin) => sum + bin.value, 0),
+    previousSignupTotal: previousSignups.reduce((sum, bin) => sum + bin.value, 0),
+    visitorTotal: visitors.reduce((sum, bin) => sum + bin.value, 0),
+    previousVisitorTotal: previousVisitors.reduce((sum, bin) => sum + bin.value, 0),
+    activity: signups.map((bin, index) => ({ label: bin.label, signups: bin.value, visitors: visitors[index]?.value || 0 })),
+    countries: [...countries.values()].sort((first, second) => second.count - first.count || first.name.localeCompare(second.name, 'fr'))
+  }
+}
+async function downloadAdminReport(exportKind) {
+  if (!adminReportDataReady) {
+    reportExportStatus.textContent = 'Les données Firebase sont encore en chargement.'
+    return
+  }
+  const buttons = [excelReportButton, pdfReportButton]
+  buttons.forEach((item) => { item.disabled = true })
+  reportExportStatus.textContent = 'Préparation du rapport…'
+  try {
+    const report = makeAdminReportData()
+    const exporter = await import('./admin-report.js')
+    if (exportKind === 'excel') await exporter.exportAdminExcel(report)
+    else await exporter.exportAdminPdf(report)
+    reportExportStatus.textContent = `Rapport ${exportKind === 'excel' ? 'Excel' : 'PDF'} téléchargé.`
+  } catch (error) {
+    console.error('[Audinoo admin] Could not export report', error)
+    reportExportStatus.textContent = 'Export impossible. Réessaie ou consulte la console pour le détail.'
+  } finally {
+    buttons.forEach((item) => { item.disabled = false })
+  }
+}
+excelReportButton.addEventListener('click', () => downloadAdminReport('excel'))
+pdfReportButton.addEventListener('click', () => downloadAdminReport('pdf'))
 function startAdminStatsListeners(uid) {
   stopAdminStatsListeners?.()
   if (!uid || verifiedAdminUid !== uid) return

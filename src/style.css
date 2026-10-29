@@ -542,6 +542,9 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 .admin-toolbar select:focus-visible, .admin-export-button:focus-visible { outline: 2px solid #d88af1; outline-offset: 2px; }
 .admin-export-button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-left: auto; padding: 0 15px; border: 1px solid rgba(210,140,255,.26); border-radius: 9px; color: #f3e8ff; background: linear-gradient(110deg, rgba(142,67,222,.32), rgba(208,76,183,.2)); cursor: pointer; font: 700 10px 'DM Sans', sans-serif; }
 .admin-export-button span { font-size: 16px; }
+.admin-export-button + .admin-export-button { margin-left: 0; }
+.admin-export-button:disabled { opacity: .55; cursor: wait; }
+.admin-export-status { flex: 1 0 100%; color: #aaa0b8; font-size: 10px; }
 .admin-live-status { min-height: 16px; }
 .admin-credit-control { margin: 0 0 18px; border-color: rgba(203,128,255,.22); background: radial-gradient(ellipse at 100% 0%, rgba(184,83,228,.14), transparent 58%), linear-gradient(145deg, rgba(24,20,36,.96), rgba(14,13,23,.98)); }
 .admin-credit-control .admin-panel-heading { margin-bottom: 10px; }
