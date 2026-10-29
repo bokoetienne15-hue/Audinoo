@@ -20,16 +20,19 @@
         let notice
         let latestAction = ''
         let latestActionAt = 0
-        document.addEventListener('click', (event) => {
-          let target = event.target
-          if (target && target.nodeType !== 1) target = target.parentElement
+        const findControl = (target) => {
           let control = target
+          if (control && control.nodeType !== 1) control = control.parentElement
           while (control && control !== document) {
             const tagName = String(control.tagName || '').toLowerCase()
-            if (tagName === 'button' || (tagName === 'input' && control.type === 'submit') || control.getAttribute('role') === 'button') break
+            if (tagName === 'button' || (tagName === 'input' && control.type === 'submit') || control.getAttribute('role') === 'button' || control.getAttribute('data-auth')) return control
             control = control.parentElement
           }
-          if (!control || control === document) return
+          return null
+        }
+        document.addEventListener('click', (event) => {
+          const control = findControl(event.target)
+          if (!control) return
           latestAction = (control.getAttribute('aria-label') || control.innerText || control.textContent || control.id || 'bouton sans libellé').trim().slice(0, 100)
           latestActionAt = Date.now()
         }, true)
@@ -70,6 +73,37 @@
           fields.disclosure.hidden = !stack
           notice.hidden = false
         }
+        document.addEventListener('touchstart', (event) => {
+          const touch = event.touches && event.touches[0]
+          if (!touch) return
+          const authButtons = document.querySelectorAll('.auth-trigger, a[href="#signup"], a[href="#login"]')
+          let intendedButton = null
+          authButtons.forEach((button) => {
+            const rect = button.getBoundingClientRect()
+            if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) intendedButton = button
+          })
+          if (!intendedButton) return
+          latestAction = (intendedButton.getAttribute('aria-label') || intendedButton.innerText || intendedButton.textContent || intendedButton.id || 'connexion').trim().slice(0, 100)
+          latestActionAt = Date.now()
+          const actualControl = findControl(document.elementFromPoint(touch.clientX, touch.clientY))
+          if (actualControl !== intendedButton && !intendedButton.contains(actualControl)) {
+            const cover = actualControl ? `<${String(actualControl.tagName).toLowerCase()}${actualControl.className && typeof actualControl.className === 'string' ? `.${actualControl.className.trim().replace(/\s+/g, '.')}` : ''}>` : 'un élément transparent'
+            reportClientError(new Error(`Le toucher vise « ${latestAction} », mais ${cover} recouvre la zone du bouton.`), 'diagnostic tactile mobile')
+            return
+          }
+          const checkOpen = () => {
+            if (!document.querySelector('.auth-overlay.open')) {
+              reportClientError(new Error(`Le téléphone a bien transmis le toucher à « ${latestAction} », mais le formulaire ne s’est pas ouvert. Vérifie le détail technique ci-dessous.`), 'diagnostic tactile mobile')
+            }
+          }
+          const onEnd = () => {
+            document.removeEventListener('touchcancel', onCancel, true)
+            window.setTimeout(checkOpen, 500)
+          }
+          const onCancel = () => document.removeEventListener('touchend', onEnd, true)
+          document.addEventListener('touchend', onEnd, { once: true, capture: true, passive: true })
+          document.addEventListener('touchcancel', onCancel, { once: true, capture: true, passive: true })
+        }, { capture: true, passive: true })
         window.addEventListener('error', (event) => reportClientError(event.error || event.message, event.filename ? `${event.filename}:${event.lineno || 0}:${event.colno || 0}` : ''))
         window.addEventListener('unhandledrejection', (event) => reportClientError(event.reason))
       })()
