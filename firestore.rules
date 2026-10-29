@@ -8,7 +8,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
     }
 
     function validUsername(username) {
@@ -20,10 +20,10 @@ service cloud.firestore {
 
     function validNewProfile(userId) {
       return request.resource.data.keys().hasOnly([
-          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt'
+          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt', 'countryCode', 'country', 'freeCreditCampaignId', 'freeCreditUsed', 'freeCreditPolicyAssigned'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt'
+          'uid', 'username', 'email', 'displayName', 'photoURL', 'provider', 'createdAt', 'freeCreditPolicyAssigned'
         ])
         && request.resource.data.uid == userId
         && validUsername(request.resource.data.username)
@@ -31,7 +31,37 @@ service cloud.firestore {
         && request.resource.data.displayName is string
         && request.resource.data.photoURL is string
         && request.resource.data.provider in ['google.com', 'password']
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.freeCreditPolicyAssigned == true
+        && (
+          !request.resource.data.keys().hasAny(['freeCreditCampaignId', 'freeCreditUsed'])
+          || (
+            request.resource.data.keys().hasAll(['freeCreditCampaignId', 'freeCreditUsed'])
+            && request.resource.data.freeCreditCampaignId is string
+            && request.resource.data.freeCreditCampaignId.size() > 0
+            && request.resource.data.freeCreditUsed == false
+            && (
+              (!exists(/databases/$(database)/documents/settings/credits)
+                && request.resource.data.freeCreditCampaignId == 'audinoo-free-credit-v1')
+              || (
+                exists(/databases/$(database)/documents/settings/credits)
+                && get(/databases/$(database)/documents/settings/credits).data.enabled == true
+                && get(/databases/$(database)/documents/settings/credits).data.activeCampaignId == request.resource.data.freeCreditCampaignId
+              )
+            )
+          )
+        )
+        && (
+          !request.resource.data.keys().hasAny(['countryCode', 'country'])
+          || (
+            request.resource.data.keys().hasAll(['countryCode', 'country'])
+            && request.resource.data.countryCode is string
+            && request.resource.data.countryCode.matches('^[A-Z]{2}$')
+            && request.resource.data.country is string
+            && request.resource.data.country.size() > 0
+            && request.resource.data.country.size() <= 100
+          )
+        );
     }
 
     match /users/{userId} {
@@ -43,7 +73,25 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow update: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'countryCode', 'country', 'updatedAt'
+        ])
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'countryCode', 'country', 'updatedAt'
+          ])
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasAll([
+              'countryCode', 'country', 'updatedAt'
+            ])
+            && request.resource.data.countryCode is string
+            && request.resource.data.countryCode.matches('^[A-Z]{2}$')
+            && request.resource.data.country is string
+            && request.resource.data.country.size() > 0
+            && request.resource.data.country.size() <= 100
+            && request.resource.data.updatedAt == request.time
+          )
+        );
       allow delete: if false;
     }
 
@@ -62,9 +110,96 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /modelSuggestions/{suggestionId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.modelName is string
+        && request.resource.data.modelName.size() >= 2
+        && request.resource.data.modelName.size() <= 80
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 10
+        && request.resource.data.reason.size() <= 1200
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.audience == 'all');
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 2
+        && request.resource.data.message.size() <= 600
+        && request.resource.data.audience == 'all'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    match /notificationReads/{readId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.keys().hasAll(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.notificationId is string
+        && request.resource.data.notificationId.size() > 0
+        && request.resource.data.readAt == request.time
+        && get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all';
+      allow update, delete: if false;
+    }
+
+    match /visitorSessions/{sessionId} {
+      // Anonymous visits contain no account identifier or network metadata.
+      // One write-only session record is created by the browser per tab session.
+      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
+        && request.resource.data.keys().hasAll(['createdAt'])
+        && request.resource.data.createdAt == request.time
+        && sessionId.matches('^[0-9a-f-]{36}$');
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /admins/{userId} {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list, create, update, delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow get: if signedIn() && settingId == 'credits';
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && settingId == 'credits'
+        && request.resource.data.keys().hasOnly(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.enabled is bool
+        && (
+          (request.resource.data.enabled == true
+            && request.resource.data.activeCampaignId is string
+            && request.resource.data.activeCampaignId.size() > 0)
+          || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
+        )
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
     }
 
     match /{document=**} {

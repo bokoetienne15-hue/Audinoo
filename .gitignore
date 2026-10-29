@@ -4,3 +4,9 @@ dist/
 .vscode/
 firebase-debug.log
 .DS_Store
+.env
+.env.*
+!.env.example
+
+# Local Netlify folder
+.netlify

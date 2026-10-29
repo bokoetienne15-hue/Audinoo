@@ -18,6 +18,14 @@ Audinoo est conçu autour d'une expérience simple : l'utilisateur décrit une i
 
 Le projet s'adresse aux artistes, créateurs de contenu, entrepreneurs, passionnés de musique et débutants qui souhaitent explorer la création sonore sans devoir maîtriser immédiatement toute la théorie musicale. L'objectif est de proposer une expérience moderne, claire et accessible depuis un ordinateur comme depuis un téléphone.
 
+### Backend Netlify (préparation)
+
+Le frontend est publié depuis `dist` et les fonctions serveur se trouvent dans `netlify/functions`. Lance `npm run dev:netlify` pour tester le site et les fonctions localement via Netlify Dev. La fonction `GET /api/session-check` vérifie un Firebase ID token côté serveur; elle répond `503` tant que le secret `FIREBASE_SERVICE_ACCOUNT_JSON` n'est pas configuré.
+
+Dans le tableau de bord Netlify, configure `FIREBASE_SERVICE_ACCOUNT_JSON` avec le JSON du compte de service Firebase, puis `SUNOAPI_KEY` avec la clé SunoAPI. Ces valeurs sont des secrets d'environnement serveur : ne les ajoute jamais à `src/`, à `.env.example` ni à un dépôt Git. La fonction de génération musicale et le débit des crédits ne sont pas encore activés; ils devront vérifier l'authentification, les droits/crédits de l'utilisateur et le coût réel de SunoAPI avant tout appel payant.
+
+Pour le développement local, copie `.env.example` vers `.env` et utilise des clés de test uniquement. Le fichier `.env` est ignoré par Git.
+
 ### Signature
 
 > Audinoo est une vision d'Etienne Boko : une vision africaine, une ambition mondiale et une nouvelle manière de transformer les idées en musique.
