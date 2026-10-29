@@ -8,6 +8,13 @@ import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
 
+function replaceNodeChildren(node, ...children) {
+  while (node.firstChild) node.removeChild(node.firstChild)
+  children.forEach((child) => {
+    node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child)
+  })
+}
+
 function readBrowserStorage(storage, key) {
   try {
     return window[storage].getItem(key)
@@ -284,7 +291,7 @@ function renderUserNotifications() {
   }
   const currentDot = workspaceNotificationButton.querySelector('.workspace-notification-dot')
   if (currentDot) currentDot.hidden = unreadItems.length === 0
-  workspaceNotificationList.replaceChildren()
+  replaceNodeChildren(workspaceNotificationList)
   if (!liveNotificationItems.length) {
     workspaceNotificationList.hidden = true
     workspaceNotificationEmpty.hidden = false
@@ -704,7 +711,7 @@ function drawAdminChart(svg, series, color) {
   const ns = 'http://www.w3.org/2000/svg'
   const width = 640, height = 230, left = 38, right = 16, top = 18, bottom = 35
   const max = Math.max(1, ...series.map((point) => point.value))
-  svg.replaceChildren()
+  replaceNodeChildren(svg)
   for (let row = 0; row < 4; row += 1) {
     const y = top + ((height - top - bottom) * row / 3)
     const line = document.createElementNS(ns, 'line')
@@ -777,10 +784,10 @@ function renderAdminDashboard() {
   const countryList = adminWorkspacePage.querySelector('#admin-country-list')
   const knownCountries = new Map(latestAdminUsers.filter((user) => user.countryCode && user.country).map((user) => [user.countryCode.toUpperCase(), { code: user.countryCode.toUpperCase(), name: user.country }]))
   const previousCountry = adminCountryFilter.value
-  adminCountryFilter.replaceChildren(new Option('Tous les pays', 'all'))
+  replaceNodeChildren(adminCountryFilter, new Option('Tous les pays', 'all'))
   ;[...knownCountries.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')).forEach((country) => adminCountryFilter.add(new Option(`${countryFlag(country.code)} ${country.name}`, country.code)))
   if (knownCountries.has(previousCountry)) adminCountryFilter.value = previousCountry
-  countryList.replaceChildren()
+  replaceNodeChildren(countryList)
   const orderedCountries = [...countries.values()].sort((a, b) => b.count - a.count || a.country.localeCompare(b.country, 'fr'))
   adminWorkspacePage.querySelector('#admin-country-total').textContent = `${adminNumber(filteredUsers.length)} inscrits`
   orderedCountries.forEach(({ code, country, count }) => {
@@ -924,7 +931,7 @@ async function refreshAdminAccess(uid) {
   }
 }
 function renderAdminSuggestions(suggestions) {
-  adminSuggestionList.replaceChildren()
+  replaceNodeChildren(adminSuggestionList)
   if (!suggestions.length) {
     adminSuggestionStatus.textContent = 'Aucune suggestion pour le moment.'
     return
@@ -1018,7 +1025,7 @@ const creationSuggestionIdeas = [
   { label: 'Berceuse toute douce', prompt: 'Berceuse très douce pour aider un bébé à s’endormir paisiblement. Tempo lent, piano feutré, boîte à musique et cordes légères. Voix calme et rassurante, mélodie simple et répétitive. Paroles tendres sur la sécurité, les rêves et la douceur. Sans percussions marquées, arrangement minimal et fin délicate.' }
 ]
 const suggestionButtons = simpleSuggestions.querySelector('div')
-suggestionButtons.replaceChildren(...creationSuggestionIdeas.map(({ label, prompt }) => {
+replaceNodeChildren(suggestionButtons, ...creationSuggestionIdeas.map(({ label, prompt }) => {
   const button = document.createElement('button')
   button.type = 'button'
   button.textContent = label
@@ -1073,7 +1080,7 @@ function createGenerationCard(generation) {
 }
 
 function renderGenerationTracks(container, tracks) {
-  container.replaceChildren()
+  replaceNodeChildren(container)
   tracks.forEach((track, index) => {
     if (!track?.audioUrl || !/^https:\/\//i.test(track.audioUrl)) return
     const item = document.createElement('article')
@@ -1221,7 +1228,7 @@ async function loadUserLibrary() {
   if (!auth.currentUser) return
   try {
     const result = await callAudinooApi('/api/my-library')
-    libraryGenerationList.replaceChildren()
+    replaceNodeChildren(libraryGenerationList)
     result.generations.forEach((generation) => {
       const card = createGenerationCard(generation)
       libraryGenerationList.append(card)
@@ -1478,7 +1485,7 @@ const openAuth = (mode) => {
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
-  usernameSuggestions.replaceChildren()
+  replaceNodeChildren(usernameSuggestions)
   usernameIsAvailable = false
   document.querySelector('#auth-email').focus()
 }
@@ -1546,7 +1553,7 @@ function usernameAlternatives(username) {
 }
 
 function renderUsernameSuggestions(username) {
-  usernameSuggestions.replaceChildren()
+  replaceNodeChildren(usernameSuggestions)
   if (!username.trim()) return
 
   usernameAlternatives(username).forEach((alternative) => {
@@ -1555,7 +1562,7 @@ function renderUsernameSuggestions(username) {
     button.textContent = alternative
     button.addEventListener('click', () => {
       authUsername.value = alternative
-      usernameSuggestions.replaceChildren()
+      replaceNodeChildren(usernameSuggestions)
       checkUsernameAvailability()
     })
     usernameSuggestions.append(button)
@@ -1718,7 +1725,7 @@ function renderCountryOptions(query = '') {
     return searchableName.includes(normalizedQuery) || code.toLocaleLowerCase('fr').includes(normalizedQuery)
   })
 
-  countryOptions.replaceChildren(...matches.map((country) => {
+  replaceNodeChildren(countryOptions, ...matches.map((country) => {
     const option = document.createElement('button')
     option.type = 'button'
     option.className = 'country-option'
@@ -1822,7 +1829,7 @@ countryOptions.addEventListener('click', (event) => {
   const option = event.target.closest('button[data-country-code]')
   if (!option) return
   selectedCountry = countryCodes.find(({ code }) => code === option.dataset.countryCode) || null
-  countrySelection.replaceChildren()
+  replaceNodeChildren(countrySelection)
   if (selectedCountry) {
     const label = document.createElement('span')
     label.textContent = `${selectedCountry.name} sélectionné.`

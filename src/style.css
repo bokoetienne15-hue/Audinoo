@@ -718,8 +718,24 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 }
 
 @media (max-width: 640px) {
-	.menu-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-	.menu-button .menu-line { flex: 0 0 2px; width: 19px; height: 2px; margin: 0; }
+	.menu-button {
+		display: grid !important;
+		grid-template-rows: repeat(3, 2px);
+		align-content: center;
+		justify-items: center;
+		gap: 4px;
+	}
+	.menu-button .menu-line {
+		display: block !important;
+		flex: none;
+		width: 19px;
+		height: 2px;
+		margin: 0;
+		transition: transform .18s ease, opacity .18s ease;
+	}
+	.menu-button[aria-expanded="true"] .menu-line:first-child { transform: translateY(6px) rotate(45deg); }
+	.menu-button[aria-expanded="true"] .menu-line:nth-child(2) { opacity: 0; }
+	.menu-button[aria-expanded="true"] .menu-line:last-child { transform: translateY(-6px) rotate(-45deg); }
 	.wind-silhouette-strip { opacity: .26; }
 	.typed-headline::after { display: none; }
 }
