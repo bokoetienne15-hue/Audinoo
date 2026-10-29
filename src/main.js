@@ -1494,7 +1494,11 @@ const openAuth = (mode) => {
   usernameFeedback.className = 'username-feedback signup-only'
   replaceNodeChildren(usernameSuggestions)
   usernameIsAvailable = false
-  document.querySelector('#auth-email').focus()
+  // On mobile, focusing an input as soon as the modal opens can make the
+  // browser scroll the underlying page to that field. Let the user tap it.
+  if (!window.matchMedia('(max-width: 640px)').matches) {
+    document.querySelector('#auth-email').focus({ preventScroll: true })
+  }
 }
 
 function showAuthError(error, mode, operationStep = '') {
