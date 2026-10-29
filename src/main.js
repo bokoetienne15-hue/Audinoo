@@ -115,7 +115,7 @@ app.innerHTML = `
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Plus ta description est précise, meilleur sera le résultat.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty"><span class="workspace-empty-icon">♫</span><h2>Ta bibliothèque t’attend.</h2><p>Les morceaux que tu créeras apparaîtront ici.</p></section></section>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ En mode simple, décris ton idée en 400 caractères maximum.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty"><span class="workspace-empty-icon">♫</span><h2>Ta bibliothèque t’attend.</h2><p>Les morceaux que tu créeras apparaîtront ici.</p></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
         <h1>Pars d’un <span>modèle</span>.</h1>
@@ -975,6 +975,207 @@ suggestionButtons.replaceChildren(...creationSuggestionIdeas.map(({ label, promp
   button.dataset.prompt = prompt
   return button
 }))
+const generationPanel = document.createElement('section')
+generationPanel.className = 'generation-panel'
+generationPanel.setAttribute('aria-live', 'polite')
+studioWorkspacePage.querySelector('.workspace-empty').before(generationPanel)
+const libraryGenerationList = document.createElement('div')
+libraryGenerationList.className = 'generation-list library-generation-list'
+libraryWorkspacePage.querySelector('.workspace-library-empty').after(libraryGenerationList)
+
+const generationStatusLabels = {
+  PENDING: 'En attente de génération…',
+  TEXT_SUCCESS: 'Les paroles sont prêtes, la musique arrive…',
+  FIRST_SUCCESS: 'La première variante est prête, la seconde arrive…',
+  SUCCESS: 'Tes variantes sont prêtes !',
+  COMPLETE: 'Tes variantes sont prêtes !',
+  COMPLETED: 'Tes variantes sont prêtes !',
+  CREATE_TASK_FAILED: 'La création a échoué.',
+  GENERATE_AUDIO_FAILED: 'La génération audio a échoué.',
+  CALLBACK_EXCEPTION: 'Le service a rencontré une erreur.',
+  SENSITIVE_WORD_ERROR: 'Le prompt contient des termes que le service ne peut pas traiter.'
+}
+
+function createGenerationCard(generation) {
+  const card = document.createElement('article')
+  card.className = 'generation-card'
+  card.dataset.taskId = generation.taskId
+  const heading = document.createElement('div')
+  heading.className = 'generation-card-heading'
+  const title = document.createElement('h3')
+  title.textContent = generation.title || 'Ta création Audinoo'
+  const status = document.createElement('span')
+  status.className = 'generation-status'
+  status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+  heading.append(title, status)
+  card.append(heading)
+  if (generation.prompt) {
+    const prompt = document.createElement('p')
+    prompt.className = 'generation-prompt'
+    prompt.textContent = generation.prompt
+    card.append(prompt)
+  }
+  const tracks = document.createElement('div')
+  tracks.className = 'generation-tracks'
+  card.append(tracks)
+  renderGenerationTracks(tracks, generation.tracks || [])
+  return card
+}
+
+function renderGenerationTracks(container, tracks) {
+  container.replaceChildren()
+  tracks.forEach((track, index) => {
+    if (!track?.audioUrl || !/^https:\/\//i.test(track.audioUrl)) return
+    const item = document.createElement('article')
+    item.className = 'generation-track'
+    if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
+      const cover = document.createElement('img')
+      cover.src = track.imageUrl
+      cover.alt = ''
+      cover.loading = 'lazy'
+      item.append(cover)
+    }
+    const content = document.createElement('div')
+    content.className = 'generation-track-content'
+    const name = document.createElement('strong')
+    name.textContent = track.title || `Variante ${index + 1}`
+    const player = document.createElement('audio')
+    player.controls = true
+    player.preload = 'none'
+    player.src = track.audioUrl
+    player.setAttribute('aria-label', `Écouter ${name.textContent}`)
+    content.append(name, player)
+    item.append(content)
+    container.append(item)
+  })
+}
+
+function upsertGenerationCard(container, generation) {
+  let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
+  if (!card) {
+    card = createGenerationCard(generation)
+    container.prepend(card)
+    return card
+  }
+  const status = card.querySelector('.generation-status')
+  status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+  const tracks = card.querySelector('.generation-tracks')
+  if (generation.tracks?.length) renderGenerationTracks(tracks, generation.tracks)
+  return card
+}
+
+function generationErrorMessage(errorCode) {
+  const messages = {
+    'no-free-credit': 'Ton crédit gratuit a déjà été utilisé ou l’offre est désactivée. Le paiement n’est pas encore disponible.',
+    'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
+    'music-provider-not-configured': 'Le service musical n’est pas encore configuré dans Netlify.',
+    'backend-not-configured': 'Le backend Firebase n’est pas encore configuré dans Netlify.',
+    'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
+    'prompt-too-long': 'Ta description est trop longue. Raccourcis-la puis réessaie.',
+    'advanced-fields-required': 'Ajoute un titre et une direction musicale en mode avancé.',
+    'music-provider-rejected-request': 'Le service musical a refusé la demande. Ton crédit n’a pas été consommé; tu peux réessayer.',
+    'music-status-unavailable': 'Impossible de vérifier l’avancement pour le moment.',
+    'invalid-session': 'Ta session a expiré. Reconnecte-toi puis réessaie.'
+  }
+  return messages[errorCode] || 'La création n’a pas pu démarrer. Réessaie plus tard.'
+}
+
+async function callAudinooApi(path, options = {}) {
+  const user = auth.currentUser
+  if (!user) throw new Error('invalid-session')
+  const token = await user.getIdToken()
+  const response = await fetch(path, {
+    ...options,
+    headers: { authorization: `Bearer ${token}`, ...(options.body ? { 'content-type': 'application/json' } : {}), ...options.headers }
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.error || 'generation-failed')
+  return body
+}
+
+function addGenerationToLibrary(generation) {
+  const empty = libraryWorkspacePage.querySelector('.workspace-library-empty')
+  empty.hidden = true
+  upsertGenerationCard(libraryGenerationList, generation)
+}
+
+async function pollGeneration(taskId, card) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 10000))
+    if (!auth.currentUser) return
+    try {
+      const result = await callAudinooApi(`/api/generation-status?taskId=${encodeURIComponent(taskId)}`)
+      const generation = { taskId, status: result.status, tracks: result.tracks || [] }
+      upsertGenerationCard(generationPanel, generation)
+      upsertGenerationCard(libraryGenerationList, generation)
+      if (result.completed || result.failed) return
+    } catch (error) {
+      card.querySelector('.generation-status').textContent = generationErrorMessage(error.message)
+      return
+    }
+  }
+  card.querySelector('.generation-status').textContent = 'La génération continue côté serveur. Retrouve son état dans Ma bibliothèque dans quelques instants.'
+}
+
+async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
+  if (!requireAccount()) return
+  const enteredPrompt = prompt.trim()
+  const cleanPrompt = customMode ? enteredPrompt : enteredPrompt.slice(0, 400)
+  if (cleanPrompt.length < 10) {
+    toast.textContent = generationErrorMessage('prompt-too-short')
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3200)
+    return
+  }
+  const originalText = submitButton.textContent
+  submitButton.disabled = true
+  submitButton.textContent = 'Création en cours…'
+  try {
+    const result = await callAudinooApi('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: cleanPrompt, style, title: title || 'Création Audinoo', customMode })
+    })
+    activeWorkspaceProfile = { ...activeWorkspaceProfile, freeCreditUsed: true }
+    renderWorkspaceFreeCredit()
+    const generation = { taskId: result.taskId, title: title || 'Ta création Audinoo', prompt: cleanPrompt, status: result.status, tracks: [] }
+    const card = upsertGenerationCard(generationPanel, generation)
+    addGenerationToLibrary(generation)
+    toast.textContent = enteredPrompt.length > 400 && !customMode
+      ? 'En mode simple, seuls les 400 premiers caractères sont envoyés. Tes deux variantes sont en cours de création.'
+      : 'Ta chanson est en cours de création. Les deux variantes apparaîtront ici dès qu’elles seront prêtes.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 4500)
+    void pollGeneration(result.taskId, card)
+  } catch (error) {
+    toast.textContent = generationErrorMessage(error.message)
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 4500)
+  } finally {
+    submitButton.disabled = false
+    submitButton.textContent = originalText
+  }
+}
+
+async function loadUserLibrary() {
+  if (!auth.currentUser) return
+  try {
+    const result = await callAudinooApi('/api/my-library')
+    libraryGenerationList.replaceChildren()
+    result.generations.forEach((generation) => {
+      const card = createGenerationCard(generation)
+      libraryGenerationList.append(card)
+      if (generation.status === 'PENDING' || generation.status === 'TEXT_SUCCESS' || generation.status === 'FIRST_SUCCESS') {
+        void pollGeneration(generation.taskId, card)
+      }
+    })
+    libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
+  } catch (error) {
+    toast.textContent = generationErrorMessage(error.message)
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
+  }
+}
+
 const authTitle = document.querySelector('#auth-title')
 const authIntro = document.querySelector('#auth-intro')
 const authFeedback = document.querySelector('#auth-feedback')
@@ -1797,6 +1998,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     adminWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
+    void loadUserLibrary()
   } else if (destination === '#admin') {
     event.preventDefault()
     if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) {
@@ -1836,12 +2038,9 @@ workspaceSidebar.addEventListener('click', (event) => {
   window.setTimeout(() => toast.classList.remove('show'), 3200)
 })
 
-studioForm.addEventListener('submit', (event) => {
+studioForm.addEventListener('submit', async (event) => {
   event.preventDefault()
-  const idea = studioPrompt.value.trim()
-  toast.textContent = idea ? `On prépare ton morceau « ${idea} »...` : 'Décris une ambiance pour commencer ta création.'
-  toast.classList.add('show')
-  window.setTimeout(() => toast.classList.remove('show'), 3200)
+  await submitGeneration({ prompt: studioPrompt.value, submitButton: studioForm.querySelector('button[type="submit"]') })
 })
 
 creationMode.addEventListener('click', (event) => {
@@ -1871,18 +2070,17 @@ document.querySelectorAll('.style-suggestions button').forEach((button) => butto
   }
 }))
 
-advancedForm.addEventListener('submit', (event) => {
+advancedForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const prompt = advancedPrompt.value.trim()
   const style = advancedStyle.value.trim()
   if (!prompt || !style) {
     toast.textContent = 'Ajoute les paroles et au moins un style, instrument ou une direction musicale.'
-  } else {
-    const title = advancedTitle.value.trim()
-    toast.textContent = title ? `On prépare « ${title} »...` : 'On prépare ta musique personnalisée...'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3200)
+    return
   }
-  toast.classList.add('show')
-  window.setTimeout(() => toast.classList.remove('show'), 3200)
+  await submitGeneration({ prompt, style, title: advancedTitle.value.trim() || 'Création Audinoo', customMode: true, submitButton: advancedForm.querySelector('button[type="submit"]') })
 })
 
 document.querySelectorAll('.studio-suggestions button').forEach((button) => button.addEventListener('click', () => {

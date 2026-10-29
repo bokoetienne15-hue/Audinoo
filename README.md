@@ -18,13 +18,17 @@ Audinoo est conçu autour d'une expérience simple : l'utilisateur décrit une i
 
 Le projet s'adresse aux artistes, créateurs de contenu, entrepreneurs, passionnés de musique et débutants qui souhaitent explorer la création sonore sans devoir maîtriser immédiatement toute la théorie musicale. L'objectif est de proposer une expérience moderne, claire et accessible depuis un ordinateur comme depuis un téléphone.
 
-### Backend Netlify (préparation)
+### Backend Netlify et génération musicale
 
-Le frontend est publié depuis `dist` et les fonctions serveur se trouvent dans `netlify/functions`. Lance `npm run dev:netlify` pour tester le site et les fonctions localement via Netlify Dev. La fonction `GET /api/session-check` vérifie un Firebase ID token côté serveur; elle répond `503` tant que le secret `FIREBASE_SERVICE_ACCOUNT_JSON` n'est pas configuré.
+Le frontend est publié depuis `dist`; les fonctions serveur se trouvent dans `netlify/functions` et les routes `/api/*` sont réécrites vers ces fonctions. `POST /api/generate` vérifie le Firebase ID token, réserve le crédit de bienvenue en transaction Firestore, puis appelle SunoAPI depuis le serveur. `GET /api/generation-status?taskId=…` vérifie l'avancement et `GET /api/my-library` charge les créations du compte. Le navigateur ne reçoit jamais la clé du wrapper.
 
-Dans le tableau de bord Netlify, configure `FIREBASE_SERVICE_ACCOUNT_JSON` avec le JSON du compte de service Firebase, puis `SUNOAPI_KEY` avec la clé SunoAPI. Ces valeurs sont des secrets d'environnement serveur : ne les ajoute jamais à `src/`, à `.env.example` ni à un dépôt Git. La fonction de génération musicale et le débit des crédits ne sont pas encore activés; ils devront vérifier l'authentification, les droits/crédits de l'utilisateur et le coût réel de SunoAPI avant tout appel payant.
+Dans **Netlify → Project configuration → Environment variables**, ajoute `FIREBASE_SERVICE_ACCOUNT_JSON` (JSON complet du compte de service Firebase) et `SUNOAPI_KEY` (clé du wrapper). Configure-les pour le contexte **Production**, puis redéploie le site. Ne partage jamais ces secrets dans un message et ne les ajoute pas à `src/`, à `.env.example` ou à GitHub. Après toute modification des variables, un nouveau déploiement est nécessaire.
 
-Pour le développement local, copie `.env.example` vers `.env` et utilise des clés de test uniquement. Le fichier `.env` est ignoré par Git.
+Le mode simple envoie au wrapper au plus 400 caractères; le mode avancé utilise le champ paroles, le style et le titre. Le modèle est choisi uniquement côté serveur. Le wrapper documente deux pistes renvoyées pour une génération; Audinoo les affiche lorsqu'elles sont prêtes. Les fichiers générés par le wrapper sont annoncés comme conservés 15 jours : télécharge les résultats importants.
+
+Seul le crédit gratuit de bienvenue est activé dans ce branchement. Le tarif affiché de 300 FCFA n'est pas encore facturé : aucun fournisseur de paiement n'est intégré. Une génération peut néanmoins consommer le solde de la clé SunoAPI; teste d'abord avec un solde que tu acceptes d'utiliser. Le serveur ne consomme le crédit gratuit Audinoo qu'après acceptation de la tâche par le wrapper.
+
+Pour le développement local, copie `.env.example` vers `.env` et utilise des secrets de test; `.env` est ignoré par Git. `npm run dev:netlify` lance le frontend avec les fonctions Netlify en local.
 
 ### Signature
 

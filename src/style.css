@@ -689,3 +689,27 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 	.workspace-header-avatar { flex-basis: 34px; width: 34px; height: 34px; margin-left: 0; }
 	.workspace-library-empty { margin-top: 30px; padding: 38px 18px; }
 }
+
+.generation-panel:empty { display: none; }
+.generation-list { display: grid; gap: 14px; margin-top: 20px; }
+.generation-card { padding: 18px; border: 1px solid rgba(185,156,229,.25); border-radius: 16px; background: rgba(20,16,37,.72); }
+.generation-card-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; }
+.generation-card-heading h3 { margin: 0; color: #f8f4ff; font: 600 16px/1.35 'Space Grotesk', sans-serif; }
+.generation-status { color: #d4a8f4; font-size: 11px; }
+.generation-prompt { margin: 10px 0 0; color: #a9a1b4; font-size: 11px; line-height: 1.6; }
+.generation-tracks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.generation-track { min-width: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.035); }
+.generation-track > img { display: block; width: 100%; max-height: 160px; object-fit: cover; }
+.generation-track-content { display: grid; gap: 10px; padding: 12px; }
+.generation-track-content strong { overflow: hidden; color: #f4effa; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.generation-track-content audio { width: 100%; height: 36px; }
+.library-generation-list { margin-top: 20px; }
+.workspace.is-light .generation-card { border-color: rgba(92,68,109,.18); background: #fff; }
+.workspace.is-light .generation-card-heading h3, .workspace.is-light .generation-track-content strong { color: #30283b; }
+.workspace.is-light .generation-status { color: #8244a6; }
+.workspace.is-light .generation-prompt { color: #746b7d; }
+.workspace.is-light .generation-track { border-color: rgba(92,68,109,.13); background: #faf9fc; }
+@media (max-width: 640px) {
+	.generation-card { padding: 14px; }
+	.generation-tracks { grid-template-columns: 1fr; }
+}
