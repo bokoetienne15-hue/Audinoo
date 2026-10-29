@@ -8,6 +8,23 @@ import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
 
+function readBrowserStorage(storage, key) {
+  try {
+    return window[storage].getItem(key)
+  } catch (error) {
+    console.warn(`[Audinoo] Could not read ${storage}`, error)
+    return null
+  }
+}
+
+function writeBrowserStorage(storage, key, value) {
+  try {
+    window[storage].setItem(key, value)
+  } catch (error) {
+    console.warn(`[Audinoo] Could not write ${storage}`, error)
+  }
+}
+
 app.innerHTML = `
   <main class="page-shell">
     <div class="ambient ambient-left"></div>
@@ -31,7 +48,7 @@ app.innerHTML = `
           <button class="signup-button auth-trigger" type="button" data-auth="signup">S'inscrire</button>
         </div>
       </div>
-      <button class="menu-button" type="button" aria-label="Ouvrir les autres pages" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
+      <button class="menu-button" type="button" aria-label="Ouvrir les autres pages" aria-expanded="false" aria-controls="mobile-menu"><span class="menu-line"></span><span class="menu-line"></span><span class="menu-line"></span></button>
       <nav class="mobile-menu" id="mobile-menu" aria-label="Autres pages" hidden>
         <a href="#top">Accueil</a>
         <a href="#create">Créer</a>
@@ -43,7 +60,7 @@ app.innerHTML = `
     <section class="hero" id="top">
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-dot"></span> La musique, version infinie</p>
-        <h1 id="typed-headline" class="typed-headline" aria-live="polite"></h1>
+        <h1 id="typed-headline" class="typed-headline" aria-live="polite">Imagine ta musique</h1>
         <div class="underline" aria-hidden="true"></div>
         <p class="hero-description">Crée des musiques uniques, originales et de qualité professionnelle<br class="desktop-only" /> en quelques secondes grâce à l'intelligence artificielle.</p>
 
@@ -941,13 +958,13 @@ adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('s
   }
 })
 const workspaceDarkMode = workspaceSidebar.querySelector('#workspace-dark-mode')
-const savedWorkspaceTheme = localStorage.getItem('audinoo-workspace-theme')
+const savedWorkspaceTheme = readBrowserStorage('localStorage', 'audinoo-workspace-theme')
 workspaceDarkMode.checked = savedWorkspaceTheme !== 'light'
 workspace.classList.toggle('is-light', savedWorkspaceTheme === 'light')
 workspaceDarkMode.addEventListener('change', () => {
   const isDarkMode = workspaceDarkMode.checked
   workspace.classList.toggle('is-light', !isDarkMode)
-  localStorage.setItem('audinoo-workspace-theme', isDarkMode ? 'dark' : 'light')
+  writeBrowserStorage('localStorage', 'audinoo-workspace-theme', isDarkMode ? 'dark' : 'light')
 })
 const studioForm = document.querySelector('#studio-form')
 const studioPrompt = document.querySelector('#studio-prompt')
@@ -1217,10 +1234,11 @@ let profileUid = null
 let pendingCountryProfile = null
 let selectedCountry = null
 let authFlowInProgress = false
+const regionNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['fr'], { type: 'region' }) : null
 
 const countryCodes = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ').map((code) => {
   const flag = String.fromCodePoint(...[...code].map((letter) => letter.charCodeAt(0) + 127397))
-  return { code, flag, name: new Intl.DisplayNames(['fr'], { type: 'region' }).of(code) || code }
+  return { code, flag, name: regionNames?.of(code) || code }
 }).sort((first, second) => first.name.localeCompare(second.name, 'fr'))
 
 

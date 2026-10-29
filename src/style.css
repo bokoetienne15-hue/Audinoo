@@ -713,3 +713,9 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 	.generation-card { padding: 14px; }
 	.generation-tracks { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+	.menu-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+	.menu-button .menu-line { flex: 0 0 2px; width: 19px; height: 2px; margin: 0; }
+	.wind-silhouette-strip { opacity: .26; }
+}
