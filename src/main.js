@@ -132,15 +132,48 @@ app.innerHTML = `
     </section>
 
     <section class="content-section docs-section" id="documentation" aria-labelledby="docs-title">
-      <div class="docs-layout"><div class="section-heading"><p class="section-kicker">Documentation</p><h2 id="docs-title">Tout ce qu'il faut pour faire naître un morceau.</h2><p>La documentation Audinoo sera ton point de repère pour comprendre la création musicale avec l'intelligence artificielle. Elle expliquera les bonnes pratiques pour rédiger un prompt, choisir une direction artistique et obtenir un résultat qui correspond vraiment à ton intention.</p><p>Tu y trouveras aussi des exemples concrets, des conseils pour décrire le tempo, l'ambiance, les instruments ou l'énergie recherchée, ainsi que les réponses aux questions les plus fréquentes sur les crédits, les formules et le téléchargement de tes créations.</p></div><div class="docs-list"><a href="#documentation"><span>01</span><div><strong>Bien commencer</strong><small>Découvrir les bases d'une création Audinoo</small></div><b>→</b></a><a href="#documentation"><span>02</span><div><strong>Écrire un bon prompt</strong><small>Transformer une idée en direction musicale claire</small></div><b>→</b></a><a href="#documentation"><span>03</span><div><strong>Comprendre les crédits</strong><small>Utiliser tes créations et tes achats à la demande</small></div><b>→</b></a><a href="#documentation"><span>04</span><div><strong>Questions fréquentes</strong><small>Retrouver les informations essentielles</small></div><b>→</b></a></div></div>
+      <div class="docs-layout">
+        <div class="section-heading">
+          <p class="section-kicker">Centre d'aide & documentation</p>
+          <h2 id="docs-title">Comprendre Audinoo, de la première connexion à ta première chanson.</h2>
+          <p>Retrouve un guide complet pour découvrir la plateforme, créer ton compte, choisir ton pays, utiliser les modes Simple et Avancé, comprendre les crédits et retrouver tes créations dans ta bibliothèque.</p>
+          <p>La documentation est conçue pour les débutants comme pour les créateurs expérimentés. Chaque étape est expliquée clairement, avec des conseils pratiques pour transformer une idée en direction musicale.</p>
+          <a class="docs-home-cta" href="/documentation/">Consulter la documentation complète <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="docs-list">
+          <a href="/documentation/#getting-started"><span>01</span><div><strong>Bien commencer</strong><small>Créer un compte et accéder à ton espace</small></div><b>→</b></a>
+          <a href="/documentation/#studio-simple"><span>02</span><div><strong>Utiliser le studio</strong><small>Créer en mode Simple ou Avancé</small></div><b>→</b></a>
+          <a href="/documentation/#credits"><span>03</span><div><strong>Crédits et générations</strong><small>Comprendre les crédits et les variantes</small></div><b>→</b></a>
+          <a href="/documentation/#billing"><span>04</span><div><strong>Tarifs et paiements</strong><small>Découvrir les offres et moyens de paiement</small></div><b>→</b></a>
+        </div>
+      </div>
     </section>
 
     <section class="content-section about-section" id="about" aria-labelledby="about-title">
-      <div class="about-panel"><div><p class="section-kicker">Fondateur & vision</p><h2 id="about-title">Etienne Boko construit le futur de la création musicale.</h2></div><p><strong>Etienne Boko est le fondateur et le créateur d'Audinoo.</strong> Développeur et entrepreneur passionné par les technologies créatives, il porte une vision ambitieuse : faire de l'intelligence artificielle un outil accessible, puissant et profondément humain pour les artistes africains et les créateurs du monde entier.</p><p>Audinoo est née de cette conviction. La plateforme veut devenir une référence africaine de la création musicale alimentée par l'IA : un espace où une idée, une émotion ou quelques mots peuvent se transformer en morceau. Son ambition est de construire la meilleure expérience possible, et de faire grandir Audinoo jusqu'à devenir la plateforme N°1 en Afrique dans son domaine.</p></div>
-      <div class="founder-signature"><span class="signature-mark">A</span><div><strong>Etienne Boko</strong><small>Fondateur & créateur d'Audinoo</small></div><span class="signature-line"></span><em>Une vision africaine. Une ambition mondiale.</em></div>
+      <div class="about-panel">
+        <div><p class="section-kicker">Fondateur & vision</p><h2 id="about-title">Une vision portée par l'entrepreneuriat et la technologie.</h2></div>
+        <p><strong>ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur d'Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit et développe des applications Web et Mobile ainsi que des solutions numériques intégrant l'intelligence artificielle.</p>
+        <p>À travers Audinoo, il souhaite rendre la création musicale assistée par intelligence artificielle plus accessible aux artistes, créateurs et passionnés, en Afrique et dans le monde. Son ambition est de bâtir une plateforme africaine solide, utile et évolutive, qui donne à chacun les moyens de transformer ses idées en créations musicales.</p>
+      </div>
+      <div class="founder-signature founder-signature-prominent">
+        <img src="/favicon.svg" alt="Logo Audinoo" width="48" height="48" />
+        <div><strong>ETIENNE MELANO</strong><small>De son vrai nom ETIENNE BOKO</small><small>Fondateur d'Audinoo · Entrepreneur technologique · Développeur Full Stack</small></div>
+        <span class="signature-line"></span><em>Une vision africaine. Une ambition mondiale.</em>
+      </div>
     </section>
 
-    <footer class="site-footer"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a><p>Fondée par Etienne Boko · Imagine ta musique. L'IA s'occupe du reste.</p><div><a href="#documentation">Documentation</a><a href="#pricing">Tarifs</a><a href="#about">À propos</a></div></footer>
+    <footer class="site-footer site-footer-expanded">
+      <div class="footer-main">
+        <div class="footer-brand-column">
+          <a class="brand" href="#top" aria-label="Audinoo, accueil"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a>
+          <p>La création musicale assistée par intelligence artificielle. Une idée, une émotion, une nouvelle musique.</p>
+          <small>Fondée par ETIENNE MELANO, de son vrai nom ETIENNE BOKO.</small>
+        </div>
+        <div class="footer-link-column"><strong>Découvrir</strong><a href="#explore">Explorer Audinoo</a><a href="#create">Créer une musique</a><a href="#pricing">Tarifs</a></div>
+        <div class="footer-link-column"><strong>Ressources</strong><a href="/documentation/">Documentation complète</a><a href="#documentation">Centre d'aide</a><a href="#about">À propos du fondateur</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2026 Audinoo. Tous droits réservés.</span><span>Une vision africaine. Une ambition mondiale.</span><a href="#top">Retour en haut ↑</a></div>
+    </footer>
   </main>
   <main class="workspace" id="workspace" hidden>
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
