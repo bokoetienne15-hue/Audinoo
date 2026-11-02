@@ -745,3 +745,29 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 	.wind-silhouette-strip { opacity: .26; }
 	.typed-headline::after { display: none; }
 }
+
+
+/* Documentation complète et pied de page Audinoo */
+.docs-home-cta { display: inline-flex; align-items: center; gap: 12px; margin-top: 12px; padding: 13px 18px; border: 1px solid rgba(205,145,244,.42); border-radius: 999px; color: #fff; background: linear-gradient(100deg,rgba(113,50,236,.24),rgba(217,64,206,.16)); font-size: 12px; font-weight: 700; transition: border-color .2s ease, transform .2s ease; }
+.docs-home-cta:hover { border-color: #df77ee; transform: translateY(-2px); }
+.founder-signature-prominent { align-items: center; flex-wrap: wrap; gap: 17px; }
+.founder-signature-prominent > img { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 14px; }
+.founder-signature-prominent strong { font-size: clamp(21px,3vw,32px); letter-spacing: .045em; }
+.founder-signature-prominent small { font-size: 11px; line-height: 1.6; }
+.site-footer-expanded { display: block; padding: 48px 0 24px; }
+.footer-main { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 55px; padding-bottom: 38px; }
+.footer-brand-column .brand { display: inline-flex; align-items: center; gap: 9px; }
+.footer-brand-column p { max-width: 330px; margin: 16px 0 12px; color: #a29bad; font-size: 12px; line-height: 1.8; }
+.footer-brand-column small { color: #777184; font-size: 10px; line-height: 1.6; }
+.footer-link-column { display: grid; align-content: start; justify-items: start; gap: 13px; }
+.footer-link-column strong { margin-bottom: 5px; color: #f3edf9; font: 600 13px 'Space Grotesk',sans-serif; }
+.footer-link-column a { color: #9992a6; font-size: 11px; transition: color .2s ease; }
+.footer-link-column a:hover { color: #fff; }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 13px 22px; padding-top: 19px; border-top: 1px solid rgba(255,255,255,.1); color: #777184; font-size: 10px; }
+.footer-bottom a { color: #c9a5e6; }
+@media (max-width: 640px) {
+  .footer-main { grid-template-columns: 1fr 1fr; gap: 30px 20px; }
+  .footer-brand-column { grid-column: 1 / -1; }
+  .footer-bottom { align-items: flex-start; flex-direction: column; }
+  .founder-signature-prominent .signature-line { display: none; }
+}
