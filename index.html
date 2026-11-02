@@ -84,7 +84,7 @@
           if (control && control.nodeType !== 1) control = control.parentElement
           while (control && control !== document) {
             const tagName = String(control.tagName || '').toLowerCase()
-            if (tagName === 'button' || (tagName === 'input' && control.type === 'submit') || control.getAttribute('role') === 'button' || control.getAttribute('data-auth')) return control
+            if (tagName === 'button' || (tagName === 'input' && control.type === 'submit') || (tagName === 'a' && ['#signup', '#login'].includes(control.getAttribute('href'))) || control.getAttribute('role') === 'button' || control.getAttribute('data-auth')) return control
             control = control.parentElement
           }
           return null
