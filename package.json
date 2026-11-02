@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:netlify": "netlify dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
