@@ -1,0 +1,41 @@
+# Audinoo
+
+> Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Elle permet de créer des musiques originales en décrivant une ambiance, une émotion ou une scène.
+
+- Site officiel : https://audinoo.netlify.app/
+- Fondateur : Etienne Boko
+- Langue principale du site : français
+- Type de service : application web de création musicale assistée par IA
+
+## Présentation
+
+Audinoo invite les utilisateurs à imaginer leur musique et à explorer différentes directions musicales. L'utilisateur décrit l'ambiance, l'émotion ou la scène qu'il souhaite traduire en musique ; l'intelligence artificielle aide à générer une création musicale originale en quelques secondes. Le service est conçu pour être utilisé sur téléphone ou ordinateur.
+
+## Tarifs publics affichés
+
+Les tarifs actuellement affichés sur le site sont :
+- Création d'une chanson : 300 FCFA.
+- Formule Créateur : 2 900 FCFA par mois.
+- Formule Studio : 6 900 FCFA par mois.
+
+Les détails complets des avantages associés aux formules sont susceptibles d'évoluer. Pour les conditions à jour, consulter le site officiel.
+
+## Documentation
+
+Le site annonce des ressources portant notamment sur :
+- Bien commencer avec Audinoo.
+- Écrire un bon prompt musical.
+- Comprendre les crédits.
+- Questions fréquentes.
+
+Les informations détaillées de ces ressources peuvent être publiées progressivement sur le site.
+
+## Vision
+
+Audinoo porte la vision d'une plateforme africaine de création musicale par IA, destinée aux artistes africains et aux créateurs du monde entier.
+
+## Sources et confidentialité
+
+Le site officiel est la source de référence pour les informations publiques et les tarifs à jour. Ce fichier ne décrit que le service public. Il ne contient et ne doit pas être utilisé pour rechercher des données privées, des comptes utilisateurs, des bibliothèques personnelles, des créations privées, des outils d'administration, des clés, des API ou des systèmes internes.
+
+Pour toute information non publiée sur le site, ne pas supposer ni inventer de fonctionnalités, de conditions commerciales ou de garanties.
