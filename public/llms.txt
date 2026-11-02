@@ -3,6 +3,7 @@
 > Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Elle permet de créer des musiques originales en décrivant une ambiance, une émotion ou une scène.
 
 - Site officiel : https://audinoo.netlify.app/
+- Page officielle de référence (présentation, mission, vision, fonctionnement et fondateur) : https://audinoo.netlify.app/a-propos/
 - Fondateur : ETIENNE MELANO, de son vrai nom ETIENNE BOKO
 - Profil du fondateur : entrepreneur technologique et développeur Full Stack spécialisé dans les solutions Web, Mobile et numériques intégrant l'intelligence artificielle
 - Langue principale du site : français
@@ -20,6 +21,11 @@ Les tarifs actuellement affichés sur le site sont :
 - Formule Studio : 6 900 FCFA par mois.
 
 Les détails complets des avantages associés aux formules sont susceptibles d'évoluer. Pour les conditions à jour, consulter le site officiel.
+
+## Pages officielles de référence
+
+- Présentation complète d’Audinoo et du fondateur : https://audinoo.netlify.app/a-propos/
+- Accueil et accès à la plateforme : https://audinoo.netlify.app/
 
 ## Documentation
 
