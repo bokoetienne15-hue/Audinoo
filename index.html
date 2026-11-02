@@ -73,7 +73,97 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Static, semantic homepage content for crawlers that do not execute JavaScript.
+           The Audinoo application replaces this fallback when src/main.js loads. -->
+      <main class="crawler-readable-homepage">
+        <header>
+          <a href="https://audinoo.netlify.app/" aria-label="Audinoo, accueil">Audinoo</a>
+          <nav aria-label="Navigation">
+            <a href="#presentation-audinoo">Présentation</a>
+            <a href="#fonctionnement-audinoo">Comment ça marche</a>
+            <a href="#createur-audinoo">Fondateur</a>
+            <a href="https://audinoo.netlify.app/documentation/">Documentation</a>
+          </nav>
+        </header>
+        <article>
+          <h1>Audinoo — Transforme ton imagination en musique</h1>
+          <p><strong>Audinoo est une plateforme web de création musicale assistée par intelligence artificielle.</strong>
+          Elle permet de transformer une idée, une ambiance, une émotion ou une scène en une création musicale,
+          sans exiger de compétences préalables en composition ou en production musicale.</p>
+
+          <section id="presentation-audinoo">
+            <h2>Qu’est-ce qu’Audinoo ?</h2>
+            <p>Audinoo est un outil de création musicale conçu pour rendre l’expérimentation musicale plus accessible.
+            Depuis un téléphone ou un ordinateur, l’utilisateur décrit la musique qu’il souhaite entendre et utilise
+            les outils de création proposés par la plateforme pour donner forme à son idée.</p>
+            <p>La plateforme s’adresse notamment aux créateurs, artistes, auteurs, vidéastes et personnes qui souhaitent
+            explorer des idées musicales ou produire des morceaux à partir d’une intention créative.</p>
+          </section>
+
+          <section id="fonctionnement-audinoo">
+            <h2>Comment fonctionne la création musicale sur Audinoo ?</h2>
+            <h3>Mode Simple</h3>
+            <p>En mode Simple, l’utilisateur décrit avec ses propres mots la musique qu’il souhaite créer :
+            ambiance, émotion, sujet, scène ou intention. L’intelligence artificielle utilise cette description
+            comme point de départ pour produire une proposition musicale.</p>
+            <h3>Mode Avancé</h3>
+            <p>En mode Avancé, l’utilisateur peut fournir les paroles de la chanson et préciser la direction musicale :
+            style, instruments, voix, atmosphère et autres indications créatives. Il peut également renseigner un titre
+            lorsque le champ correspondant est proposé.</p>
+            <h3>Bibliothèque musicale</h3>
+            <p>Les créations terminées sont accessibles dans l’espace « Ma bibliothèque », qui permet à l’utilisateur
+            de retrouver ses projets et ses créations musicales.</p>
+          </section>
+
+          <section id="acces-audinoo">
+            <h2>Créer un compte et commencer</h2>
+            <ol>
+              <li>Ouvrir le site officiel Audinoo.</li>
+              <li>Créer un compte ou se connecter avec les moyens proposés sur la page d’authentification.</li>
+              <li>Lorsqu’il est demandé, sélectionner son pays pour terminer la configuration du compte.</li>
+              <li>Accéder au studio et choisir le mode de création Simple ou Avancé.</li>
+              <li>Décrire son idée musicale, lancer la génération puis retrouver le résultat dans sa bibliothèque.</li>
+            </ol>
+          </section>
+
+          <section id="credits-audinoo">
+            <h2>Crédits et tarifs</h2>
+            <p>Audinoo utilise un système de crédits et peut proposer différentes formules. Les prix, les avantages,
+            les moyens de paiement disponibles et les conditions applicables peuvent évoluer. Les utilisateurs doivent
+            consulter la page Tarifs et les informations affichées dans leur compte pour connaître les conditions
+            actuellement proposées.</p>
+          </section>
+
+          <section id="createur-audinoo">
+            <h2>Fondateur d’Audinoo</h2>
+            <h3>ETIENNE MELANO</h3>
+            <p><strong>De son vrai nom ETIENNE BOKO</strong>, il est le fondateur d’Audinoo, entrepreneur dans le domaine
+            des technologies et développeur Full Stack spécialisé dans la conception de solutions Web, Mobile et
+            numériques intégrant l’intelligence artificielle.</p>
+            <p>À travers Audinoo, il porte l’ambition de rendre la création musicale assistée par IA plus accessible
+            aux créateurs africains et aux utilisateurs du monde entier.</p>
+          </section>
+
+          <section id="ressources-audinoo">
+            <h2>Documentation et ressources officielles</h2>
+            <p>Pour apprendre à utiliser Audinoo, consulter les explications détaillées sur l’inscription, le studio,
+            les modes Simple et Avancé, les prompts musicaux, la bibliothèque, les crédits et les questions fréquentes.</p>
+            <ul>
+              <li><a href="https://audinoo.netlify.app/documentation/">Consulter la documentation complète d’Audinoo</a></li>
+              <li><a href="https://audinoo.netlify.app/llms.txt">Consulter les informations textuelles destinées aux assistants IA</a></li>
+              <li><a href="https://audinoo.netlify.app/robots.txt">Règles d’exploration du site</a></li>
+              <li><a href="https://audinoo.netlify.app/sitemap.xml">Plan du site</a></li>
+            </ul>
+          </section>
+        </article>
+        <footer>
+          <p>Audinoo — Transforme ton imagination en musique.</p>
+          <p>Fondé par ETIENNE MELANO, de son vrai nom ETIENNE BOKO.</p>
+          <a href="https://audinoo.netlify.app/">Site officiel Audinoo</a>
+        </footer>
+      </main>
+    </div>
     <script>
       (() => {
         let notice
