@@ -135,6 +135,9 @@
         document.addEventListener('touchstart', (event) => {
           const touch = event.touches && event.touches[0]
           if (!touch) return
+          // The auth modal intentionally covers the page. Do not treat the
+          // covered signup/login links underneath it as blocked touch targets.
+          if (document.querySelector('.auth-overlay.open')) return
           const authButtons = document.querySelectorAll('.auth-trigger, a[href="#signup"], a[href="#login"]')
           let intendedButton = null
           authButtons.forEach((button) => {
