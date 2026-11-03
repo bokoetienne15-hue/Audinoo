@@ -468,10 +468,7 @@ const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button
 workspaceUpgradeButton.addEventListener('click', () => {
   ;[studioWorkspacePage, libraryWorkspacePage, adminWorkspacePage, modelWorkspacePage].forEach((page) => { if (page) page.hidden = true })
   workspacePricingPage.hidden = false
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
   window.history.replaceState(null, '', '#workspace-pricing')
 })
 workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener('click', () => {
@@ -524,10 +521,7 @@ workspaceModelChoice.addEventListener('click', () => {
   modelWorkspacePage.hidden = false
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.remove('is-active'))
   workspaceModelChoice.classList.add('is-active')
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
   window.history.replaceState(null, '', '#model')
 })
 modelWorkspacePage.querySelector('#workspace-return-studio').addEventListener('click', () => {
@@ -2135,21 +2129,30 @@ workspaceLogout.addEventListener('click', () => {
   logoutDialog.showModal()
 })
 
+function setWorkspaceSidebarOpen(open) {
+  workspaceLayout.classList.toggle('is-mobile-open', open)
+  workspaceLayout.classList.toggle('is-mobile-closed', !open)
+  document.body.classList.toggle('workspace-menu-locked', open)
+  sidebarToggle.setAttribute('aria-expanded', String(open))
+  sidebarToggle.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu')
+}
+
 sidebarToggle.addEventListener('click', () => {
-  const isOpen = workspaceLayout.classList.contains('is-mobile-open')
-  workspaceLayout.classList.toggle('is-mobile-open', !isOpen)
-  workspaceLayout.classList.toggle('is-mobile-closed', isOpen)
-  sidebarToggle.setAttribute('aria-expanded', String(!isOpen))
-  sidebarToggle.setAttribute('aria-label', isOpen ? 'Ouvrir le menu' : 'Fermer le menu')
+  setWorkspaceSidebarOpen(!workspaceLayout.classList.contains('is-mobile-open'))
 })
+
+// Empêche le geste de balayage de faire défiler le studio derrière le menu.
+// Le menu latéral garde son propre défilement si son contenu dépasse l'écran.
+document.addEventListener('touchmove', (event) => {
+  if (!workspaceLayout.classList.contains('is-mobile-open')) return
+  if (workspaceSidebar.contains(event.target)) return
+  event.preventDefault()
+}, { passive: false })
 
 document.addEventListener('click', (event) => {
   if (!workspaceLayout.classList.contains('is-mobile-open')) return
   if (workspaceSidebar.contains(event.target) || sidebarToggle.contains(event.target)) return
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
 })
 
 document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', (event) => {
