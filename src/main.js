@@ -1028,7 +1028,20 @@ function renderAdminGenerationsTable() {
       const line = document.createElement('div'); line.className = 'admin-generation-track'
       const label = document.createElement('strong'); label.textContent = track.title || ('Variante ' + (track.trackIndex + 1)); line.append(label)
       if (track.audioUrl) {
-        const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.src = track.audioUrl; line.append(player)
+        const player = document.createElement('audio'); player.controls = true; player.preload = 'none'
+        player.addEventListener('play', async () => {
+          if (player.dataset.loaded === 'true') return
+          player.pause()
+          try {
+            const token = await auth.currentUser?.getIdToken()
+            const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+            if (!audioResponse.ok) throw new Error('audio-unavailable')
+            player.src = URL.createObjectURL(await audioResponse.blob())
+            player.dataset.loaded = 'true'
+            await player.play()
+          } catch (error) { console.warn('[Audinoo admin audio]', error) }
+        }, { once: true })
+        line.append(player)
         const button = document.createElement('button'); button.type = 'button'; button.className = 'admin-publish-button'; button.textContent = 'Publier sur l’accueil'
         button.addEventListener('click', async () => {
           button.disabled = true
