@@ -20,6 +20,12 @@
     <meta name="twitter:title" content="Audinoo — Transforme ton imagination en musique" />
     <meta name="twitter:description" content="Une plateforme africaine pour créer des musiques originales avec l'intelligence artificielle." />
     <title>Audinoo — Transforme ton imagination en musique</title>
+    <script>document.documentElement.classList.add('js');</script>
+    <style>
+      /* Le contenu SEO reste présent dans le HTML source pour les robots,
+         mais l'application interactive le remplace sans flash à l'écran. */
+      .js .crawler-readable-homepage { display: none !important; }
+    </style>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -258,6 +264,6 @@
         window.addEventListener('unhandledrejection', (event) => reportClientError(event.reason))
       })()
     </script>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.js" onerror="document.documentElement.classList.remove('js')"></script>
   </body>
 </html>
