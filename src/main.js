@@ -3,7 +3,7 @@ import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
 import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
@@ -586,7 +586,7 @@ const adminWorkspacePage = document.createElement('section')
 adminWorkspacePage.className = 'workspace-content workspace-admin-page'
 adminWorkspacePage.id = 'admin-page'
 adminWorkspacePage.hidden = true
-adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace-kicker">AUDINOO · CENTRE DE PILOTAGE</p><h1>Vue d’ensemble</h1><p class="workspace-intro">La communauté en direct, réunie au même endroit.</p></div><div class="admin-live-pill"><i></i> En direct</div></div><div class="admin-toolbar"><label><span>Période</span><select id="admin-period-filter"><option value="day">Par jour · 30 jours</option><option value="week">Par semaine · 12 semaines</option><option value="month">Par mois · 12 mois</option><option value="year">Par année · 5 ans</option></select></label><label><span>Pays</span><select id="admin-country-filter"><option value="all">Tous les pays</option></select></label><button class="admin-export-button" id="admin-export-report" type="button"><span aria-hidden="true">↧</span> Télécharger le rapport</button></div><p class="admin-panel-status admin-live-status" id="admin-stats-status" role="status">Connexion à Firebase…</p><section class="admin-stats-grid" aria-label="Indicateurs de la communauté"><article class="admin-stat-card admin-stat-total"><span>INSCRITS AU TOTAL</span><strong id="admin-total-users">—</strong><small>Profils enregistrés dans Firebase</small><i aria-hidden="true">♙</i></article><article class="admin-stat-card admin-stat-signups"><span>INSCRIPTIONS · PÉRIODE</span><strong id="admin-week-users">—</strong><small id="admin-signup-period-label">Dans la période choisie</small><i aria-hidden="true">↗</i></article><article class="admin-stat-card admin-stat-visitors"><span>VISITES ANONYMES · PÉRIODE</span><strong id="admin-total-visitors">—</strong><small>Sessions sans compte, période filtrée</small><i aria-hidden="true">◉</i></article></section><section class="admin-chart-grid"><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>CROISSANCE</p><h2>Inscriptions</h2></div><span class="admin-chart-total" id="admin-signup-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-signup-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des inscriptions par période"></svg></div><div class="admin-chart-legend"><i class="signup-legend-dot"></i> Nouveaux comptes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>FRÉQUENTATION</p><h2>Visites anonymes</h2></div><span class="admin-chart-total" id="admin-visitor-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-visitor-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des visiteurs anonymes par période"></svg></div><div class="admin-chart-legend"><i class="visitor-legend-dot"></i> Sessions anonymes</div></article></section><section class="admin-panel admin-country-panel"><div class="admin-panel-heading"><div><p>COMMUNAUTÉ MONDIALE</p><h2>Inscriptions par pays</h2></div><span class="admin-country-count" id="admin-country-total">—</span></div><p class="admin-panel-status">Chaque drapeau correspond au pays choisi par les membres.</p><div class="admin-country-list" id="admin-country-list"></div></section><div class="admin-dashboard-grid"><section class="admin-panel"><div class="admin-panel-heading"><div><p>BOÎTE À IDÉES</p><h2>Suggestions de modèles</h2></div><button class="admin-refresh-button" id="admin-refresh-suggestions" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-suggestions-status" role="status">Chargement des suggestions…</p><div class="admin-suggestion-list" id="admin-suggestion-list"></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>ANNONCES</p><h2>Envoyer une notification</h2></div></div><form class="admin-notification-form" id="admin-notification-form"><label for="admin-notification-title">Titre</label><input id="admin-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Nouveau modèle disponible" required /><label for="admin-notification-message">Message</label><textarea id="admin-notification-message" name="message" minlength="2" maxlength="600" rows="5" placeholder="Écris le message que les utilisateurs verront…" required></textarea><button class="admin-publish-button" type="submit">Publier à tous les utilisateurs <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-notification-status" role="status"></p></form></section></div>'
+adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace-kicker">AUDINOO · CENTRE DE PILOTAGE</p><h1>Vue d’ensemble</h1><p class="workspace-intro">La communauté en direct, réunie au même endroit.</p></div><div class="admin-live-pill"><i></i> En direct</div></div><div class="admin-toolbar"><label><span>Période</span><select id="admin-period-filter"><option value="day">Par jour · 30 jours</option><option value="week">Par semaine · 12 semaines</option><option value="month">Par mois · 12 mois</option><option value="year">Par année · 5 ans</option></select></label><label><span>Pays</span><select id="admin-country-filter"><option value="all">Tous les pays</option></select></label><button class="admin-export-button" id="admin-export-report" type="button"><span aria-hidden="true">↧</span> Télécharger le rapport</button></div><p class="admin-panel-status admin-live-status" id="admin-stats-status" role="status">Connexion à Firebase…</p><section class="admin-stats-grid" aria-label="Indicateurs de la communauté"><article class="admin-stat-card admin-stat-total"><span>INSCRITS AU TOTAL</span><strong id="admin-total-users">—</strong><small>Profils enregistrés dans Firebase</small><i aria-hidden="true">♙</i></article><article class="admin-stat-card admin-stat-signups"><span>INSCRIPTIONS · PÉRIODE</span><strong id="admin-week-users">—</strong><small id="admin-signup-period-label">Dans la période choisie</small><i aria-hidden="true">↗</i></article><article class="admin-stat-card admin-stat-visitors"><span>VISITES ANONYMES · PÉRIODE</span><strong id="admin-total-visitors">—</strong><small>Sessions sans compte, période filtrée</small><i aria-hidden="true">◉</i></article><article class="admin-stat-card admin-stat-generations"><span>GÉNÉRATIONS · PÉRIODE</span><strong id="admin-total-generations">—</strong><small id="admin-generation-detail">Historique récent synchronisé</small><i aria-hidden="true">♫</i></article></section><section class="admin-chart-grid"><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>CROISSANCE</p><h2>Inscriptions</h2></div><span class="admin-chart-total" id="admin-signup-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-signup-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des inscriptions par période"></svg></div><div class="admin-chart-legend"><i class="signup-legend-dot"></i> Nouveaux comptes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>FRÉQUENTATION</p><h2>Visites anonymes</h2></div><span class="admin-chart-total" id="admin-visitor-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-visitor-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des visiteurs anonymes par période"></svg></div><div class="admin-chart-legend"><i class="visitor-legend-dot"></i> Sessions anonymes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>PRODUCTION MUSICALE</p><h2>Générations</h2></div><span class="admin-chart-total" id="admin-generation-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-generation-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des générations musicales par période"></svg></div><div class="admin-chart-legend"><i class="generation-legend-dot"></i> Créations enregistrées · échantillon récent</div></article></section><section class="admin-panel admin-country-panel"><div class="admin-panel-heading"><div><p>COMMUNAUTÉ MONDIALE</p><h2>Inscriptions par pays</h2></div><span class="admin-country-count" id="admin-country-total">—</span></div><p class="admin-panel-status">Chaque drapeau correspond au pays choisi par les membres.</p><div class="admin-country-list" id="admin-country-list"></div></section><div class="admin-dashboard-grid"><section class="admin-panel"><div class="admin-panel-heading"><div><p>BOÎTE À IDÉES</p><h2>Suggestions de modèles</h2></div><button class="admin-refresh-button" id="admin-refresh-suggestions" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-suggestions-status" role="status">Chargement des suggestions…</p><div class="admin-suggestion-list" id="admin-suggestion-list"></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>ANNONCES</p><h2>Envoyer une notification</h2></div></div><form class="admin-notification-form" id="admin-notification-form"><label for="admin-notification-title">Titre</label><input id="admin-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Nouveau modèle disponible" required /><label for="admin-notification-message">Message</label><textarea id="admin-notification-message" name="message" minlength="2" maxlength="600" rows="5" placeholder="Écris le message que les utilisateurs verront…" required></textarea><button class="admin-publish-button" type="submit">Publier à tous les utilisateurs <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-notification-status" role="status"></p></form></section></div>'
 workspaceLayout.append(adminWorkspacePage)
 let verifiedAdminUid = null
 const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestions-status')
@@ -681,6 +681,7 @@ const adminPeriodFilter = adminWorkspacePage.querySelector('#admin-period-filter
 const adminCountryFilter = adminWorkspacePage.querySelector('#admin-country-filter')
 let latestAdminUsers = []
 let latestAdminVisitors = []
+let latestAdminGenerations = []
 const adminPeriods = {
   day: { count: 30, unit: 'day', label: '30 derniers jours' },
   week: { count: 12, unit: 'week', label: '12 dernières semaines' },
@@ -785,9 +786,10 @@ function drawAdminChart(svg, series, color) {
   })
 }
 let stopAdminStatsListeners = null
-function renderAdminStats(userSnapshots, visitorSnapshots) {
+function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
   latestAdminUsers = userSnapshots.docs.map((snapshot) => snapshot.data())
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => snapshot.data())
+  latestAdminGenerations = generationSnapshots.docs.map((snapshot) => snapshot.data())
   adminReportDataReady = true
   excelReportButton.disabled = false
   pdfReportButton.disabled = false
@@ -799,17 +801,25 @@ function renderAdminDashboard() {
   const filteredUsers = latestAdminUsers.filter((user) => selectedCountry === 'all' || user.countryCode === selectedCountry)
   const signupSeries = makeSeries(filteredUsers, period.unit, period.count)
   const visitorSeries = makeSeries(latestAdminVisitors, period.unit, period.count)
+  const generationSeries = makeSeries(latestAdminGenerations, period.unit, period.count)
+  const generationTotal = generationSeries.reduce((sum, bin) => sum + bin.value, 0)
+  const generationSuccess = latestAdminGenerations.filter((item) => ['SUCCESS', 'COMPLETE', 'COMPLETED'].includes(String(item.state || '').toUpperCase())).length
+  const generationFailed = latestAdminGenerations.filter((item) => ['CREATE_TASK_FAILED', 'GENERATE_AUDIO_FAILED', 'CALLBACK_EXCEPTION', 'SENSITIVE_WORD_ERROR'].includes(String(item.state || '').toUpperCase())).length
   const signupTotal = signupSeries.reduce((sum, bin) => sum + bin.value, 0)
   const visitorTotal = visitorSeries.reduce((sum, bin) => sum + bin.value, 0)
   adminWorkspacePage.querySelector('#admin-total-users').textContent = adminNumber(latestAdminUsers.length)
   adminWorkspacePage.querySelector('#admin-week-users').textContent = adminNumber(signupTotal)
   adminWorkspacePage.querySelector('#admin-total-visitors').textContent = adminNumber(visitorTotal)
+  adminWorkspacePage.querySelector('#admin-total-generations').textContent = adminNumber(generationTotal)
+  adminWorkspacePage.querySelector('#admin-generation-detail').textContent = `${adminNumber(generationSuccess)} réussies · ${adminNumber(generationFailed)} en échec · ${adminNumber(latestAdminGenerations.length)} dernières créations suivies`
   const selectedCountryName = latestAdminUsers.find((user) => user.countryCode === selectedCountry)?.country || selectedCountry
   adminWorkspacePage.querySelector('#admin-signup-period-label').textContent = `${period.label}${selectedCountry === 'all' ? '' : ` · ${countryFlag(selectedCountry)} ${selectedCountryName}`}`
   adminWorkspacePage.querySelector('#admin-signup-chart-total').textContent = adminNumber(signupTotal)
   adminWorkspacePage.querySelector('#admin-visitor-chart-total').textContent = adminNumber(visitorTotal)
   drawAdminChart(adminWorkspacePage.querySelector('#admin-signup-chart'), signupSeries, '#cf7bff')
   drawAdminChart(adminWorkspacePage.querySelector('#admin-visitor-chart'), visitorSeries, '#67dcca')
+  adminWorkspacePage.querySelector('#admin-generation-chart-total').textContent = adminNumber(generationTotal)
+  drawAdminChart(adminWorkspacePage.querySelector('#admin-generation-chart'), generationSeries, '#f2b96f')
   const countries = new Map()
   latestAdminUsers.forEach((user) => {
     const country = typeof user.country === 'string' && user.country.trim() ? user.country.trim() : 'Pays non renseigné'
@@ -841,7 +851,7 @@ function renderAdminDashboard() {
     countryList.append(row)
   })
   if (!countries.size) countryList.textContent = 'Aucun compte enregistré pour le moment.'
-  adminStatsStatus.textContent = `Connecté à Firebase · ${adminNumber(latestAdminUsers.length)} profils · ${adminNumber(latestAdminVisitors.length)} sessions anonymes · mise à jour automatique.`
+  adminStatsStatus.textContent = `Connecté à Firebase · ${adminNumber(latestAdminUsers.length)} profils · ${adminNumber(latestAdminVisitors.length)} sessions anonymes · ${adminNumber(latestAdminGenerations.length)} générations récentes observées · mise à jour automatique.`
 }
 adminPeriodFilter.addEventListener('change', renderAdminDashboard)
 adminCountryFilter.addEventListener('change', renderAdminDashboard)
@@ -922,9 +932,10 @@ function startAdminStatsListeners(uid) {
   adminStatsStatus.textContent = 'Chargement des statistiques en direct…'
   let latestUsers = null
   let latestVisitors = null
+  let latestGenerations = null
   const renderWhenReady = () => {
-    if (auth.currentUser?.uid === uid && verifiedAdminUid === uid && latestUsers && latestVisitors) {
-      renderAdminStats(latestUsers, latestVisitors)
+    if (auth.currentUser?.uid === uid && verifiedAdminUid === uid && latestUsers && latestVisitors && latestGenerations) {
+      renderAdminStats(latestUsers, latestVisitors, latestGenerations)
     }
   }
   const onError = (error) => {
@@ -933,7 +944,8 @@ function startAdminStatsListeners(uid) {
   }
   const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => { latestUsers = snapshot; renderWhenReady() }, onError)
   const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => { latestVisitors = snapshot; renderWhenReady() }, onError)
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors() }
+  const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => { latestGenerations = snapshot; renderWhenReady() }, onError)
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations() }
 }
 async function recordAnonymousVisit() {
   if (auth.currentUser) return
