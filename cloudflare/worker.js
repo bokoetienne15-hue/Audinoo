@@ -163,8 +163,13 @@ async function publicAudio(request, env, db) {
 }
 async function library(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  const result = await db.request('projects/audinoo/databases/(default)/documents/users/' + user.uid + ':runQuery', { method: 'POST', body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'generations' }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 30 } }) })
-  const generations = (result.documents || []).map(d => { const x = fromFields(d.fields || {}); return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks : [], createdAt:x.createdAt instanceof Date ? x.createdAt.toISOString() : null } })
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 })
+  const cutoff = Date.now() - RETENTION_MS
+  const generations = (rows || []).filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/')).map(row => {
+    const x = fromFields(row.document.fields || {})
+    const createdAt = x.createdAt instanceof Date ? x.createdAt : null
+    return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+  }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   return response(200, { generations })
 }
 export default {
