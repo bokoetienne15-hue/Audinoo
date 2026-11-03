@@ -179,7 +179,7 @@ app.innerHTML = `
   <main class="workspace" id="workspace" hidden>
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
-      <aside class="workspace-sidebar"><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
+      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty"><span class="workspace-empty-icon">♫</span><h2>Ta bibliothèque t’attend.</h2><p>Les morceaux que tu créeras apparaîtront ici.</p></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
@@ -476,6 +476,9 @@ workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener
   studioWorkspacePage.hidden = false
   window.history.replaceState(null, '', '#studio')
 })
+const homeNavIcon = workspaceSidebar.querySelector('.workspace-nav[href="#home"] span')
+homeNavIcon.className = 'workspace-nav-icon home-nav-icon'
+homeNavIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg>'
 const studioNavIcon = workspaceSidebar.querySelector('.workspace-nav[href="#studio"] span')
 studioNavIcon.className = 'workspace-nav-icon studio-nav-icon'
 studioNavIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v-2M8 17V7M12 20V4M16 16V8M20 13v-2"></path><path d="m3 7 2-2 2 2M17 18l2 2 2-2"></path></svg>'
@@ -488,6 +491,12 @@ sidebarModelSection.innerHTML = '<p class="workspace-sidebar-section-label">Mod�
 workspaceSidebar.insertBefore(sidebarModelSection, sidebarFooter)
 const workspaceModelChoice = workspaceSidebar.querySelector('#workspace-model-choice')
 const studioWorkspacePage = workspaceLayout.querySelector('.workspace-content')
+const homeWorkspacePage = document.createElement('section')
+homeWorkspacePage.className = 'workspace-content workspace-home-page'
+homeWorkspacePage.id = 'home-page'
+homeWorkspacePage.hidden = true
+homeWorkspacePage.innerHTML = '<p class="workspace-kicker">DÉCOUVRIR AUDINOO</p><h1>Accueil</h1><p class="workspace-intro">Retrouve ici les chansons sélectionnées et publiées par Audinoo.</p><section class="workspace-home-empty"><span class="workspace-home-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span><h2>Les premières chansons arrivent bientôt.</h2><p>Les créations publiées par Audinoo apparaîtront ici. Reviens découvrir les nouveautés musicales de la communauté.</p></section>'
+workspaceLayout.append(homeWorkspacePage)
 const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
@@ -2323,13 +2332,22 @@ document.addEventListener('click', (event) => {
 
 document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', (event) => {
   const destination = link.getAttribute('href')
-  if (destination === '#studio') {
+  if (destination === '#home') {
+    studioWorkspacePage.hidden = true
+    libraryWorkspacePage.hidden = true
+    modelWorkspacePage.hidden = true
+    adminWorkspacePage.hidden = true
+    homeWorkspacePage.hidden = false
+    workspaceModelChoice.classList.remove('is-active')
+  } else if (destination === '#studio') {
+    homeWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
     studioWorkspacePage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
   } else if (destination === '#library') {
+    homeWorkspacePage.hidden = true
     studioWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
@@ -2344,6 +2362,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
       window.setTimeout(() => toast.classList.remove('show'), 3000)
       return
     }
+    homeWorkspacePage.hidden = true
     studioWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
@@ -2352,7 +2371,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     void loadAdminSuggestions()
   }
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((navLink) => navLink.classList.toggle('is-active', navLink === link))
-  if (destination === '#studio' || destination === '#library' || destination === '#admin') window.history.replaceState(null, '', destination)
+  if (destination === '#home' || destination === '#studio' || destination === '#library' || destination === '#admin') window.history.replaceState(null, '', destination)
   setWorkspaceSidebarOpen(false)
 }))
 
