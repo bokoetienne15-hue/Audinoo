@@ -74,7 +74,7 @@ export class FirestoreRest {
     const now = Math.floor(Date.now() / 1000)
     const head = encode({ alg: 'RS256', typ: 'JWT' })
     const body = encode({ iss: account.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: account.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })
-    const keyData = account.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\\s/g, '')
+    const keyData = account.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '')
     const binary = Uint8Array.from(atob(keyData), c => c.charCodeAt(0))
     const key = await crypto.subtle.importKey('pkcs8', binary, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
     const unsigned = head + '.' + body
