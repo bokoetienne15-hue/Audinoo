@@ -966,3 +966,24 @@ body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: n
   .admin-mobile-menu-toggle { display:none !important; }
   .admin-section-nav { display:flex !important; }
 }
+
+/* Admin scroll fix: preserve document scrolling inside every admin section. */
+.admin-workspace-shell,
+.admin-section-content,
+.admin-section-view,
+.admin-section-view > *,
+.admin-section-nav {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+.admin-workspace-shell { align-items:start; }
+.admin-section-nav { align-self:start; }
+.admin-section-content { min-height:0; }
+#admin-page, .admin-page, .admin-workspace-page { min-height:100vh; }
+@media (max-width:760px) {
+  .admin-workspace-shell { display:flex; flex-direction:column; width:100%; }
+  .admin-section-content { width:100%; overflow:visible; }
+  .admin-section-view { overflow:visible; }
+  .admin-section-nav { position:static; }
+}
