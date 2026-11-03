@@ -5,6 +5,28 @@ const FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
 const SUNO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/generate'
 const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
+const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+async function archiveTracks(env, db, path, tracks, uid, taskId) {
+  if (!env.AUDIO_BUCKET || !Array.isArray(tracks)) return tracks || []
+  const saved = []
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i] || {}
+    if (track.r2Key || !/^https:\/\//i.test(track.audioUrl || '')) { saved.push(track); continue }
+    try {
+      const source = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
+      if (!source.ok || !source.body) { saved.push(track); continue }
+      const key = 'private/' + uid + '/' + taskId + '/' + i + '.audio'
+      await env.AUDIO_BUCKET.put(key, source.body, { httpMetadata: { contentType: source.headers.get('content-type') || 'audio/mpeg', cacheControl: 'private, no-store' }, customMetadata: { uid, taskId } })
+      saved.push({ ...track, r2Key: key, archivedAt: new Date().toISOString() })
+    } catch (error) {
+      console.error('[Audinoo R2 archive]', error)
+      saved.push(track)
+    }
+  }
+  if (saved.some((track, i) => track.r2Key !== tracks[i]?.r2Key)) await db.set(path, { tracks: saved }, true)
+  return saved
+}
+
 
 async function userFrom(request, env) {
   const token = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
