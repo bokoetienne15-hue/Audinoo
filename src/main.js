@@ -1056,7 +1056,8 @@ function renderAdminGenerationsTable() {
   })
 }
 adminUserSearch.addEventListener('input',renderAdminUsersTable)
-adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)\nadminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
+adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
 
 adminCreditsSection.append(workspaceCreditPanel)
 adminCommunicationSection.append(adminDashboardGrid)
