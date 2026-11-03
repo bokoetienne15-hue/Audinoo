@@ -869,6 +869,62 @@ reportExportStatus.className = 'admin-export-status'
 reportExportStatus.setAttribute('role', 'status')
 reportExportStatus.setAttribute('aria-live', 'polite')
 pdfReportButton.after(reportExportStatus)
+
+// Navigation interne du centre de pilotage : les outils existants sont conservés et regroupés.
+const adminHero = adminWorkspacePage.querySelector('.admin-hero')
+const adminToolbar = adminWorkspacePage.querySelector('.admin-toolbar')
+const adminLiveStatus = adminWorkspacePage.querySelector('#admin-stats-status')
+const adminStatsGrid = adminWorkspacePage.querySelector('.admin-stats-grid')
+const adminCharts = adminWorkspacePage.querySelector('.admin-chart-grid')
+const adminCountryPanel = adminWorkspacePage.querySelector('.admin-country-panel')
+const adminDashboardGrid = adminWorkspacePage.querySelector('.admin-dashboard-grid')
+const adminExportGroup = document.createElement('section')
+adminExportGroup.className = 'admin-panel admin-export-panel'
+adminExportGroup.innerHTML = '<div class="admin-panel-heading"><div><p>DOCUMENTS DE GESTION</p><h2>Exporter les rapports</h2></div><span class="admin-export-icon" aria-hidden="true">⇩</span></div><p class="admin-panel-status">Génère un rapport à partir des données actuellement chargées depuis Firebase. Les chiffres absents de la base ne sont pas inventés.</p><div class="admin-export-actions"></div>'
+adminExportGroup.querySelector('.admin-export-actions').append(excelReportButton, pdfReportButton, reportExportStatus)
+const adminNavigation = document.createElement('nav')
+adminNavigation.className = 'admin-section-nav'
+adminNavigation.setAttribute('aria-label', 'Rubriques de l’administration')
+adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button>'
+const adminContent = document.createElement('div')
+adminContent.className = 'admin-section-content'
+const adminShell = document.createElement('div')
+adminShell.className = 'admin-workspace-shell'
+adminWorkspacePage.append(adminShell)
+adminShell.append(adminNavigation, adminContent)
+function createAdminSection(id, title, description) {
+  const section = document.createElement('section')
+  section.className = 'admin-section-view'
+  section.dataset.adminPanel = id
+  section.innerHTML = '<div class="admin-section-heading"><h2></h2><p></p></div>'
+  section.querySelector('h2').textContent = title
+  section.querySelector('p').textContent = description
+  adminContent.append(section)
+  return section
+}
+const adminOverviewSection = createAdminSection('overview', 'Vue d’ensemble', 'Les indicateurs de croissance et d’activité de la communauté Audinoo.')
+const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
+const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
+const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
+;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
+adminCreditsSection.append(workspaceCreditPanel)
+adminCommunicationSection.append(adminDashboardGrid)
+adminExportsSection.append(adminExportGroup)
+function activateAdminSection(sectionId) {
+  adminWorkspacePage.querySelectorAll('[data-admin-panel]').forEach((section) => { section.hidden = section.dataset.adminPanel !== sectionId })
+  adminNavigation.querySelectorAll('[data-admin-section]').forEach((button) => {
+    const active = button.dataset.adminSection === sectionId
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-current', active ? 'page' : 'false')
+  })
+}
+adminNavigation.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-admin-section]')
+  if (!button) return
+  activateAdminSection(button.dataset.adminSection)
+})
+activateAdminSection('overview')
+
 let adminReportDataReady = false
 function makeAdminReportData() {
   const period = adminPeriods[adminPeriodFilter.value] || adminPeriods.day
