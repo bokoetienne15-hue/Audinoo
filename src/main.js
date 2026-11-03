@@ -966,7 +966,7 @@ const adminExportsSection = createAdminSection('exports', 'Rapports et exportati
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
-adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Création</th><th>Utilisateur</th><th>État</th><th>Date</th></tr></thead><tbody id="admin-generation-rows"><tr><td colspan="4">Chargement des générations…</td></tr></tbody></table></div><p class="admin-table-footnote">Les générations affichées correspondent aux 1 000 documents les plus récents. Le total global et les archives historiques nécessitent un index analytique dédié.</p>'
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Les fichiers archivés dans R2 peuvent être écoutés et publiés depuis cette rubrique. Les créations restent privées tant qu’elles ne sont pas publiées.</p>'
 adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
@@ -997,25 +997,53 @@ function renderAdminUsersTable() {
   })
   if(users.length>250){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Affichage limité aux 250 premiers résultats. Affine ta recherche.';row.append(cell);body.append(row)}
 }
+let adminGenerationRecords = []
+async function loadAdminGenerations() {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  const target = adminGenerationsSection.querySelector('#admin-generation-cards')
+  target.textContent = 'Chargement des générations…'
+  try {
+    const result = await callAudinooApi('/api/admin/generations')
+    adminGenerationRecords = result.generations || []
+    renderAdminGenerationsTable()
+  } catch (error) { target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message) }
+}
 function renderAdminGenerationsTable() {
-  const term=adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
-  const usersById=new Map(latestAdminUsers.map(user=>[user.uid,user]))
-  const generations=latestAdminGenerations.filter(item=>[item.title,item.uid,item.taskId,item.state,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value=>String(value||'').toLocaleLowerCase('fr').includes(term)))
-  const body=adminGenerationsSection.querySelector('#admin-generation-rows')
+  const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
+  const usersById = new Map(latestAdminUsers.map(user => [user.uid,user]))
+  const records = adminGenerationRecords.filter(item => [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const body = adminGenerationsSection.querySelector('#admin-generation-cards')
   replaceNodeChildren(body)
-  adminGenerationsSection.querySelector('#admin-generation-count').textContent=`${adminNumber(generations.length)} création(s) affichée(s)`
-  if(!generations.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Aucune génération correspondante.';row.append(cell);body.append(row);return}
-  generations.slice(0,300).forEach(item=>{
-    const row=document.createElement('tr')
-    const title=document.createElement('td');const strong=document.createElement('strong');strong.textContent=item.title||'Création sans titre';const task=document.createElement('small');task.textContent=item.taskId||'Identifiant indisponible';title.append(strong,task)
-    const userCell=document.createElement('td');const user=usersById.get(item.uid);userCell.textContent=user?.username||user?.email||item.uid||'Utilisateur inconnu'
-    const state=document.createElement('td');const badge=document.createElement('span');badge.className='admin-state-pill';badge.textContent=item.state||'État inconnu';state.append(badge)
-    const date=document.createElement('td');date.textContent=adminDateLabel(item.createdAt)
-    row.append(title,userCell,state,date);body.append(row)
+  adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + ' création(s)'
+  if (!records.length) { body.textContent = 'Aucune génération disponible.'; return }
+  records.forEach(item => {
+    const card = document.createElement('article'); card.className = 'admin-generation-card'
+    const heading = document.createElement('div'); heading.className = 'admin-generation-card-heading'
+    const title = document.createElement('h3'); title.textContent = item.title || 'Création sans titre'
+    const status = document.createElement('span'); status.className = 'admin-state-pill'; status.textContent = item.status || 'État inconnu'
+    heading.append(title,status)
+    const meta = document.createElement('p'); meta.textContent = 'Utilisateur : ' + (usersById.get(item.uid)?.email || item.uid) + ' · ID : ' + item.taskId + ' · Créée le : ' + adminDateLabel(item.createdAt)
+    card.append(heading,meta)
+    ;(item.tracks || []).forEach(track => {
+      const line = document.createElement('div'); line.className = 'admin-generation-track'
+      const label = document.createElement('strong'); label.textContent = track.title || ('Variante ' + (track.trackIndex + 1)); line.append(label)
+      if (track.audioUrl) {
+        const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.src = track.audioUrl; line.append(player)
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'admin-publish-button'; button.textContent = 'Publier sur l’accueil'
+        button.addEventListener('click', async () => {
+          button.disabled = true
+          try { await callAudinooApi('/api/admin/publish',{method:'POST',body:JSON.stringify({uid:item.uid,taskId:item.taskId,trackIndex:track.trackIndex})}); button.textContent='Publié' }
+          catch (error) { button.disabled=false; button.textContent='Échec · Réessayer'; console.error('[Audinoo publication]',error) }
+        })
+        line.append(button)
+      } else { const note=document.createElement('small');note.textContent='Audio non archivé dans R2 — publication indisponible';line.append(note) }
+      card.append(line)
+    })
+    body.append(card)
   })
 }
 adminUserSearch.addEventListener('input',renderAdminUsersTable)
-adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)\nadminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
 
 adminCreditsSection.append(workspaceCreditPanel)
 adminCommunicationSection.append(adminDashboardGrid)
