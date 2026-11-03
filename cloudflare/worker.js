@@ -99,9 +99,13 @@ async function generationStatus(request, env, db, user) {
   const r = await fetch(SUNO_STATUS_URL + '?taskId=' + encodeURIComponent(taskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(15000) })
   const body = await r.json().catch(() => ({}))
   if (!r.ok || body.code !== 200) return response(502, { error: 'music-status-unavailable' })
-  const data = body.data || {}, state = String(data.status || data.taskStatus || body.status || 'PENDING').toUpperCase(), tracks = tracksIn(data)
+  const data = body.data || {}, state = String(data.status || data.taskStatus || body.status || 'PENDING').toUpperCase()
+  let tracks = tracksIn(data)
+  if (!tracks.length) tracks = (await db.get(path)).data?.tracks || []
+  if (tracks.length) tracks = await archiveTracks(env, db, path, tracks, user.uid, taskId)
   await db.set(path, { state, ...(tracks.length ? { tracks } : {}) }, true)
-  return response(200, { taskId, status: state, completed: ['SUCCESS','COMPLETE','COMPLETED'].includes(state), failed: FAILED.has(state), tracks })
+  const clientTracks = tracks.map((track, index) => ({ ...track, audioUrl: track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(taskId) + '&track=' + index : track.audioUrl }))
+  return response(200, { taskId, status: state, completed: ['SUCCESS','COMPLETE','COMPLETED'].includes(state), failed: FAILED.has(state), tracks: clientTracks })
 }
 async function library(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
