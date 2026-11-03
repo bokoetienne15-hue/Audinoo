@@ -22,23 +22,20 @@
     <title>Audinoo — Transforme ton imagination en musique</title>
     <script>document.documentElement.classList.add('js');</script>
     <style>
-      /* Première peinture : aperçu fidèle de l'accueil, avant le chargement du module.
-         Le contenu sémantique destiné aux robots reste disponible dans le document. */
-      html,body{margin:0;min-width:320px;background:#05050d;color:#f8f7ff;font-family:Arial,sans-serif}
-      .preboot-home{min-height:100vh;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 55%,rgba(80,28,145,.28),transparent 42%),#05050d}
-      .preboot-header{height:84px;width:min(1180px,calc(100% - 40px));margin:auto;display:flex;align-items:center;justify-content:space-between}
-      .preboot-brand{font-size:29px;font-weight:800;letter-spacing:-1.5px}
-      .preboot-actions{display:flex;gap:12px;align-items:center;font-size:13px}
-      .preboot-actions span:last-child{padding:12px 22px;border-radius:24px;background:linear-gradient(105deg,#742cff,#d928d3 50%,#ff9825);font-weight:700}
-      .preboot-hero{min-height:610px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px 20px 80px;box-sizing:border-box}
-      .preboot-kicker{color:#b6b1c9;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:22px}
-      .preboot-hero h1{font-size:clamp(44px,7vw,82px);line-height:1.05;letter-spacing:-4px;margin:0 0 24px}
-      .preboot-hero p{color:#c4c1d0;line-height:1.7;font-size:16px;max-width:650px;margin:0}
-      .preboot-compose{margin-top:32px;width:min(620px,100%);padding:18px;border:1px solid #454052;border-radius:18px;background:#11101b;color:#a6a5b3;text-align:left;box-sizing:border-box}
-      .preboot-compose strong{display:block;color:#f8f7ff;font-size:14px;margin-bottom:18px;font-weight:500}
-      .preboot-compose small{display:block;text-align:right;color:#fff;background:linear-gradient(105deg,#742cff,#d928d3 50%,#ff9825);padding:11px 18px;border-radius:12px;width:max-content;margin-left:auto}
+      /* Écran de chargement Audinoo : remplacé par l'application dès son initialisation. */
+      html,body{margin:0;min-width:320px;min-height:100%;background:#05050d;color:#f8f7ff}
+      .audinoo-loader{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(ellipse at 50% 45%,rgba(111,42,190,.2),transparent 42%),#05050d;font-family:'DM Sans',Arial,sans-serif}
+      .audinoo-loader-brand{display:flex;align-items:center;gap:12px;font:700 34px 'Space Grotesk',Arial,sans-serif;letter-spacing:-2px}
+      .audinoo-loader-mark{position:relative;width:38px;height:42px;display:inline-block;transform:skew(-12deg)}
+      .audinoo-loader-mark i,.audinoo-loader-mark b,.audinoo-loader-mark em{position:absolute;display:block;border-radius:3px;transform:skew(12deg)}
+      .audinoo-loader-mark i{width:13px;height:42px;top:0;left:13px;background:linear-gradient(180deg,#9547ff,#ff267e);clip-path:polygon(45% 0,100% 0,63% 100%,0 100%)}
+      .audinoo-loader-mark b{width:13px;height:35px;top:7px;left:0;background:#6427ff;clip-path:polygon(100% 0,100% 35%,0 100%,0 65%)}
+      .audinoo-loader-mark em{width:19px;height:5px;left:9px;top:24px;background:#ff8c2a}
+      .audinoo-spinner{width:42px;height:42px;border:3px solid rgba(255,255,255,.14);border-top-color:#a34cff;border-right-color:#ed3fcf;border-radius:50%;animation:audinoo-spin .8s linear infinite;filter:drop-shadow(0 0 9px rgba(211,48,220,.45))}
+      .audinoo-loader-label{font-size:13px;letter-spacing:2px;color:#c5bfd2}
+      @keyframes audinoo-spin{to{transform:rotate(360deg)}}
+      @media(prefers-reduced-motion:reduce){.audinoo-spinner{animation-duration:2s}}
       .crawler-readable-homepage{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:normal!important;border:0!important}
-      @media(max-width:600px){.preboot-header{height:70px}.preboot-actions span:first-child{display:none}.preboot-hero{min-height:calc(100vh - 70px)}}
     </style>
     <script type="application/ld+json">
       {
@@ -106,15 +103,11 @@
   </head>
   <body>
     <div id="app">
-      <!-- Aperçu initial de la véritable page d'accueil : aucun écran vide pendant le chargement du module. -->
-      <main class="preboot-home" aria-label="Audinoo">
-        <header class="preboot-header"><div class="preboot-brand">Audinoo</div><div class="preboot-actions"><span>Accueil · Créer · Explorer · Tarifs</span><span>Se connecter&nbsp;&nbsp; · &nbsp;&nbsp;S'inscrire</span></div></header>
-        <section class="preboot-hero">
-          <div class="preboot-kicker">● La musique, version infinie</div>
-          <h1>Imagine ta musique</h1>
-          <p>Crée des musiques uniques, originales et de qualité professionnelle en quelques secondes grâce à l'intelligence artificielle.</p>
-          <div class="preboot-compose"><strong>Décris la musique que tu veux créer…</strong><small>Créer ma musique&nbsp; ↑</small></div>
-        </section>
+      <!-- Écran initial propre : le module remplace ce contenu dès que l'application est prête à être montée. -->
+      <main class="audinoo-loader" role="status" aria-live="polite" aria-label="Chargement d'Audinoo">
+        <div class="audinoo-loader-brand"><span class="audinoo-loader-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></div>
+        <span class="audinoo-spinner" aria-hidden="true"></span>
+        <span class="audinoo-loader-label">CHARGEMENT</span>
       </main>
       <!-- Informations sémantiques complètes conservées dans le HTML pour les moteurs et assistants IA. -->
       <main class="crawler-readable-homepage">
