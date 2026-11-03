@@ -1813,6 +1813,36 @@ function closeCountrySelection() {
   pendingCountryProfile = null
 }
 
+function renderProfileAvatar(element, profile) {
+  const displayName = profile.displayName || profile.username || 'Audinoo'
+  const photoURL = typeof profile.photoURL === 'string' && /^https:\/\//i.test(profile.photoURL) ? profile.photoURL : ''
+  element.replaceChildren()
+  if (photoURL) {
+    const image = document.createElement('img')
+    image.src = photoURL
+    image.alt = `Photo de profil de ${displayName}`
+    image.referrerPolicy = 'no-referrer'
+    image.loading = 'lazy'
+    image.addEventListener('error', () => {
+      element.replaceChildren(document.createTextNode(displayName.charAt(0).toUpperCase() || 'A'))
+      element.classList.remove('has-profile-photo')
+    }, { once: true })
+    element.classList.add('has-profile-photo')
+    element.append(image)
+  } else {
+    element.classList.remove('has-profile-photo')
+    element.textContent = displayName.charAt(0).toUpperCase() || 'A'
+  }
+}
+
+async function syncGoogleProfilePhoto(user, profile) {
+  const isGoogleAccount = user?.providerData?.some((provider) => provider.providerId === 'google.com')
+  const googlePhotoURL = isGoogleAccount && typeof user.photoURL === 'string' && /^https:\/\//i.test(user.photoURL) ? user.photoURL : ''
+  if (!googlePhotoURL || profile.photoURL === googlePhotoURL) return profile
+  await updateDoc(doc(db, 'users', user.uid), { photoURL: googlePhotoURL, updatedAt: serverTimestamp() })
+  return { ...profile, photoURL: googlePhotoURL }
+}
+
 function openProfile(profile, { requireCountry = false } = {}) {
   hasAudinooProfile = true
   profileUid = profile.uid
@@ -1843,8 +1873,8 @@ function openWorkspace(profile) {
   const displayName = profile.displayName || username.slice(1).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   workspaceUsername.textContent = username
   workspaceGreeting.textContent = displayName.split(' ')[0]
-  workspaceAvatar.textContent = displayName.charAt(0).toUpperCase() || 'A'
-  headerAvatar.textContent = workspaceAvatar.textContent
+  renderProfileAvatar(workspaceAvatar, profile)
+  renderProfileAvatar(headerAvatar, profile)
   landingPage.hidden = true
   workspace.hidden = false
   document.body.classList.add('in-workspace')
@@ -1946,9 +1976,10 @@ googleButton.addEventListener('click', async () => {
       throw new Error('account-not-found')
     }
 
-    const profile = profileSnapshot.exists()
+    let profile = profileSnapshot.exists()
       ? { ...profileSnapshot.data(), created: false }
       : await createGoogleProfile(result.user)
+    profile = await syncGoogleProfilePhoto(result.user, profile)
     hasAudinooProfile = true
     closeAuth()
     const savedProfile = { ...profile, uid: result.user.uid, displayName: result.user.displayName || profile.displayName || '' }
@@ -2086,7 +2117,10 @@ onAuthStateChanged(auth, async (user) => {
       return
     }
     hasAudinooProfile = true
-    const savedProfile = { ...profile.data(), uid: user.uid }
+    let savedProfile = { ...profile.data(), uid: user.uid }
+    if (user.providerData?.some((provider) => provider.providerId === 'google.com')) {
+      savedProfile = await syncGoogleProfilePhoto(user, savedProfile)
+    }
     openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
   } catch {
     if (auth.currentUser?.uid === user.uid && profileUid !== user.uid) {
