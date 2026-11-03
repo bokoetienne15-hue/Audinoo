@@ -102,6 +102,30 @@
     </script>
   </head>
   <body>
+    <script>
+      // Supprime uniquement les nœuds texte orphelins contenant la séquence />.
+      // Ne touche jamais aux balises HTML ni au texte normal de la page.
+      (() => {
+        const cleanOrphanMarkup = (root) => {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          const matches = [];
+          while (walker.nextNode()) {
+            if (/^\\s*\\/\\>\\s*$/.test(walker.currentNode.nodeValue || '')) matches.push(walker.currentNode);
+          }
+          matches.forEach((node) => node.remove());
+        };
+        cleanOrphanMarkup(document.body);
+        new MutationObserver((records) => {
+          for (const record of records) {
+            for (const node of record.addedNodes) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                if (/^\\s*\\/\\>\\s*$/.test(node.nodeValue || '')) node.remove();
+              } else if (node.nodeType === Node.ELEMENT_NODE) cleanOrphanMarkup(node);
+            }
+          }
+        }).observe(document.body, { childList: true, subtree: true });
+      })();
+    </script>
     <div id="app">
       <!-- Écran initial propre : le module remplace ce contenu dès que l'application est prête à être montée. -->
       <main class="audinoo-loader" role="status" aria-live="polite" aria-label="Chargement d'Audinoo">
