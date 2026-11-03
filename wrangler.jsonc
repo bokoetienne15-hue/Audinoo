@@ -14,5 +14,6 @@
       "bucket_name": "audinoo"
     }
   ],
+  "triggers": { "crons": ["0 2 * * *"] },
   "workers_dev": true
 }
