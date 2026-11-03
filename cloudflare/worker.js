@@ -107,6 +107,58 @@ async function generationStatus(request, env, db, user) {
   const clientTracks = tracks.map((track, index) => ({ ...track, audioUrl: track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(taskId) + '&track=' + index : track.audioUrl }))
   return response(200, { taskId, status: state, completed: ['SUCCESS','COMPLETE','COMPLETED'].includes(state), failed: FAILED.has(state), tracks: clientTracks })
 }
+
+async function adminAllowed(db, uid) {
+  const admin = await db.get('admins/' + uid)
+  return admin.exists && admin.data?.enabled === true
+}
+async function privateAudio(request, env, db, user) {
+  const url = new URL(request.url), taskId = url.searchParams.get('taskId'), index = Number(url.searchParams.get('track') || 0)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId || '') || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-audio-request' })
+  const snap = await db.get('users/' + user.uid + '/generations/' + taskId)
+  const track = snap.data?.tracks?.[index]
+  if (!snap.exists || !track?.r2Key) return response(404, { error: 'audio-not-found' })
+  const object = await env.AUDIO_BUCKET?.get(track.r2Key)
+  if (!object) return response(404, { error: 'audio-not-found' })
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
+}
+async function adminGenerations(request, db, user) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 200 })
+  const generations = (rows || []).filter(row => row.document).map(row => {
+    const d = fromFields(row.document.fields || {})
+    const parts = row.document.name.split('/documents/')[1].split('/')
+    const uid = parts[1]
+    return { uid, taskId: d.taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : null, tracks: (d.tracks || []).map((t, i) => ({ title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '', archived: !!t.r2Key, trackIndex: i, audioUrl: t.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(d.taskId) + '&track=' + i : '' })) }
+  })
+  return response(200, { generations })
+}
+async function publishTrack(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const uid = String(body.uid || ''), taskId = String(body.taskId || ''), index = Number(body.trackIndex)
+  if (!uid || uid.length > 128 || !/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-publish-request' })
+  const path = 'users/' + uid + '/generations/' + taskId, snap = await db.get(path), track = snap.data?.tracks?.[index]
+  if (!snap.exists || !track?.r2Key) return response(409, { error: 'audio-not-archived-yet' })
+  const id = taskId + '-' + index
+  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: track.r2Key, published: true, publishedAt: new Date() })
+  return response(200, { published: true, id })
+}
+async function publicTracks(request, db) {
+  const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], where: { fieldFilter: { field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } } }, orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 40 })
+  return response(200, { tracks: (rows || []).filter(x => x.document).map(x => { const d = fromFields(x.document.fields || {}); return { id: d.id, title: d.title, imageUrl: d.imageUrl || '', audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) } }) })
+}
+async function publicAudio(request, env, db) {
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id || id.length > 200) return response(400, { error: 'invalid-track' })
+  const snap = await db.get('publishedTracks/' + id)
+  if (!snap.exists || snap.data.published !== true || !snap.data.r2Key) return response(404, { error: 'track-not-found' })
+  const object = await env.AUDIO_BUCKET?.get(snap.data.r2Key)
+  if (!object) return response(404, { error: 'track-not-found' })
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes' } })
+}
 async function library(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   const result = await db.request('projects/audinoo/databases/(default)/documents/users/' + user.uid + ':runQuery', { method: 'POST', body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'generations' }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 30 } }) })
@@ -130,6 +182,11 @@ export default {
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,db,user)
+      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)
+      if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
+      if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
+      if (url.pathname === '/api/public-tracks') return await publicTracks(request,db)
+      if (url.pathname === '/api/public-audio') return await publicAudio(request,env,db)
       return response(404,{error:'not-found'})
     } catch (e) {
       const status = e.message === 'firebase-admin-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
