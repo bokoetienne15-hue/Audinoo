@@ -1064,18 +1064,35 @@ function startAdminStatsListeners(uid) {
   let latestUsers = null
   let latestVisitors = null
   let latestGenerations = null
+  const failedSources = new Set()
+  const sourceLabels = { users: 'utilisateurs', visitors: 'visites', generations: 'générations' }
   const renderWhenReady = () => {
-    if (auth.currentUser?.uid === uid && verifiedAdminUid === uid && latestUsers && latestVisitors && latestGenerations) {
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    const ready = latestUsers && latestVisitors && latestGenerations
+    if (ready) {
       renderAdminStats(latestUsers, latestVisitors, latestGenerations)
+      adminStatsStatus.textContent = 'Données synchronisées en temps réel avec Firebase.'
+      adminStatsStatus.dataset.state = 'ready'
     }
   }
-  const onError = (error) => {
-    console.error('[Audinoo admin] Could not load live statistics', error)
-    adminStatsStatus.textContent = `Chargement refusé. Détail exact : ${exactErrorDetails(error)}`
+  const onError = (source) => (error) => {
+    console.error(`[Audinoo admin] Could not load ${source} live data`, error)
+    failedSources.add(source)
+    const reason = error.code === 'permission-denied'
+      ? 'Les règles Firestore actuellement publiées refusent cette lecture.'
+      : exactErrorDetails(error)
+    adminStatsStatus.textContent = `Accès refusé pour : ${[...failedSources].map((item) => sourceLabels[item]).join(', ')}. ${reason} Publie les règles Firestore de la branche test puis recharge l’administration.`
+    adminStatsStatus.dataset.state = 'error'
   }
-  const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => { latestUsers = snapshot; renderWhenReady() }, onError)
-  const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => { latestVisitors = snapshot; renderWhenReady() }, onError)
-  const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => { latestGenerations = snapshot; renderWhenReady() }, onError)
+  const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+    latestUsers = snapshot; failedSources.delete('users'); renderWhenReady()
+  }, onError('users'))
+  const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => {
+    latestVisitors = snapshot; failedSources.delete('visitors'); renderWhenReady()
+  }, onError('visitors'))
+  const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
+    latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
+  }, onError('generations'))
   stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations() }
 }
 async function recordAnonymousVisit() {
