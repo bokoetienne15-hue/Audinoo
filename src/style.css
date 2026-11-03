@@ -987,3 +987,16 @@ body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: n
   .admin-section-view { overflow:visible; }
   .admin-section-nav { position:static; }
 }
+
+/* Admin page must remain part of the natural document scroll (mobile + desktop). */
+html:has(.admin-workspace-shell) { overflow-y:auto; }
+body:has(.admin-workspace-shell) { overflow-y:auto; }
+.page-shell:has(.admin-workspace-shell) { overflow:visible; min-height:100vh; }
+.workspace-layout:has(.admin-workspace-shell) { min-height:calc(100vh - 84px); height:auto; overflow:visible; align-items:start; }
+.workspace-content:has(.admin-workspace-shell) { height:auto; max-height:none; min-height:100vh; overflow:visible; align-self:start; }
+.admin-workspace-shell { height:auto !important; max-height:none !important; overflow:visible !important; }
+.admin-section-content { height:auto !important; max-height:none !important; overflow:visible !important; }
+@media (max-width:760px) {
+  .workspace-content:has(.admin-workspace-shell) { min-height:0; padding-bottom:80px; }
+  .workspace-layout:has(.admin-workspace-shell) { min-height:0; }
+}
