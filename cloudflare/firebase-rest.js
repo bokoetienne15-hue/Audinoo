@@ -125,3 +125,54 @@ export class FirestoreRest {
 
 export const SERVER_TIMESTAMP = Object.freeze({ __serverTimestamp: true })
 export { fromFields, toFirestore, docPath }
+
+FirestoreRest.prototype.runTransaction = async function(callback) {
+  const tx = await this.begin()
+  const writes = []
+  const transaction = {
+    get: async (ref) => {
+      const snap = await this.get(ref.path, tx)
+      return { exists: snap.exists, data: () => snap.data, id: ref.path.split('/').pop() }
+    },
+    create: (ref, data) => writes.push(this.writeSet(ref.path, data, false)),
+    update: (ref, data) => writes.push(this.writeSet(ref.path, data, true)),
+    delete: (ref) => writes.push({ delete: resourceName(ref.path) })
+  }
+  try {
+    const result = await callback(transaction)
+    if (writes.length) await this.commit(writes, tx)
+    else await this.rollback(tx)
+    return result
+  } catch (error) {
+    await this.rollback(tx)
+    throw error
+  }
+}
+FirestoreRest.prototype.doc = function(path) { return { path } }
+FirestoreRest.prototype.collection = function(path) {
+  const db = this
+  return {
+    doc(id) { return db.doc(path + '/' + id) },
+    async orderBy(field, direction = 'asc') {
+      return {
+        limit(n) {
+          return {
+            async get() {
+              const result = await db.runQuery({ from: [{ collectionId: path.split('/').pop() }], orderBy: [{ field: { fieldPath: field }, direction: direction === 'desc' ? 'DESCENDING' : 'ASCENDING' }], limit: n })
+              const docs = (result || []).filter(x => x.document).map(x => ({ id: x.document.name.split('/').pop(), data: () => fromFields(x.document.fields || {}) }))
+              return { docs }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+FirestoreRest.prototype.set = async function(path, data, merge = false) {
+  const fields = Object.fromEntries(Object.entries(data).filter(([,v]) => !(v && v.__serverTimestamp)).map(([k,v]) => [k, toFirestore(v)]))
+  const transforms = Object.entries(data).filter(([,v]) => v && v.__serverTimestamp).map(([fieldPath]) => ({ fieldPath, setToServerValue: 'REQUEST_TIME' }))
+  const write = { update: { name: resourceName(path), fields }, ...(merge ? { updateMask: { fieldPaths: Object.keys(fields) } } : {}) }
+  if (transforms.length) write.updateTransforms = transforms
+  await this.commit([write])
+}
+FirestoreRest.prototype.getDocument = async function(path) { return this.get(path) }
