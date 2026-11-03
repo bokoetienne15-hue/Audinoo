@@ -113,12 +113,13 @@ async function adminAllowed(db, uid) {
   const admin = await db.get('admins/' + uid)
   return admin.exists && admin.data?.enabled === true
 }
-async function privateAudio(request, env, db, user) {
-  const url = new URL(request.url), taskId = url.searchParams.get('taskId'), index = Number(url.searchParams.get('track') || 0)
+async function privateAudio(request, env, db, user, admin = false) {
+  const url = new URL(request.url), uid = admin ? url.searchParams.get('uid') : user.uid, taskId = url.searchParams.get('taskId'), index = Number(url.searchParams.get('track') || 0)
+  if (admin && !(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId || '') || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-audio-request' })
-  const snap = await db.get('users/' + user.uid + '/generations/' + taskId)
+  const snap = await db.get('users/' + uid + '/generations/' + taskId)
   const track = snap.data?.tracks?.[index]
-  if (!snap.exists || !track?.r2Key) return response(404, { error: 'audio-not-found' })
+  if (!snap.exists || (!admin && snap.data.uid !== user.uid) || !track?.r2Key) return response(404, { error: 'audio-not-found' })
   const object = await env.AUDIO_BUCKET?.get(track.r2Key)
   if (!object) return response(404, { error: 'audio-not-found' })
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
@@ -183,6 +184,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
+    if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); return await publicTracks(request, db) }
+    if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
     if (url.pathname === '/api/suno-callback') return request.method === 'POST' ? response(200,{received:true}) : response(405,{error:'method-not-allowed'})
     if (url.pathname === '/api/session-check') {
       if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
@@ -196,11 +199,10 @@ export default {
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,db,user)
-      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)\n      if (url.pathname === '/api/admin-audio') return await privateAudio(request,env,db,user,true)
+      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)
+      if (url.pathname === '/api/admin-audio') return await privateAudio(request,env,db,user,true)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
-      if (url.pathname === '/api/public-tracks') return await publicTracks(request,db)
-      if (url.pathname === '/api/public-audio') return await publicAudio(request,env,db)
       return response(404,{error:'not-found'})
     } catch (e) {
       const status = e.message === 'firebase-admin-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
