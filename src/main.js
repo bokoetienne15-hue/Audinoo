@@ -787,9 +787,9 @@ function drawAdminChart(svg, series, color) {
 }
 let stopAdminStatsListeners = null
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
-  latestAdminUsers = userSnapshots.docs.map((snapshot) => snapshot.data())
-  latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => snapshot.data())
-  latestAdminGenerations = generationSnapshots.docs.map((snapshot) => snapshot.data())
+  latestAdminUsers = userSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
+  latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
+  latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
   renderAdminGenerationsTable()
   adminReportDataReady = true
@@ -893,7 +893,29 @@ adminContent.className = 'admin-section-content'
 const adminShell = document.createElement('div')
 adminShell.className = 'admin-workspace-shell'
 adminWorkspacePage.append(adminShell)
-adminShell.append(adminNavigation, adminContent)
+const adminMenuToggle = document.createElement('button')
+adminMenuToggle.type = 'button'
+adminMenuToggle.className = 'admin-mobile-menu-toggle'
+adminMenuToggle.setAttribute('aria-expanded', 'false')
+adminMenuToggle.setAttribute('aria-controls', 'admin-section-navigation')
+adminMenuToggle.innerHTML = '<span aria-hidden="true">☰</span> Rubriques de l’administration'
+adminNavigation.id = 'admin-section-navigation'
+adminShell.append(adminMenuToggle, adminNavigation, adminContent)
+adminMenuToggle.addEventListener('click', () => {
+  const open = adminShell.classList.toggle('is-mobile-nav-open')
+  adminMenuToggle.setAttribute('aria-expanded', String(open))
+})
+adminNavigation.addEventListener('click', (event) => {
+  if (event.target.closest('[data-admin-section]') && window.matchMedia('(max-width: 760px)').matches) {
+    adminShell.classList.remove('is-mobile-nav-open')
+    adminMenuToggle.setAttribute('aria-expanded', 'false')
+  }
+})
+document.addEventListener('click', (event) => {
+  if (!adminShell.classList.contains('is-mobile-nav-open') || adminShell.contains(event.target)) return
+  adminShell.classList.remove('is-mobile-nav-open')
+  adminMenuToggle.setAttribute('aria-expanded', 'false')
+})
 function createAdminSection(id, title, description) {
   const section = document.createElement('section')
   section.className = 'admin-section-view'
