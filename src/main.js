@@ -934,7 +934,7 @@ const adminCommunicationSection = createAdminSection('communications', 'Communic
 const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
-adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un pseudo, nom ou e-mail…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
+adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Création</th><th>Utilisateur</th><th>État</th><th>Date</th></tr></thead><tbody id="admin-generation-rows"><tr><td colspan="4">Chargement des générations…</td></tr></tbody></table></div><p class="admin-table-footnote">Les générations affichées correspondent aux 1 000 documents les plus récents. Le total global et les archives historiques nécessitent un index analytique dédié.</p>'
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
@@ -944,7 +944,7 @@ function adminDateLabel(value) {
 }
 function renderAdminUsersTable() {
   const term = adminUserSearch.value.trim().toLocaleLowerCase('fr')
-  const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid,user.country,user.countryCode].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
   const body = adminUsersSection.querySelector('#admin-user-rows')
   replaceNodeChildren(body)
   adminUsersSection.querySelector('#admin-user-count').textContent = term ? `${adminNumber(users.length)} résultat(s) sur ${adminNumber(latestAdminUsers.length)}` : `${adminNumber(users.length)} profil(s)`
@@ -956,7 +956,10 @@ function renderAdminUsersTable() {
     const email=document.createElement('small'); email.textContent=user.email || user.username || 'Adresse non renseignée'
     identity.append(name,email)
     const created=document.createElement('td'); created.textContent=adminDateLabel(user.createdAt)
-    const country=document.createElement('td'); country.textContent=user.country || '—'
+    const country=document.createElement('td')
+    const countryCode=String(user.countryCode || '').trim().toUpperCase()
+    const flag=countryCode.length===2 ? String.fromCodePoint(...[...countryCode].map(char=>127397+char.charCodeAt(0))) : ''
+    country.textContent=(flag ? flag + ' ' : '') + (user.country || countryCode || '—')
     const uid=document.createElement('td'); uid.textContent=user.uid || '—'; uid.className='admin-id-cell'
     row.append(identity,created,country,uid); body.append(row)
   })
