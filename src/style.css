@@ -1000,3 +1000,20 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   .workspace-content:has(.admin-workspace-shell) { min-height:0; padding-bottom:80px; }
   .workspace-layout:has(.admin-workspace-shell) { min-height:0; }
 }
+
+
+/* Audinoo — écoute publique et console de modération audio */
+.audinoo-public-music{width:min(1120px,calc(100% - 40px));margin:70px auto;padding:34px;border:1px solid rgba(145,120,220,.2);border-radius:24px;background:linear-gradient(145deg,rgba(83,54,137,.16),rgba(15,15,30,.72))}
+.audinoo-public-music[hidden]{display:none}
+.audinoo-public-music-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:24px}
+.public-music-card,.admin-generation-card{min-width:0;padding:18px;border:1px solid var(--workspace-border,rgba(148,163,184,.2));border-radius:15px;background:var(--workspace-panel,rgba(255,255,255,.04))}
+.public-music-card{display:grid;gap:12px}
+.public-music-card strong{font-size:15px}
+.public-music-card audio,.admin-generation-track audio{width:100%;min-width:0}
+.admin-generation-cards{display:grid;gap:14px;margin-top:18px}
+.admin-generation-card-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.admin-generation-card-heading h3{margin:0;font-size:16px}
+.admin-generation-card>p{color:var(--workspace-muted,#929bad);font-size:12px;overflow-wrap:anywhere}
+.admin-generation-track{display:grid;grid-template-columns:minmax(100px,1fr) minmax(180px,2fr) auto;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--workspace-border,rgba(148,163,184,.14))}
+.admin-generation-track small{color:var(--workspace-muted,#929bad)}
+@media(max-width:650px){.audinoo-public-music{width:calc(100% - 24px);margin:38px auto;padding:20px}.admin-generation-track{grid-template-columns:1fr}.admin-generation-track audio{width:100%}}
