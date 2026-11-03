@@ -46,7 +46,7 @@ for (const page of pages) {
   console.log('✓ HTML public pré-rendu : ' + page.url)
 }
 
-const robots = 'User-agent: *\nAllow: /\n\nSitemap: __SITE__/sitemap.xml\n'
+const robots = isTest ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nAllow: /\n\nSitemap: ' + site + '/sitemap.xml\n'
 await writeFile(resolve(dist, 'robots.txt'), robots, 'utf8')
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
