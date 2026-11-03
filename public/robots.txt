@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://audinoo.netlify.app/sitemap.xml
+Sitemap: https://test--audinoo.netlify.app/sitemap.xml
