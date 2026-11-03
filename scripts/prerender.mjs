@@ -7,21 +7,21 @@ const dist = resolve(root, 'dist')
 const pages = [
   {
     path: 'index.html',
-    url: 'https://audinoo.netlify.app/',
+    url: 'https://test--audinoo.netlify.app/',
     title: 'Audinoo — Transforme ton imagination en musique',
     required: ['<h1>Audinoo — Transforme ton imagination en musique</h1>', 'id="mission-audinoo"', 'id="fonctionnement-audinoo"', 'id="tarifs-audinoo"', 'id="createur-audinoo"'],
   },
   {
     path: 'documentation/index.html',
-    url: 'https://audinoo.netlify.app/documentation/',
+    url: 'https://test--audinoo.netlify.app/documentation/',
     title: 'Documentation officielle — Audinoo',
     required: ['<title>Documentation officielle — Audinoo</title>', '14. À propos du fondateur'],
   },
   {
     path: 'a-propos/index.html',
-    url: 'https://audinoo.netlify.app/a-propos/',
+    url: 'https://test--audinoo.netlify.app/a-propos/',
     title: 'À propos d’Audinoo — Présentation officielle et fondateur',
-    required: ['<title>À propos d’Audinoo — Présentation officielle et fondateur</title>', 'ETIENNE MELANO', 'ETIENNE BOKO'],
+    required: ['<title>À propos d’Audinoo — Présentation officielle et fondateur</title>', 'ETIENNE BOKO', 'ETIENNE BOKO'],
   },
 ]
 
@@ -40,7 +40,7 @@ for (const page of pages) {
   console.log('✓ HTML public pré-rendu : ' + page.url)
 }
 
-const robots = 'User-agent: *\nAllow: /\n\nSitemap: https://audinoo.netlify.app/sitemap.xml\n'
+const robots = 'User-agent: *\nAllow: /\n\nSitemap: https://test--audinoo.netlify.app/sitemap.xml\n'
 await writeFile(resolve(dist, 'robots.txt'), robots, 'utf8')
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
