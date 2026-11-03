@@ -97,7 +97,7 @@ app.innerHTML = `
         <div class="wave wave-three"></div>
         <div class="record-card">
           <div class="record-cover"><span class="sun"></span><span class="horizon"></span><span class="palm palm-one"></span><span class="palm palm-two"></span></div>
-          <div class="record-info"><span class="play-icon">▶</span><div><strong>Etienne Melano</strong><small>Audinoo</small></div></div>
+          <div class="record-info"><span class="play-icon">▶</span><div><strong>ETIENNE BOKO</strong><small>Audinoo</small></div></div>
           <div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
       </div>
@@ -152,12 +152,12 @@ app.innerHTML = `
     <section class="content-section about-section" id="about" aria-labelledby="about-title">
       <div class="about-panel">
         <div><p class="section-kicker">Fondateur & vision</p><h2 id="about-title">Une vision portée par l'entrepreneuriat et la technologie.</h2></div>
-        <p><strong>ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur d'Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit et développe des applications Web et Mobile ainsi que des solutions numériques intégrant l'intelligence artificielle.</p>
+        <p><strong>ETIENNE BOKO, est le fondateur d'Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit et développe des applications Web et Mobile ainsi que des solutions numériques intégrant l'intelligence artificielle.</p>
         <p>À travers Audinoo, il souhaite rendre la création musicale assistée par intelligence artificielle plus accessible aux artistes, créateurs et passionnés, en Afrique et dans le monde. Son ambition est de bâtir une plateforme africaine solide, utile et évolutive, qui donne à chacun les moyens de transformer ses idées en créations musicales.</p>
       </div>
       <div class="founder-signature founder-signature-prominent">
         <img src="/favicon.svg" alt="Logo Audinoo" width="48" height="48" />
-        <div><strong>ETIENNE MELANO</strong><small>De son vrai nom ETIENNE BOKO</small><small>Fondateur d'Audinoo · Entrepreneur technologique · Développeur Full Stack</small></div>
+        <div><strong>ETIENNE BOKO</strong><small></small><small>Fondateur d'Audinoo · Entrepreneur technologique · Développeur Full Stack</small></div>
         <span class="signature-line"></span><em>Une vision africaine. Une ambition mondiale.</em>
       </div>
     </section>
@@ -167,7 +167,7 @@ app.innerHTML = `
         <div class="footer-brand-column">
           <a class="brand" href="#top" aria-label="Audinoo, accueil"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a>
           <p>La création musicale assistée par intelligence artificielle. Une idée, une émotion, une nouvelle musique.</p>
-          <small>Fondée par ETIENNE MELANO, de son vrai nom ETIENNE BOKO.</small>
+          <small>Fondée par ETIENNE BOKO.</small>
         </div>
         <div class="footer-link-column"><strong>Découvrir</strong><a href="#explore">Explorer Audinoo</a><a href="#create">Créer une musique</a><a href="#pricing">Tarifs</a></div>
         <div class="footer-link-column"><strong>Ressources</strong><a href="/documentation/">Documentation complète</a><a href="#documentation">Centre d'aide</a><a href="#about">À propos du fondateur</a></div>
