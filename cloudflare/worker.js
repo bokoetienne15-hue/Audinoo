@@ -36,15 +36,21 @@ async function generate(request, env, db, user) {
   if (!customMode && prompt.length > 400) return response(400, { error: 'prompt-too-long' })
   const profile = 'users/' + user.uid, lock = 'generationLocks/' + user.uid, requestId = crypto.randomUUID()
   let campaign = null
-  await db.runTransaction(async tx => {
-    const [p, policy, l] = await Promise.all([tx.get(db.doc(profile)), tx.get(db.doc('settings/credits')), tx.get(db.doc(lock))])
-    if (!p.exists) throw new Error('profile-not-found')
-    if (l.exists) throw new Error('generation-already-running')
-    const data = p.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
-    campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
-    if (!rules.enabled || !campaign || campaign !== rules.activeCampaignId || data.freeCreditUsed === true) throw new Error('no-free-credit')
-    tx.create(db.doc(lock), { requestId, uid: user.uid, campaignId: campaign, createdAt: SERVER_TIMESTAMP })
-  })
+  try {
+    await db.runTransaction(async tx => {
+      const [p, policy, l] = await Promise.all([tx.get(db.doc(profile)), tx.get(db.doc('settings/credits')), tx.get(db.doc(lock))])
+      if (!p.exists) throw new Error('profile-not-found')
+      if (l.exists) throw new Error('generation-already-running')
+      const data = p.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
+      campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
+      if (!rules.enabled || !campaign || campaign !== rules.activeCampaignId || data.freeCreditUsed === true) throw new Error('no-free-credit')
+      tx.create(db.doc(lock), { requestId, uid: user.uid, campaignId: campaign, createdAt: SERVER_TIMESTAMP })
+    })
+  } catch (error) {
+    const mapped = { 'profile-not-found': [404, 'profile-not-found'], 'generation-already-running': [409, 'generation-already-running'], 'no-free-credit': [402, 'no-free-credit'] }[error.message]
+    if (mapped) return response(mapped[0], { error: mapped[1] })
+    throw error
+  }
   const provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, title } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
   const result = await provider.json().catch(() => ({}))
   if (!provider.ok || result.code !== 200 || !result.data?.taskId) {
@@ -77,7 +83,7 @@ async function generationStatus(request, env, db, user) {
 }
 async function library(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  const result = await db.request('projects/audinoo/databases/(default)/documents/users/' + user.uid + '/generations?pageSize=30&orderBy=createdAt%20desc')
+  const result = await db.request('projects/audinoo/databases/(default)/documents/users/' + user.uid + ':runQuery', { method: 'POST', body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'generations' }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 30 } }) })
   const generations = (result.documents || []).map(d => { const x = fromFields(d.fields || {}); return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks : [], createdAt:x.createdAt instanceof Date ? x.createdAt.toISOString() : null } })
   return response(200, { generations })
 }
