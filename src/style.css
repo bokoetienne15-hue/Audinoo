@@ -889,3 +889,21 @@ body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: n
  .admin-section-icon svg { width:15px; height:15px; }
  .admin-section-heading h2 { font-size:17px; }
 }
+
+
+/* Tables de suivi des utilisateurs et des générations */
+.admin-data-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:14px 0 12px; }
+.admin-search-field { display:flex; align-items:center; gap:9px; min-width:0; width:min(100%,440px); padding:9px 12px; border:1px solid var(--workspace-border,rgba(148,163,184,.2)); border-radius:10px; background:var(--workspace-panel,rgba(255,255,255,.65)); color:var(--workspace-muted,#8992a3); }
+.admin-search-field input { width:100%; min-width:0; border:0; outline:0; background:transparent; color:inherit; font:inherit; font-size:12px; }
+.admin-data-count { flex:0 0 auto; color:var(--workspace-muted,#8992a3); font-size:11px; }
+.admin-data-table-wrap { width:100%; overflow:auto; border:1px solid var(--workspace-border,rgba(148,163,184,.18)); border-radius:12px; }
+.admin-data-table { width:100%; min-width:580px; border-collapse:collapse; text-align:left; font-size:12px; }
+.admin-data-table th { padding:11px 12px; background:rgba(120,130,155,.07); color:var(--workspace-muted,#8992a3); font-size:10px; font-weight:750; letter-spacing:.07em; text-transform:uppercase; white-space:nowrap; }
+.admin-data-table td { padding:11px 12px; border-top:1px solid var(--workspace-border,rgba(148,163,184,.13)); vertical-align:middle; }
+.admin-data-table td strong,.admin-data-table td small { display:block; }
+.admin-data-table td strong { font-weight:650; }
+.admin-data-table td small { margin-top:3px; color:var(--workspace-muted,#8992a3); font-size:10px; }
+.admin-id-cell { max-width:150px; overflow-wrap:anywhere; color:var(--workspace-muted,#8992a3); font-family:monospace; font-size:10px; }
+.admin-state-pill { display:inline-block; padding:4px 7px; border-radius:6px; background:rgba(105,125,155,.12); font-size:10px; font-weight:700; }
+.admin-table-footnote { margin:10px 2px 0; color:var(--workspace-muted,#8992a3); font-size:10px; line-height:1.5; }
+@media(max-width:600px){.admin-data-toolbar{align-items:flex-start;flex-direction:column}.admin-search-field{width:100%;box-sizing:border-box}.admin-data-table{min-width:530px}}
