@@ -2350,10 +2350,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
   }
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((navLink) => navLink.classList.toggle('is-active', navLink === link))
   if (destination === '#studio' || destination === '#library' || destination === '#admin') window.history.replaceState(null, '', destination)
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
 }))
 
 libraryWorkspacePage.querySelector('.workspace-library-create').addEventListener('click', () => {
