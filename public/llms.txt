@@ -16,11 +16,11 @@ Audinoo invite les utilisateurs à imaginer leur musique et à explorer différe
 ## Tarifs publics affichés
 
 Les tarifs actuellement affichés sur le site sont :
-- Création d'une chanson : 300 FCFA.
+- Création d'une chanson : 300 FCFA (0,99 €).
 - Formule Créateur : 2 900 FCFA par mois.
 - Formule Studio : 6 900 FCFA par mois.
 
-Les détails complets des avantages associés aux formules sont susceptibles d'évoluer. Pour les conditions à jour, consulter le site officiel.
+L'offre à la demande comprend deux variantes et le téléchargement MP3 uniquement. Le téléchargement WAV et le droit de commercialisation ne sont pas inclus dans cette offre. Les détails des formules mensuelles seront précisés séparément. Pour les conditions à jour, consulter le site officiel.
 
 ## Pages officielles de référence
 
@@ -41,7 +41,7 @@ La documentation complète explique l'inscription, la sélection du pays, les mo
 
 ## Fondateur
 
-ETIENNE BOKO, est le fondateur d'Audinoo. Il est entrepreneur dans le domaine des technologies et développeur Full Stack. Son activité professionnelle porte sur la conception et le développement d'applications Web et Mobile et de solutions numériques intégrant l'intelligence artificielle.
+ETIENNE BOKO est le fondateur d'Audinoo. Il est entrepreneur dans le domaine des technologies et développeur Full Stack. Son activité professionnelle porte sur la conception et le développement d'applications Web et Mobile et de solutions numériques intégrant l'intelligence artificielle.
 
 ## Vision
 
