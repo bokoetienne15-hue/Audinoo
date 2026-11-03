@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "audinoo-test",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-11-03",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "workers_dev": true
+}
