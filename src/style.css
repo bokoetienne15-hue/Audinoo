@@ -830,3 +830,23 @@ body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: n
   .workspace-model-page .model-suggestion-form { grid-template-columns: 1fr; }
   .workspace-model-page .model-suggestion-submit-row button { width: 100%; }
 }
+
+
+/* Admin analytics: compact generation chart and responsive KPI layout. */
+.admin-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-stat-generations::before { background: #f2b96f; }
+.admin-stat-generations > i { color: rgba(242,185,111,.15); }
+.admin-chart-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-chart-grid .admin-chart-panel { padding: 16px; }
+.admin-chart-grid .admin-chart-total { font-size: 18px; }
+.admin-chart-legend .generation-legend-dot { background: #f2b96f; }
+@media (max-width: 1050px) {
+  .admin-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .admin-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .admin-stat-card { padding: 14px; }
+  .admin-stat-card > strong { font-size: 24px; }
+  .admin-chart-grid { grid-template-columns: minmax(0, 1fr); }
+}
