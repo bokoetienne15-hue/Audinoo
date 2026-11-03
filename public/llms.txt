@@ -24,7 +24,7 @@ Les tarifs actuellement affichés sur le site sont :
 Chaque génération musicale produit deux variantes. Les offres sont les suivantes :
 - Achat à l'unité : 300 FCFA par chanson, 1 génération (2 variantes), téléchargement MP3, sans abonnement.
 - Plan Découverte : 1 000 FCFA par mois, profil vocal personnalisé, 3 générations (6 variantes), 3 clips vidéo et téléchargement MP3.
-- Plan Créateur / Artiste : 3 000 FCFA par mois, 8 générations (16 variantes), 3 clips vidéo au choix, mode sauvage, chansons jusqu'à 8 minutes, téléchargements MP3 et WAV, pistes vocales et instrumentales séparées.
+- Plan Créateur / Artiste : 3 000 FCFA par mois, 8 générations (16 variantes), 3 clips vidéo au choix, mode sauvage, chansons jusqu'à 8 minutes, téléchargements MP3 et WAV, pistes vocales et instrumentales séparées, licence commerciale.
 - Plan Pro : 6 900 FCFA par mois, 30 générations (60 variantes), 10 clips vidéo au choix, conservation permanente du profil vocal, séparation avancée des pistes pour 10 chansons au choix, licence commerciale et téléchargements MP3 et WAV.
 Pour les conditions à jour, consulter le site officiel.
 
