@@ -805,3 +805,7 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
   .footer-bottom { align-items: flex-start; flex-direction: column; }
   .founder-signature-prominent .signature-line { display: none; }
 }
+
+/* Verrouille la page derrière le tiroir de navigation mobile. */
+body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: none; touch-action: none; }
+.workspace-layout.is-mobile-open .workspace-sidebar { touch-action: pan-y; overscroll-behavior: contain; }
