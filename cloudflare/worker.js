@@ -131,7 +131,7 @@ async function adminGenerations(request, db, user) {
     const d = fromFields(row.document.fields || {})
     const parts = row.document.name.split('/documents/')[1].split('/')
     const uid = parts[1]
-    return { uid, taskId: d.taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : null, tracks: (d.tracks || []).map((t, i) => ({ title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '', archived: !!t.r2Key, trackIndex: i, audioUrl: t.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(d.taskId) + '&track=' + i : '' })) }
+    return { uid, taskId: d.taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : null, tracks: (d.tracks || []).map((t, i) => ({ title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '', archived: !!t.r2Key, trackIndex: i, audioUrl: t.r2Key ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(d.taskId) + '&track=' + i : '' })) }
   })
   return response(200, { generations })
 }
@@ -196,7 +196,7 @@ export default {
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,db,user)
-      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)
+      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)\n      if (url.pathname === '/api/admin-audio') return await privateAudio(request,env,db,user,true)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       if (url.pathname === '/api/public-tracks') return await publicTracks(request,db)
