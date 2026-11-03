@@ -80,12 +80,13 @@ async function generate(request, env, db, user) {
     return response(502, { error: 'music-provider-rejected-request', providerCode: Number(result.code), providerMessage: typeof result.msg === 'string' ? result.msg : '' })
   }
   const taskId = String(result.data.taskId)
+  const expiresAt = new Date(Date.now() + RETENTION_MS)
   await db.runTransaction(async tx => {
     const [p,l] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock))])
     if (!p.exists || !l.exists || l.data().requestId !== requestId) throw new Error('generation-reservation-lost')
     tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
     tx.delete(db.doc(lock))
-    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: title.slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP })
+    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: title.slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP, expiresAt })
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true })
 }
@@ -166,6 +167,19 @@ async function library(request, db, user) {
   return response(200, { generations })
 }
 export default {
+  async scheduled(controller, env) {
+    if (!env.AUDIO_BUCKET) return
+    const db = new FirestoreRest(env)
+    const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+    const cutoff = Date.now() - RETENTION_MS
+    for (const row of rows || []) {
+      if (!row.document) continue
+      const data = fromFields(row.document.fields || {})
+      if (!(data.createdAt instanceof Date) || data.createdAt.getTime() > cutoff) continue
+      for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
+      try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
+    }
+  },
   async fetch(request, env) {
     const url = new URL(request.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
