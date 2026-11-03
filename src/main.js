@@ -233,6 +233,28 @@ const menuButton = document.querySelector('.menu-button')
 const mobileMenu = document.querySelector('#mobile-menu')
 const authOverlay = document.querySelector('#auth-overlay')
 const landingPage = document.querySelector('.page-shell')
+const publicMusicSection = document.createElement('section')
+publicMusicSection.className = 'audinoo-public-music'
+publicMusicSection.innerHTML = '<div class="section-heading"><p class="eyebrow">À DÉCOUVRIR</p><h2>Les créations de la communauté</h2><p>Écoute les morceaux sélectionnés par Audinoo.</p></div><div class="audinoo-public-music-list" id="audinoo-public-music-list"></div>'
+landingPage.append(publicMusicSection)
+async function loadPublicMusic() {
+  const list = publicMusicSection.querySelector('#audinoo-public-music-list')
+  try {
+    const result = await fetch('/api/public-tracks')
+    if (!result.ok) throw new Error('public-tracks-unavailable')
+    const data = await result.json()
+    replaceNodeChildren(list)
+    for (const track of data.tracks || []) {
+      const item = document.createElement('article'); item.className = 'public-music-card'
+      const title = document.createElement('strong'); title.textContent = track.title || 'Création Audinoo'
+      const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.src = track.audioUrl
+      item.append(title, player); list.append(item)
+    }
+    publicMusicSection.hidden = !(data.tracks || []).length
+  } catch (error) { publicMusicSection.hidden = true; console.warn('[Audinoo public music]', error) }
+}
+void loadPublicMusic()
+
 const workspace = document.querySelector('#workspace')
 const workspaceUsername = document.querySelector('#workspace-username')
 const workspaceGreeting = document.querySelector('#workspace-greeting')
@@ -945,6 +967,7 @@ const adminExportsSection = createAdminSection('exports', 'Rapports et exportati
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Création</th><th>Utilisateur</th><th>État</th><th>Date</th></tr></thead><tbody id="admin-generation-rows"><tr><td colspan="4">Chargement des générations…</td></tr></tbody></table></div><p class="admin-table-footnote">Les générations affichées correspondent aux 1 000 documents les plus récents. Le total global et les archives historiques nécessitent un index analytique dédié.</p>'
+adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
 function adminDateLabel(value) {
@@ -1135,6 +1158,7 @@ async function refreshAdminAccess(uid) {
     verifiedAdminUid = uid
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
+    void loadAdminAudioGenerations()
     return true
   } catch (error) {
     console.warn('[Audinoo admin] Could not verify admin access', error)
@@ -1166,6 +1190,38 @@ function renderAdminSuggestions(suggestions) {
     adminSuggestionList.append(card)
   })
 }
+
+async function loadAdminAudioGenerations() {
+  const container = adminGenerationsSection.querySelector('#admin-audio-generations')
+  const status = adminGenerationsSection.querySelector('#admin-audio-status')
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  status.textContent = 'Chargement des archives audio…'
+  try {
+    const result = await callAudinooApi('/api/admin/generations')
+    replaceNodeChildren(container)
+    let count = 0
+    for (const generation of result.generations || []) for (const track of generation.tracks || []) {
+      if (!track.archived || !track.audioUrl) continue
+      count++
+      const card = document.createElement('article')
+      card.className = 'admin-panel admin-audio-generation-card'
+      const title = document.createElement('strong'); title.textContent = track.title || generation.title || 'Création Audinoo'
+      const meta = document.createElement('small'); meta.textContent = 'UID : ' + generation.uid + ' · ID : ' + generation.taskId + ' · ' + adminDateLabel(generation.createdAt)
+      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = track.audioUrl
+      const publish = document.createElement('button'); publish.type = 'button'; publish.className = 'admin-publish-button'; publish.textContent = 'Publier sur l’accueil'
+      publish.addEventListener('click', async () => {
+        publish.disabled = true
+        try {
+          await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: generation.uid, taskId: generation.taskId, trackIndex: track.trackIndex }) })
+          publish.textContent = 'Publié sur l’accueil'; status.textContent = 'Création publiée sur l’accueil.'
+        } catch (error) { status.textContent = 'Publication impossible : ' + error.message; publish.disabled = false }
+      })
+      card.append(title, meta, audio, publish); container.append(card)
+    }
+    status.textContent = count ? count + ' variante(s) archivée(s).' : 'Aucune variante archivée pour le moment.'
+  } catch (error) { status.textContent = 'Chargement impossible : ' + error.message }
+}
+adminGenerationsSection.querySelector('#admin-refresh-audio-generations').addEventListener('click', loadAdminAudioGenerations)
 async function loadAdminSuggestions() {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   adminSuggestionStatus.textContent = 'Chargement des suggestions…'
@@ -1293,7 +1349,7 @@ function createGenerationCard(generation) {
 function renderGenerationTracks(container, tracks) {
   replaceNodeChildren(container)
   tracks.forEach((track, index) => {
-    if (!track?.audioUrl || !/^https:\/\//i.test(track.audioUrl)) return
+    if (!track?.audioUrl || !(/^https:\/\//i.test(track.audioUrl) || track.audioUrl.startsWith('/api/'))) return
     const item = document.createElement('article')
     item.className = 'generation-track'
     if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
