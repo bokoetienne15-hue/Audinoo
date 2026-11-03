@@ -790,6 +790,8 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   latestAdminUsers = userSnapshots.docs.map((snapshot) => snapshot.data())
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => snapshot.data())
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => snapshot.data())
+  renderAdminUsersTable()
+  renderAdminGenerationsTable()
   adminReportDataReady = true
   excelReportButton.disabled = false
   pdfReportButton.disabled = false
@@ -885,7 +887,7 @@ adminExportGroup.querySelector('.admin-export-actions').append(excelReportButton
 const adminNavigation = document.createElement('nav')
 adminNavigation.className = 'admin-section-nav'
 adminNavigation.setAttribute('aria-label', 'Rubriques de l’administration')
-adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button>'
+adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="users"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11a4 4 0 1 0-1-7.9M17 14.5a4 4 0 0 1 4 4V20"/></svg></span>Utilisateurs</button><button type="button" class="admin-section-link" data-admin-section="generations"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>Générations</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button>'
 const adminContent = document.createElement('div')
 adminContent.className = 'admin-section-content'
 const adminShell = document.createElement('div')
@@ -903,10 +905,61 @@ function createAdminSection(id, title, description) {
   return section
 }
 const adminOverviewSection = createAdminSection('overview', 'Vue d’ensemble', 'Les indicateurs de croissance et d’activité de la communauté Audinoo.')
+const adminUsersSection = createAdminSection('users', 'Utilisateurs', 'Recherche et consultation des profils enregistrés dans Firebase.')
+const adminGenerationsSection = createAdminSection('generations', 'Générations musicales', 'Historique des créations enregistrées. La liste est limitée aux 1 000 dernières entrées synchronisées.')
 const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
 const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
 const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
+
+adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un pseudo, nom ou e-mail…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Création</th><th>Utilisateur</th><th>État</th><th>Date</th></tr></thead><tbody id="admin-generation-rows"><tr><td colspan="4">Chargement des générations…</td></tr></tbody></table></div><p class="admin-table-footnote">Les générations affichées correspondent aux 1 000 documents les plus récents. Le total global et les archives historiques nécessitent un index analytique dédié.</p>'
+const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
+const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
+function adminDateLabel(value) {
+  const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
+  return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
+}
+function renderAdminUsersTable() {
+  const term = adminUserSearch.value.trim().toLocaleLowerCase('fr')
+  const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const body = adminUsersSection.querySelector('#admin-user-rows')
+  replaceNodeChildren(body)
+  adminUsersSection.querySelector('#admin-user-count').textContent = term ? `${adminNumber(users.length)} résultat(s) sur ${adminNumber(latestAdminUsers.length)}` : `${adminNumber(users.length)} profil(s)`
+  if (!users.length) { const row=document.createElement('tr'); const cell=document.createElement('td'); cell.colSpan=4; cell.textContent='Aucun utilisateur correspondant.'; row.append(cell); body.append(row); return }
+  users.slice(0,250).forEach(user => {
+    const row=document.createElement('tr')
+    const identity=document.createElement('td')
+    const name=document.createElement('strong'); name.textContent=user.displayName || user.username || 'Utilisateur'
+    const email=document.createElement('small'); email.textContent=user.email || user.username || 'Adresse non renseignée'
+    identity.append(name,email)
+    const created=document.createElement('td'); created.textContent=adminDateLabel(user.createdAt)
+    const country=document.createElement('td'); country.textContent=user.country || '—'
+    const uid=document.createElement('td'); uid.textContent=user.uid || '—'; uid.className='admin-id-cell'
+    row.append(identity,created,country,uid); body.append(row)
+  })
+  if(users.length>250){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Affichage limité aux 250 premiers résultats. Affine ta recherche.';row.append(cell);body.append(row)}
+}
+function renderAdminGenerationsTable() {
+  const term=adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
+  const usersById=new Map(latestAdminUsers.map(user=>[user.uid,user]))
+  const generations=latestAdminGenerations.filter(item=>[item.title,item.uid,item.taskId,item.state,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value=>String(value||'').toLocaleLowerCase('fr').includes(term)))
+  const body=adminGenerationsSection.querySelector('#admin-generation-rows')
+  replaceNodeChildren(body)
+  adminGenerationsSection.querySelector('#admin-generation-count').textContent=`${adminNumber(generations.length)} création(s) affichée(s)`
+  if(!generations.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Aucune génération correspondante.';row.append(cell);body.append(row);return}
+  generations.slice(0,300).forEach(item=>{
+    const row=document.createElement('tr')
+    const title=document.createElement('td');const strong=document.createElement('strong');strong.textContent=item.title||'Création sans titre';const task=document.createElement('small');task.textContent=item.taskId||'Identifiant indisponible';title.append(strong,task)
+    const userCell=document.createElement('td');const user=usersById.get(item.uid);userCell.textContent=user?.username||user?.email||item.uid||'Utilisateur inconnu'
+    const state=document.createElement('td');const badge=document.createElement('span');badge.className='admin-state-pill';badge.textContent=item.state||'État inconnu';state.append(badge)
+    const date=document.createElement('td');date.textContent=adminDateLabel(item.createdAt)
+    row.append(title,userCell,state,date);body.append(row)
+  })
+}
+adminUserSearch.addEventListener('input',renderAdminUsersTable)
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)
+
 adminCreditsSection.append(workspaceCreditPanel)
 adminCommunicationSection.append(adminDashboardGrid)
 adminExportsSection.append(adminExportGroup)
