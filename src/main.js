@@ -1381,27 +1381,28 @@ function renderGenerationTracks(container, tracks) {
     const item = document.createElement('article')
     item.className = 'generation-track'
     if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
-      const cover = document.createElement('img')
-      cover.src = track.imageUrl
-      cover.alt = ''
-      cover.loading = 'lazy'
-      item.append(cover)
+      const cover = document.createElement('img'); cover.src = track.imageUrl; cover.alt = ''; cover.loading = 'lazy'; item.append(cover)
     }
-    const content = document.createElement('div')
-    content.className = 'generation-track-content'
-    const name = document.createElement('strong')
-    name.textContent = track.title || `Variante ${index + 1}`
-    const player = document.createElement('audio')
-    player.controls = true
-    player.preload = 'none'
-    player.src = track.audioUrl
-    player.setAttribute('aria-label', `Écouter ${name.textContent}`)
-    content.append(name, player)
-    item.append(content)
-    container.append(item)
+    const content = document.createElement('div'); content.className = 'generation-track-content'
+    const name = document.createElement('strong'); name.textContent = track.title || `Variante ${index + 1}`
+    const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.setAttribute('aria-label', `Écouter ${name.textContent}`)
+    if (track.audioUrl.startsWith('/api/')) {
+      player.addEventListener('play', async () => {
+        if (player.dataset.loaded === 'true') return
+        player.pause()
+        try {
+          const token = await auth.currentUser?.getIdToken()
+          const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+          if (!audioResponse.ok) throw new Error('audio-unavailable')
+          player.src = URL.createObjectURL(await audioResponse.blob())
+          player.dataset.loaded = 'true'
+          await player.play()
+        } catch (error) { name.textContent = 'Audio temporairement indisponible'; console.warn('[Audinoo audio]', error) }
+      }, { once: true })
+    } else player.src = track.audioUrl
+    content.append(name, player); item.append(content); container.append(item)
   })
 }
-
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
   if (!card) {
