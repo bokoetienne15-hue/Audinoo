@@ -145,7 +145,11 @@ async function publishTrack(request, env, db, user) {
   const path = 'users/' + uid + '/generations/' + taskId, snap = await db.get(path), track = snap.data?.tracks?.[index]
   if (!snap.exists || !track?.r2Key) return response(409, { error: 'audio-not-archived-yet' })
   const id = taskId + '-' + index
-  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: track.r2Key, published: true, publishedAt: new Date() })
+  const source = await env.AUDIO_BUCKET.get(track.r2Key)
+  if (!source) return response(404, { error: 'audio-not-found' })
+  const publicKey = 'public/' + id + '.audio'
+  await env.AUDIO_BUCKET.put(publicKey, source.body, { httpMetadata: { contentType: source.httpMetadata?.contentType || 'audio/mpeg', cacheControl: 'public, max-age=3600' }, customMetadata: { publishedTrackId: id } })
+  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: publicKey, published: true, publishedAt: new Date() })
   return response(200, { published: true, id })
 }
 async function publicTracks(request, db) {
