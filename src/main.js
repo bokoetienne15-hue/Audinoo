@@ -3,7 +3,7 @@ import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
 import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
-import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
@@ -355,13 +355,10 @@ function renderUserNotifications() {
   const currentDot = workspaceNotificationButton.querySelector('.workspace-notification-dot')
   if (currentDot) currentDot.hidden = unreadItems.length === 0
   replaceNodeChildren(workspaceNotificationList)
-  if (!liveNotificationItems.length) {
-    workspaceNotificationList.hidden = true
-    workspaceNotificationEmpty.hidden = false
-    return
-  }
-  workspaceNotificationEmpty.hidden = true
-  workspaceNotificationList.hidden = false
+  const hasNotifications = liveNotificationItems.length > 0
+  workspaceNotificationEmpty.hidden = hasNotifications
+  workspaceNotificationList.hidden = !hasNotifications
+  if (!hasNotifications) return
   liveNotificationItems.forEach((item) => {
     const card = document.createElement('article')
     card.className = `workspace-notification-item${liveNotificationReadIds.has(item.id) ? '' : ' is-unread'}`
@@ -1316,6 +1313,7 @@ async function refreshAdminAccess(uid) {
     verifiedAdminUid = uid
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
+    startAdminNotificationListener()
     void loadAdminGenerations()
     void loadAdminAudioGenerations()
     return true
@@ -1409,6 +1407,71 @@ async function loadAdminSuggestions() {
   }
 }
 adminWorkspacePage.querySelector('#admin-refresh-suggestions').addEventListener('click', loadAdminSuggestions)
+
+const adminNotificationList = document.createElement('section')
+adminNotificationList.className = 'admin-panel admin-notification-manager'
+adminNotificationList.innerHTML = '<div class="admin-panel-heading"><div><p>GESTION DES ANNONCES</p><h2>Notifications publiées</h2></div><button type="button" class="admin-refresh-button" id="admin-refresh-notifications">Actualiser</button></div><p class="admin-panel-status" id="admin-notification-list-status" role="status">Chargement des notifications…</p><div class="admin-notification-list" id="admin-notification-list"></div>'
+adminCommunicationSection.append(adminNotificationList)
+const adminNotificationListStatus = adminNotificationList.querySelector('#admin-notification-list-status')
+const adminNotificationListBody = adminNotificationList.querySelector('#admin-notification-list')
+let adminNotificationSnapshot = null
+function renderAdminNotificationList(items) {
+  replaceNodeChildren(adminNotificationListBody)
+  const ordered = [...items].sort((a,b) => {
+    const date = value => value?.toDate ? value.toDate().getTime() : value?.seconds ? value.seconds * 1000 : 0
+    return date(b.createdAt) - date(a.createdAt)
+  })
+  adminNotificationListStatus.textContent = ordered.length ? ordered.length + ' notification(s) publiée(s).' : 'Aucune notification publiée.'
+  if (!ordered.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = 'Les notifications que tu publies apparaîtront ici.'
+    adminNotificationListBody.append(empty)
+    return
+  }
+  ordered.forEach(item => {
+    const card = document.createElement('article')
+    card.className = 'admin-notification-row'
+    const content = document.createElement('div')
+    const title = document.createElement('strong'); title.textContent = item.title || 'Notification Audinoo'
+    const message = document.createElement('p'); message.textContent = item.message || ''
+    const date = document.createElement('small'); date.textContent = adminDateLabel(item.createdAt)
+    content.append(title,message,date)
+    const remove = document.createElement('button')
+    remove.type = 'button'; remove.className = 'admin-refresh-button is-danger'; remove.textContent = 'Supprimer'
+    remove.addEventListener('click', async () => {
+      if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) { adminNotificationListStatus.textContent = 'Accès administrateur requis.'; return }
+      if (!window.confirm('Supprimer définitivement cette notification pour tous les utilisateurs ?')) return
+      remove.disabled = true
+      try {
+        await deleteDoc(doc(db,'notifications',item.id))
+        adminNotificationListStatus.textContent = 'Notification supprimée.'
+      } catch(error) {
+        console.error('[Audinoo admin] Could not delete notification',error)
+        adminNotificationListStatus.textContent = 'Suppression impossible : ' + exactErrorDetails(error)
+        remove.disabled = false
+      }
+    })
+    card.append(content,remove)
+    adminNotificationListBody.append(card)
+  })
+}
+let stopAdminNotificationListener = null
+function startAdminNotificationListener() {
+  stopAdminNotificationListener?.()
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  stopAdminNotificationListener = onSnapshot(query(collection(db,'notifications'),where('audience','==','all')), snapshot => {
+    adminNotificationSnapshot = snapshot.docs.map(item => ({ id:item.id, ...item.data() }))
+    renderAdminNotificationList(adminNotificationSnapshot)
+  }, error => {
+    console.error('[Audinoo admin] Could not load notifications',error)
+    adminNotificationListStatus.textContent = 'Chargement impossible : ' + exactErrorDetails(error)
+  })
+}
+adminNotificationList.querySelector('#admin-refresh-notifications').addEventListener('click', () => {
+  adminNotificationListStatus.textContent = 'Actualisation…'
+  startAdminNotificationListener()
+})
 adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   const user = auth.currentUser
