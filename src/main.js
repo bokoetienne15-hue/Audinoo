@@ -1569,6 +1569,9 @@ function syncLibraryMiniPlayer() {
   const duration = Number.isFinite(activeLibraryAudio.duration) ? activeLibraryAudio.duration : 0
   libraryMiniSeek.max = String(Math.max(1, Math.round(duration * 10)))
   libraryMiniSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
+  const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
+  libraryMiniSeek.style.setProperty('--track-progress', progress + '%')
+  libraryMiniPlayer.style.setProperty('--track-progress', progress + '%')
   libraryMiniCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
   libraryMiniDuration.textContent = formatAudioTime(duration)
   libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
@@ -1780,10 +1783,14 @@ const fullSeek = libraryFullPlayer.querySelector('.library-full-seek')
 const fullCurrent = libraryFullPlayer.querySelector('.library-full-current')
 const fullDuration = libraryFullPlayer.querySelector('.library-full-duration')
 const fullPlay = libraryFullPlayer.querySelector('.library-full-play')
-Array.from({ length: 52 }, (_, index) => {
+Array.from({ length: 64 }, (_, index) => {
   const bar = document.createElement('i')
+  const pattern = index % 8
+  bar.className = pattern === 0 || pattern === 5 ? 'visualizer-tall' : pattern === 2 || pattern === 7 ? 'visualizer-soft' : pattern === 3 ? 'visualizer-dot' : 'visualizer-line'
   bar.style.setProperty('--bar-index', String(index))
-  bar.style.setProperty('--bar-peak', (18 + ((index * 17) % 72)) + '%')
+  bar.style.setProperty('--bar-peak', (26 + ((index * 29 + 13) % 70)) + '%')
+  bar.style.setProperty('--bar-speed', (0.48 + ((index * 7) % 34) / 100) + 's')
+  bar.style.setProperty('--bar-delay', (-((index * 19) % 83) / 100) + 's')
   fullVisualizer.append(bar)
 })
 function syncFullPlayer() {
@@ -1791,6 +1798,9 @@ function syncFullPlayer() {
   const duration = Number.isFinite(activeLibraryAudio.duration) ? activeLibraryAudio.duration : 0
   fullSeek.max = String(Math.max(1, Math.round(duration * 10)))
   fullSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
+  const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
+  fullSeek.style.setProperty('--track-progress', progress + '%')
+  fullVisualizer.style.setProperty('--audio-progress', progress + '%')
   fullCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
   fullDuration.textContent = formatAudioTime(duration)
   fullPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
