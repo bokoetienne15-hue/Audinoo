@@ -2,7 +2,7 @@ import './style.css'
 import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
-import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
@@ -204,7 +204,7 @@ app.innerHTML = `
       <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="assertive" hidden></p>
       <button class="google-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"/><path fill="#34A853" d="M12 21.58c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.74 9.74 0 0 0 12 21.58Z"/><path fill="#FBBC05" d="M6.54 13.66A5.85 5.85 0 0 1 6.23 12c0-.58.1-1.14.31-1.66V7.81H3.3A9.73 9.73 0 0 0 2.26 12c0 1.52.36 2.96 1.04 4.19l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.31c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.31 14.63 2.42 12 2.42a9.74 9.74 0 0 0-8.7 5.39l3.24 2.53C7.31 8.03 9.46 6.31 12 6.31Z"/></svg><span>Continuer avec Google</span></button>
       <div class="auth-divider"><span>ou avec ton adresse e-mail</span></div>
-      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="current-password" minlength="8" required /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
+      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="current-password" minlength="8" required /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button><button class="password-reset-link" id="password-reset" type="button">Mot de passe oublié ?</button></form>
       <p class="auth-switch" id="auth-switch">Pas encore de compte ? <button type="button" data-auth-switch="signup">S'inscrire</button></p>
     </section>
   </div>
@@ -1652,6 +1652,7 @@ const authFeedback = document.querySelector('#auth-feedback')
 const authSubmit = document.querySelector('#auth-submit')
 const authSwitch = document.querySelector('#auth-switch')
 const authForm = document.querySelector('#auth-form')
+const passwordResetButton = document.querySelector('#password-reset')
 const authUsername = document.querySelector('#auth-username')
 const signupOnlyFields = document.querySelectorAll('.signup-only')
 const usernameFeedback = document.querySelector('#username-feedback')
@@ -1885,6 +1886,7 @@ const openAuth = (mode) => {
   signupOnlyFields.forEach((field) => { field.hidden = !isSignup })
   authUsername.required = isSignup
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
+  passwordResetButton.hidden = isSignup
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
   replaceNodeChildren(usernameSuggestions)
@@ -2357,6 +2359,39 @@ googleButton.addEventListener('click', async () => {
     label.textContent = defaultLabel
   }
 })
+passwordResetButton.addEventListener('click', async () => {
+  const email = authEmail.value.trim().toLowerCase()
+  if (!email) {
+    authFeedback.textContent = 'Saisis ton adresse e-mail dans le champ prévu, puis réessaie.'
+    authFeedback.hidden = false
+    authEmail.focus()
+    return
+  }
+
+  passwordResetButton.disabled = true
+  passwordResetButton.textContent = 'Envoi en cours…'
+  try {
+    await authPersistenceReady
+    await sendPasswordResetEmail(auth, email)
+    authFeedback.textContent = 'Si un compte Audinoo est associé à cette adresse, un e-mail de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.'
+    authFeedback.hidden = false
+  } catch (error) {
+    const messages = {
+      'auth/invalid-email': 'Cette adresse e-mail n’est pas valide.',
+      'auth/user-disabled': 'Ce compte est désactivé. Contacte le support Audinoo.',
+      'auth/too-many-requests': 'Trop de demandes. Attends quelques minutes avant de réessayer.',
+      'auth/network-request-failed': 'Connexion réseau impossible. Vérifie Internet puis réessaie.',
+      'auth/operation-not-allowed': 'La réinitialisation par e-mail n’est pas activée dans Firebase.'
+    }
+    authFeedback.textContent = messages[error.code] || 'Impossible d’envoyer l’e-mail de récupération. Réessaie plus tard.'
+    authFeedback.hidden = false
+    console.error('[Audinoo password reset] failed', error)
+  } finally {
+    passwordResetButton.disabled = false
+    passwordResetButton.textContent = 'Mot de passe oublié ?'
+  }
+})
+
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const submittingMode = authMode
