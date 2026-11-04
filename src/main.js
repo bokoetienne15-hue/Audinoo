@@ -2146,7 +2146,7 @@ function upsertGenerationCard(container, generation) {
 function generationErrorMessage(errorCode) {
   const messages = {
     'no-free-credit': 'Votre solde est insuffisant pour créer ce morceau.',
-    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur Cloudflare. Contacte le support Audinoo.',
+    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur le serveur de paiement. Réessaie après activation de FedaPay.',
     'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
     'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
     'fedapay-checkout-unavailable': 'Le lien de paiement FedaPay est momentanément indisponible.',
