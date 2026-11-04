@@ -37,7 +37,8 @@ function tracksIn(value, output = [], depth = 0) {
   if (Array.isArray(value)) { for (const x of value) tracksIn(x, output, depth + 1); return output }
   if (typeof value !== 'object') return output
   if (typeof value.audio_url === 'string' && /^https:\/\//i.test(value.audio_url)) {
-    output.push({ id: typeof value.id === 'string' ? value.id : '', title: typeof value.title === 'string' ? value.title : 'Ta création Audinoo', audioUrl: value.audio_url, imageUrl: typeof value.image_url === 'string' && /^https:\/\//i.test(value.image_url) ? value.image_url : '', duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : null })
+    const imageCandidate = [value.image_url, value.imageUrl, value.image, value.cover_url, value.coverUrl, value.source_image_url, value.sourceImageUrl, value.thumbnail_url, value.thumbnailUrl].find(candidate => typeof candidate === 'string' && /^https:\/\//i.test(candidate))
+    output.push({ id: typeof value.id === 'string' ? value.id : '', title: typeof value.title === 'string' ? value.title : 'Ta création Audinoo', audioUrl: value.audio_url, imageUrl: imageCandidate || '', duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : null })
     return output
   }
   Object.values(value).forEach(x => tracksIn(x, output, depth + 1))
