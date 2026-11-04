@@ -1307,3 +1307,13 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 
 @media(max-width:900px){.library-mini-player{left:50%;width:min(620px,calc(100vw - 32px));bottom:12px!important}}
 @media(max-width:760px){.library-mini-player{left:50%;width:calc(100vw - 20px)!important;bottom:10px!important;margin:0!important}.library-generation-list{padding-bottom:100px!important}}
+
+
+/* La piste arc-en-ciel se remplit réellement jusqu'à la position de lecture. */
+.library-mini-seek{
+  background:linear-gradient(90deg,#ff4d6d 0%,#ff9f43 18%,#ffe45e 35%,#45d483 53%,#27c5db 70%,#5578ff 85%,#b45cff 100%) left/var(--track-progress,0%) 100% no-repeat,rgba(255,255,255,.2)!important;
+}
+.library-mini-seek::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:transparent}
+.library-mini-seek::-moz-range-track{height:4px;border-radius:99px;background:transparent}
+.library-mini-seek::-moz-range-progress{height:4px;border-radius:99px;background:linear-gradient(90deg,#ff4d6d,#ff9f43,#ffe45e,#45d483,#27c5db,#5578ff,#b45cff)}
+.toast{bottom:clamp(84px,12vh,120px)!important;z-index:10050!important;max-width:min(92vw,520px);text-align:center}
