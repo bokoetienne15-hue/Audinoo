@@ -2007,19 +2007,19 @@ async function pollGeneration(taskId, card) {
   const bar = card.querySelector('.generation-progress-track span')
   const message = card.querySelector('.generation-progress-message')
   const timer = window.setInterval(() => {
-    percent = Math.min(92, percent + (percent < 65 ? 3 : 1))
+    percent = Math.min(92, percent + (percent < 65 ? 2 : 1))
     if (percentNode) percentNode.textContent = percent + '%'
     if (bar) bar.style.width = percent + '%'
     if (message) message.textContent = messages[messageIndex++ % messages.length]
-  }, 6500)
+  }, 1800)
   try {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, 10000))
-      if (!auth.currentUser) return
+    while (auth.currentUser && card.isConnected) {
+      await new Promise((resolve) => window.setTimeout(resolve, 5000))
+      if (!auth.currentUser || !card.isConnected) return
       const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
       const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
-      renderLibraryGeneration(generation)
+      if (result.tracks?.length || result.completed || result.failed) renderLibraryGeneration(generation)
       if (result.completed || result.failed) {
         if (percentNode) percentNode.textContent = result.completed ? '100%' : '—'
         if (bar) bar.style.width = result.completed ? '100%' : '0%'
@@ -2027,11 +2027,14 @@ async function pollGeneration(taskId, card) {
         return
       }
     }
-    if (message) message.textContent = 'La création continue sur nos serveurs…'
   } catch (error) {
-    card.querySelector('.generation-status').textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
-  } finally { window.clearInterval(timer) }
+    const status = card.querySelector('.generation-status')
+    if (status) status.textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+  } finally {
+    window.clearInterval(timer)
+  }
 }
+
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
 const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
@@ -2066,22 +2069,13 @@ function openLibraryForGenerationPreview(preview) {
   window.history.replaceState(null, '', '#library')
   setWorkspaceSidebarOpen(false)
 
-  let todayGroup = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
-    .find(group => group.querySelector('.library-generation-date')?.textContent === "Aujourd'hui")
-  if (!todayGroup) {
-    todayGroup = document.createElement('section')
-    todayGroup.className = 'library-generation-group'
-    const dateLabel = document.createElement('div')
-    dateLabel.className = 'library-generation-date'
-    dateLabel.textContent = "Aujourd'hui"
-    todayGroup.append(dateLabel)
-    libraryGenerationList.prepend(todayGroup)
-  }
-
+  const group = document.createElement('section')
+  group.className = 'library-generation-group'
+  group.dataset.libraryTask = preview.id
   const card = document.createElement('article')
   card.className = 'library-song-item library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
-  card.setAttribute('aria-label', 'Nouvelle chanson en préparation')
+  card.setAttribute('aria-label', 'Nouvelle chanson en cours de génération')
 
   const cover = document.createElement('div')
   cover.className = 'generation-track-cover generation-preview-cover'
@@ -2089,47 +2083,96 @@ function openLibraryForGenerationPreview(preview) {
   const progress = document.createElement('div')
   progress.className = 'generation-preview-progress'
   progress.setAttribute('role', 'progressbar')
-  progress.setAttribute('aria-label', 'Progression de la simulation')
+  progress.setAttribute('aria-label', 'Progression de la génération')
   progress.setAttribute('aria-valuemin', '0')
   progress.setAttribute('aria-valuemax', '100')
   progress.setAttribute('aria-valuenow', '0')
   progress.innerHTML = '<span class="generation-preview-progress-label">0%</span>'
   cover.append(progress)
   card.append(cover)
-  todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
+  group.append(card)
+  libraryGenerationList.prepend(group)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
 
   preview.card = card
-  const duration = 10000
-  const startedAt = Date.now()
-  const updateProgress = () => {
+  preview.group = group
+  preview.progressNode = progress
+  preview.percent = 0
+  preview.progressTimer = window.setInterval(() => {
     if (pendingGenerationPreview !== preview || !card.isConnected) return
-    const elapsed = Math.min(1, (Date.now() - startedAt) / duration)
-    // Progression rapide au départ, puis de plus en plus lente. Elle ne termine volontairement pas à 100 %.
-    const percent = Math.min(60, Math.floor(60 * (1 - Math.exp(-4 * elapsed)) / (1 - Math.exp(-4))))
-    progress.querySelector('.generation-preview-progress-label').textContent = percent + '%'
-    progress.setAttribute('aria-valuenow', String(percent))
+    preview.percent = Math.min(92, preview.percent + (preview.percent < 60 ? 2 : 1))
+    progress.querySelector('.generation-preview-progress-label').textContent = preview.percent + '%'
+    progress.setAttribute('aria-valuenow', String(preview.percent))
+  }, 1100)
+}
+
+async function pollLibraryGenerationPreview(preview, taskId) {
+  const messages = ['Nous composons la production…','Nous créons la mélodie…','Les instruments prennent leur place…','Nous travaillons le mixage…','Nous peaufinons les voix…','Nous préparons les variantes…']
+  let messageIndex = 0
+  while (pendingGenerationPreview === preview && auth.currentUser && preview.card?.isConnected) {
+    await new Promise((resolve) => window.setTimeout(resolve, 5000))
+    if (pendingGenerationPreview !== preview || !auth.currentUser || !preview.card?.isConnected) return
+    try {
+      const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
+      const tracks = result.tracks || []
+      if (result.failed) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = 'La génération n’a pas abouti. Tu peux réessayer.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        return
+      }
+      if (result.completed && tracks.length) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        renderLibraryGeneration({
+          taskId,
+          title: preview.title || 'Création Audinoo',
+          prompt: preview.prompt,
+          status: result.status,
+          tracks,
+          createdAt: new Date().toISOString()
+        })
+        const completedGroup = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+          .find((item) => item.dataset.libraryTask === taskId)
+        if (completedGroup) libraryGenerationList.prepend(completedGroup)
+        libraryGenerationList.hidden = false
+        libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
+        toast.textContent = 'Votre chanson est prête !'
+        toast.classList.add('show', 'is-success')
+        window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
+        return
+      }
+      const label = preview.progressNode?.querySelector('.generation-preview-progress-label')
+      if (label) label.textContent = Math.max(preview.percent, 60 + (messageIndex % 30)) + '%'
+      if (preview.progressNode) preview.progressNode.setAttribute('aria-valuenow', String(Math.max(preview.percent, 60 + (messageIndex % 30))))
+      messageIndex = (messageIndex + 1) % messages.length
+    } catch (error) {
+      if (error.message === 'invalid-session' || error.message === 'generation-not-found') {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        return
+      }
+      // Une erreur réseau temporaire ne termine pas la génération : on réessaie au prochain cycle.
+      console.warn('[Audinoo generation status]', error)
+    }
   }
-  updateProgress()
-  preview.progressTimer = window.setInterval(updateProgress, 100)
-  preview.timer = window.setTimeout(() => {
-    if (pendingGenerationPreview !== preview || !card.isConnected) return
-    window.clearInterval(preview.progressTimer)
-    updateProgress()
-    card.classList.remove('is-preparing')
-    card.classList.add('is-ready')
-    toast.textContent = 'Votre chanson est prête !'
-    toast.classList.add('show', 'is-success')
-    window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
-    pendingGenerationPreview = null
-  }, duration)
 }
 
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
   if (!requireAccount()) return
   const cleanPrompt = prompt.trim()
+  const cleanStyle = style.trim()
+  const cleanTitle = title.trim()
   if (cleanPrompt.length < 10) {
     toast.textContent = generationErrorMessage('prompt-too-short')
     toast.classList.add('show')
@@ -2142,15 +2185,28 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     window.setTimeout(() => toast.classList.remove('show'), 4500)
     return
   }
+  if (customMode && (!cleanStyle || !cleanTitle)) {
+    toast.textContent = generationErrorMessage('advanced-fields-required')
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
+    return
+  }
 
   if (pendingGenerationPreview) {
-    window.clearTimeout(pendingGenerationPreview.timer)
     window.clearInterval(pendingGenerationPreview.progressTimer)
-    pendingGenerationPreview.card?.remove()
+    pendingGenerationPreview.group?.remove()
     pendingGenerationPreview = null
   }
 
-  // Retour visuel immédiat : l'utilisateur voit que sa demande est prise en compte.
+  const preview = {
+    id: 'preview-' + Date.now(),
+    prompt: cleanPrompt,
+    style: cleanStyle,
+    title: cleanTitle || 'Création Audinoo',
+    customMode
+  }
+  openLibraryForGenerationPreview(preview)
+
   const originalButtonContent = submitButton?.innerHTML
   if (submitButton) {
     submitButton.disabled = true
@@ -2160,8 +2216,35 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
   }
 
   try {
-    // Recharge la bibliothèque avant de l'afficher, sans lancer de génération musicale réelle.
-    await loadUserLibrary()
+    const result = await callAudinooApi('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: cleanPrompt,
+        ...(customMode ? { style: cleanStyle, title: cleanTitle } : {}),
+        customMode
+      })
+    })
+    if (!result.taskId) throw new Error('generation-failed')
+    preview.taskId = result.taskId
+    preview.group.dataset.libraryTask = result.taskId
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.classList.remove('is-generating')
+      submitButton.innerHTML = originalButtonContent
+      submitButton.removeAttribute('aria-live')
+    }
+    void pollLibraryGenerationPreview(preview, result.taskId)
+  } catch (error) {
+    window.clearInterval(preview.progressTimer)
+    preview.group?.remove()
+    pendingGenerationPreview = null
+    const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
+      ? ' Motif du fournisseur : ' + error.providerMessage
+      : ''
+    toast.textContent = generationErrorMessage(error.message) + providerDetail + ' Détail exact : ' + exactErrorDetails(error)
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 5500)
+    if (error.message === 'no-free-credit') windowPricingOpen()
   } finally {
     if (submitButton) {
       submitButton.disabled = false
@@ -2170,16 +2253,8 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
       submitButton.removeAttribute('aria-live')
     }
   }
-
-  const preview = {
-    id: `preview-${Date.now()}`,
-    prompt: cleanPrompt,
-    style: style.trim(),
-    title: title.trim(),
-    customMode
-  }
-  openLibraryForGenerationPreview(preview)
 }
+
 async function loadUserLibrary() {
   if (!auth.currentUser) return
   libraryLoading.hidden = false
