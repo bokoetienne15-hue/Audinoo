@@ -1585,3 +1585,29 @@ button.is-generating:disabled {
   .library-mini-player{z-index:999!important}
   .library-full-player{z-index:998!important}
 }
+
+
+/* Hosted checkout return: full-page payment verification state. */
+.payment-verification-screen {
+  position: fixed; z-index: 100000; inset: 0; display: grid; place-items: center;
+  min-height: 100vh; padding: 24px; background: #080811; color: #f8f7ff;
+}
+.payment-verification-card {
+  width: min(100%, 480px); padding: 34px 28px; text-align: center;
+  border: 1px solid rgba(157,137,204,.24); border-radius: 22px;
+  background: linear-gradient(145deg, rgba(27,22,43,.98), rgba(13,13,24,.98));
+  box-shadow: 0 24px 90px rgba(0,0,0,.42);
+}
+.payment-verification-card h1 { margin: 14px 0 12px; font: 700 clamp(25px,5vw,34px)/1.15 'Space Grotesk',sans-serif; letter-spacing: -.04em; text-shadow: none; animation: none; }
+.payment-verification-kicker { color: #b6a0e8; font-size: 10px; font-weight: 800; letter-spacing: .18em; }
+.payment-verification-message { color: #c4c0d1; font-size: 14px; line-height: 1.7; }
+.payment-verification-reference { color: #777386; font-size: 11px; overflow-wrap: anywhere; }
+.payment-verification-spinner { display: inline-block; width: 42px; height: 42px; border: 3px solid rgba(180,158,224,.2); border-top-color: #a66bff; border-radius: 50%; animation: payment-spin .8s linear infinite; }
+.payment-verification-spinner[hidden] { display: none; }
+.payment-verification-return { margin-top: 18px; padding: 12px 20px; border: 0; border-radius: 999px; color: white; background: linear-gradient(105deg,#742cff,#d928d3 55%,#ff9825); font-weight: 700; cursor: pointer; }
+.payment-verification-return[hidden] { display: none; }
+.payment-verification-screen.is-success .payment-verification-card { border-color: rgba(49,190,119,.55); }
+.payment-verification-screen.is-success .payment-verification-card h1 { color: #55dc91; }
+.payment-verification-screen.is-pending .payment-verification-card h1 { color: #ffc66b; }
+.payment-verification-screen.is-error .payment-verification-card h1 { color: #ff8294; }
+@keyframes payment-spin { to { transform: rotate(360deg); } }

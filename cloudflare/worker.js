@@ -105,7 +105,7 @@ async function createCreditPayment(request, env, db, user) {
     description: 'Audinoo — 1 crédit de génération musicale',
     amount: CREDIT_PRICE_XOF,
     currency: { iso: 'XOF' },
-    callback_url: origin + '/?payment_return=1',
+    callback_url: origin + '/?payment_return=credits',
     customer: { email }
   }
   const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify(transactionBody) })
