@@ -1370,26 +1370,22 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 @media(max-width:640px){.admin-generation-toolbar{align-items:stretch}.admin-generation-toolbar .admin-search-field{width:100%;max-width:none}.admin-generation-date-filter{justify-content:space-between}.admin-generation-date-filter input{flex:1}}
 
 
-/* Carte de simulation locale : aucun service musical n'est appelé. */
+/* Carte de simulation intégrée à la liste : mêmes dimensions que les chansons. */
 .library-generation-preview {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   box-sizing: border-box;
-  flex: 0 0 clamp(150px, 19vw, 205px);
   width: 100%;
-  height: clamp(150px, 19vw, 205px);
-  min-height: clamp(150px, 19vw, 205px);
-  max-height: clamp(150px, 19vw, 205px);
-  margin: 0 0 18px;
-  padding: 24px;
+  min-width: 0;
+  min-height: 100px;
+  margin: 0;
+  padding: 11px 14px;
   overflow: hidden;
   isolation: isolate;
   border: 1px solid rgba(255,255,255,.12);
-  border-radius: 22px;
+  border-radius: 13px;
   background: #0b0a10;
-  box-shadow: inset 0 0 35px rgba(255,255,255,.018), 0 14px 38px rgba(0,0,0,.2);
+  box-shadow: inset 0 0 35px rgba(255,255,255,.018);
 }
 .library-generation-preview::before,
 .library-generation-preview::after {
@@ -1416,53 +1412,12 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   animation: none;
   opacity: 0;
 }
-.generation-preview-success {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: min(100%, 360px);
-  color: #35d982;
-  text-align: center;
-}
-.generation-preview-success[hidden] { display: none !important; }
-.generation-preview-check {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(53,217,130,.5);
-  border-radius: 50%;
-  color: #35d982;
-  background: rgba(53,217,130,.12);
-  box-shadow: 0 0 22px rgba(53,217,130,.12);
-  font-size: 19px;
-  font-weight: 800;
-}
-.generation-preview-success-label {
-  color: #65e99f;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: .01em;
-}
-.generation-preview-success-bar {
-  display: block;
-  width: min(100%, 220px);
-  height: 3px;
-  border-radius: 99px;
-  background: #35d982;
-  box-shadow: 0 0 12px rgba(53,217,130,.3);
-}
 @keyframes generation-preview-white-rays {
   from { transform: translateX(-78%) rotate(8deg); }
   to { transform: translateX(78%) rotate(8deg); }
 }
-@media(max-width:600px) {
-  .library-generation-preview { flex-basis: 132px; height: 132px; min-height: 132px; max-height: 132px; border-radius: 18px; padding: 18px; }
-  .generation-preview-success-label { font-size: 13px; }
+@media(max-width:760px) {
+  .library-generation-preview { min-height: 82px; padding: 9px; border-radius: 13px; }
 }
 @media(prefers-reduced-motion:reduce) {
   .library-generation-preview.is-preparing::before,
