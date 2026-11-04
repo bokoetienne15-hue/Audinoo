@@ -1466,7 +1466,6 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 /* Indicateur de progression de la simulation locale (10 secondes). */
 @media(max-width:760px) {
   .library-generation-preview .generation-preview-progress { width: 30px; height: 30px; font-size: 8px; }
-  .library-generation-preview .generation-preview-slim-tile { width: min(48%, 104px); height: 21px; }
 }
 
 
