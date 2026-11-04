@@ -2126,13 +2126,22 @@ async function pollLibraryGenerationPreview(preview, taskId) {
         window.setTimeout(() => toast.classList.remove('show'), 5000)
         return
       }
+      if (result.completed && !tracks.length) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = 'Le service a terminé, mais aucune URL audio n’a été reçue. Réessaie dans un instant.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5500)
+        return
+      }
       if (result.completed && tracks.length) {
         window.clearInterval(preview.progressTimer)
         preview.group?.remove()
         pendingGenerationPreview = null
         renderLibraryGeneration({
           taskId,
-          title: preview.title || 'Création Audinoo',
+          title: preview.title,
           prompt: preview.prompt,
           status: result.status,
           tracks,
