@@ -1070,3 +1070,23 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 @media(max-width:760px){.workspace-library-page{padding:30px 0 60px}.library-page-heading{margin-bottom:20px}.library-song-item{grid-template-columns:62px minmax(0,1fr);gap:10px;padding:9px}.library-song-item .generation-track-cover{width:62px;height:62px}.library-song-item .generation-track-content{column-gap:6px}.library-song-item .generation-action{width:32px;height:32px}}
 
 .library-song-item .generation-action svg{width:18px;height:18px;display:block}.library-song-item .generation-favorite.is-favorite svg path{fill:currentColor;stroke:currentColor}.library-song-item .generation-play svg{width:20px;height:20px}
+
+
+/* Bibliothèque : titre principal compact en haut, sans encart global */
+.workspace-library-page{padding-top:12px!important;padding-left:42px}
+.library-page-heading{margin:0 0 24px!important;padding:0!important}
+.library-page-heading .workspace-kicker{display:none!important}
+.library-page-heading h1{margin:0!important;color:var(--text-primary,#fff);font-size:clamp(38px,5vw,54px)!important;line-height:1.08;letter-spacing:-1.8px;font-weight:750}
+.library-page-heading .workspace-intro{margin-top:8px!important}
+.library-generation-list{margin-top:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.library-generation-list .generation-card{margin:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.library-generation-list .generation-tracks{grid-template-columns:1fr!important;gap:12px!important;margin:0!important}
+.library-song-row,.library-song-player{width:100%;min-width:0}
+.library-song-item{width:100%;grid-template-columns:76px minmax(0,1fr)!important;background:transparent!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:13px!important}
+.library-song-item .generation-track-cover{width:76px!important;height:76px!important;min-width:76px;background:linear-gradient(135deg,#302044,#171321)!important}
+.library-song-item .generation-track-cover img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s}
+.library-song-item .generation-track-cover.cover-loaded img{opacity:1}
+.library-song-item .generation-track-cover.cover-unavailable{color:#d8c4ff}
+.workspace-library-page .workspace-library-empty{margin-top:18px}
+.workspace-library-page .workspace-library-empty[hidden]{display:none!important}
+@media(max-width:760px){.workspace-library-page{padding:12px 0 60px!important}.library-page-heading{margin-bottom:20px!important}.library-page-heading h1{font-size:40px!important}.library-song-item{grid-template-columns:64px minmax(0,1fr)!important}.library-song-item .generation-track-cover{width:64px!important;height:64px!important;min-width:64px}}
