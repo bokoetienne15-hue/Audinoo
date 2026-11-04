@@ -406,7 +406,7 @@ async function submitFeedback(request, db, user) {
       if (invitation.data().status !== 'pending') throw new Error('feedback-invitation-not-pending')
       const previous = await tx.get(responseRef)
       if (previous.exists) throw new Error('feedback-already-submitted')
-      tx.create(responseRef, { campaignId: invitation.data().campaignId || '', title: invitation.data().title || 'Retour sur Audinoo', stars, comment, createdAt: SERVER_TIMESTAMP })
+      tx.create(responseRef, { userId: user.uid, campaignId: invitation.data().campaignId || '', title: invitation.data().title || 'Retour sur Audinoo', stars, comment, createdAt: SERVER_TIMESTAMP })
       tx.update(invitationRef, { status: 'submitted', submittedAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
@@ -422,7 +422,7 @@ async function listAdminFeedbackResponses(request, db, user) {
   const rows = await db.runQuery({ from: [{ collectionId: 'feedbackResponses' }], limit: 500 })
   const responses = (rows || []).filter(row => row.document).map(row => {
     const data = fromFields(row.document.fields || {})
-    return { title: data.title || 'Retour sur Audinoo', stars: Number.isInteger(data.stars) ? data.stars : null, comment: typeof data.comment === 'string' ? data.comment : '', createdAt: feedbackIsoDate(data.createdAt) }
+    return { userId: data.userId || '', title: data.title || 'Retour sur Audinoo', stars: Number.isInteger(data.stars) ? data.stars : null, comment: typeof data.comment === 'string' ? data.comment : '', createdAt: feedbackIsoDate(data.createdAt) }
   }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
   return response(200, { responses })
 }
