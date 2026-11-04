@@ -37,7 +37,7 @@ async function archiveTracks(env, db, path, tracks, uid, taskId) {
       saved.push(track)
     }
   }
-  if (saved.some((track, i) => track.r2Key !== tracks[i]?.r2Key)) await db.set(path, { tracks: saved }, true)
+  if (saved.some((track, i) => track.r2Key !== tracks[i]?.r2Key || track.coverKey !== tracks[i]?.coverKey || track.imageUrl !== tracks[i]?.imageUrl)) await db.set(path, { tracks: saved }, true)
   return saved
 }
 
@@ -332,14 +332,38 @@ async function publicAudio(request, env, db) {
   if (!object) return response(404, { error: 'track-not-found' })
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes' } })
 }
-async function library(request, db, user) {
+async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 })
   const cutoff = Date.now() - RETENTION_MS
-  const generations = (rows || []).filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/')).map(row => {
+  const owned = (rows || []).filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/'))
+  // Older library entries may have been saved before cover extraction was fixed.
+  // Refresh a small batch from the official Suno record-info endpoint when cover URLs are missing.
+  if (env.SUNOAPI_KEY) {
+    let refreshed = 0
+    for (const row of owned) {
+      if (refreshed >= 8) break
+      const current = fromFields(row.document.fields || {})
+      if (!current.taskId || !Array.isArray(current.tracks) || !current.tracks.length || current.tracks.every(track => /^https?:\/\//i.test(track.imageUrl || '') || track.coverKey)) continue
+      refreshed++
+      try {
+        const remote = await fetch(SUNO_STATUS_URL + '?taskId=' + encodeURIComponent(current.taskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+        const payload = await remote.json().catch(() => ({}))
+        const fresh = tracksIn(payload?.data?.response?.sunoData || payload?.data?.response || payload?.data || {})
+        if (!remote.ok || payload.code !== 200 || !fresh.length) continue
+        const merged = current.tracks.map((track, index) => {
+          const latest = fresh[index] || {}
+          return { ...track, ...latest, r2Key: track.r2Key || latest.r2Key || '', coverKey: track.coverKey || latest.coverKey || '', imageUrl: latest.imageUrl || track.imageUrl || '' }
+        })
+        await db.set('users/' + user.uid + '/generations/' + current.taskId, { tracks: merged }, true)
+        current.tracks = merged
+      } catch (error) { console.warn('[Audinoo library cover refresh]', current.taskId, error) }
+    }
+  }
+  const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   return response(200, { generations })
 }
@@ -383,7 +407,7 @@ export default {
       }
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
-      if (url.pathname === '/api/my-library') return await library(request,db,user)
+      if (url.pathname === '/api/my-library') return await library(request,env,db,user)
       if (url.pathname === '/api/my-audio') return await privateMedia(request,env,db,user,'audio')
       if (url.pathname === '/api/my-cover') return await privateMedia(request,env,db,user,'cover')
       if (url.pathname === '/api/admin-audio') return await privateMedia(request,env,db,user,'audio',true)
