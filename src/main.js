@@ -1735,11 +1735,11 @@ function renderGenerationTracks(container, tracks) {
         try { await player.play() } catch (error) { player.dataset.loading = 'false'; showPlayIcon(); console.warn('[Audinoo player]', error) }
       } else player.pause()
     })
-    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    share.addEventListener('click', async () => {
-      const data = { title: name.textContent, text: 'Découvre ma création musicale sur Audinoo : ' + name.textContent, url: window.location.origin + '/#studio' }
-      if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
-      window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank', 'noopener,noreferrer')
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-download-locked'; share.setAttribute('aria-label','Télécharger · bientôt disponible'); share.title = 'Télécharger 🔒'; share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="generation-download-lock" aria-hidden="true"><svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.2" fill="currentColor"/><path d="M4 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>'
+    share.addEventListener('click', () => {
+      toast.textContent = 'Télécharger 🔒 · Cette fonctionnalité sera bientôt disponible.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 2600)
     })
     actions.append(favorite, play, share)
     content.append(name, actions, player); item.append(cover, content); container.append(item)
