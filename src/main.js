@@ -463,10 +463,35 @@ const pricingSource = document.querySelector('#pricing')
 workspacePricingPage.innerHTML = `<div class="workspace-pricing-heading"><p class="workspace-kicker">FORMULES AUDINOO</p><h1>Choisis ton espace de création.</h1><p class="workspace-intro">Retrouve ici les tarifs disponibles, sans quitter ton compte.</p></div>${pricingSource.querySelector('.currency-toggle').outerHTML}${pricingSource.querySelector('.pricing-grid').outerHTML}<button class="workspace-return-button workspace-pricing-return" type="button">Retour au studio <span aria-hidden="true">→</span></button>`
 workspacePricingPage.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'))
 workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
+  const card = button.closest('.price-card')
+  const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
+  if (isSingleCredit) {
+    button.textContent = 'Acheter 1 crédit · 300 FCFA'
+    button.href = '#buy-credit'
+    button.addEventListener('click', async (event) => {
+      event.preventDefault()
+      button.setAttribute('aria-busy', 'true')
+      button.textContent = 'Préparation du paiement…'
+      button.classList.add('is-loading')
+      try {
+        const result = await callAudinooApi('/api/credits/purchase', { method: 'POST', body: JSON.stringify({}) })
+        if (!result.checkoutUrl) throw new Error('fedapay-checkout-unavailable')
+        window.location.assign(result.checkoutUrl)
+      } catch (error) {
+        toast.textContent = generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        button.textContent = 'Acheter 1 crédit · 300 FCFA'
+        button.removeAttribute('aria-busy')
+        button.classList.remove('is-loading')
+      }
+    })
+    return
+  }
   const label = button.textContent.trim()
   const notice = document.createElement('span')
   notice.className = button.className
-  notice.textContent = label
+  notice.textContent = label + ' — bientôt disponible'
   notice.setAttribute('aria-label', `${label} — bientôt disponible`)
   button.replaceWith(notice)
 })
@@ -486,13 +511,15 @@ workspacePricingPage.querySelectorAll('.currency-option').forEach((option) => op
   workspacePricingPage.querySelectorAll('[data-price-currency]').forEach((label) => { label.textContent = currency === 'xof' ? 'FCFA' : '€' })
 }))
 workspaceLayout.append(workspacePricingPage)
-const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
-workspaceUpgradeButton.addEventListener('click', () => {
+function windowPricingOpen() {
   ;[studioWorkspacePage, libraryWorkspacePage, adminWorkspacePage, modelWorkspacePage].forEach((page) => { if (page) page.hidden = true })
   workspacePricingPage.hidden = false
   setWorkspaceSidebarOpen(false)
   window.history.replaceState(null, '', '#workspace-pricing')
-})
+}
+
+const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
+workspaceUpgradeButton.addEventListener('click', windowPricingOpen)
 workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener('click', () => {
   workspacePricingPage.hidden = true
   studioWorkspacePage.hidden = false
@@ -647,11 +674,13 @@ let activeWorkspaceProfile = null
 function renderWorkspaceFreeCredit() {
   const profile = activeWorkspaceProfile
   const profileCampaignId = profile?.freeCreditCampaignId || (!profile?.freeCreditPolicyAssigned ? DEFAULT_FREE_CREDIT_CAMPAIGN_ID : null)
-  const canUseWelcomeCredit = Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && profileCampaignId === freeCreditPolicy.activeCampaignId)
-  workspaceFreeCreditCount.textContent = canUseWelcomeCredit ? '1' : '0'
-  workspaceFreeCreditCaption.textContent = canUseWelcomeCredit ? 'À utiliser pour une création' : freeCreditPolicy.enabled ? 'Aucun crédit gratuit disponible' : 'Offre désactivée'
-  workspaceMobileCreditCount.textContent = canUseWelcomeCredit ? '1 crédit gratuit' : '0 crédit gratuit'
-  workspaceMobileCreditCaption.textContent = workspaceFreeCreditCaption.textContent
+  const freeCredits = Number(Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && profileCampaignId === freeCreditPolicy.activeCampaignId))
+  const paidCredits = Math.max(0, Math.floor(Number(profile?.paidCredits || 0)))
+  const totalCredits = freeCredits + paidCredits
+  workspaceFreeCreditCount.textContent = String(totalCredits)
+  workspaceFreeCreditCaption.textContent = freeCredits + ' gratuit · ' + paidCredits + ' payant(s)'
+  workspaceMobileCreditCount.textContent = totalCredits + (totalCredits > 1 ? ' crédits disponibles' : ' crédit disponible')
+  workspaceMobileCreditCaption.textContent = freeCredits + ' gratuit(s) · ' + paidCredits + ' payant(s)'
 }
 function renderAdminCreditPolicy() {
   adminCreditState.textContent = freeCreditPolicy.enabled ? 'ACTIVE' : 'DÉSACTIVÉE'
@@ -664,9 +693,16 @@ function renderAdminCreditPolicy() {
     : 'La réactivation crée une nouvelle offre; les anciens crédits ne reviennent pas.'
   renderWorkspaceFreeCredit()
 }
+let stopWorkspaceProfileCreditListener = null
 function listenToFreeCreditPolicy(profile) {
   stopFreeCreditPolicyListener?.()
+  stopWorkspaceProfileCreditListener?.()
   activeWorkspaceProfile = profile
+  stopWorkspaceProfileCreditListener = onSnapshot(doc(db, 'users', profile.uid), (snapshot) => {
+    if (auth.currentUser?.uid !== profile.uid || !snapshot.exists()) return
+    activeWorkspaceProfile = { ...snapshot.data(), uid: profile.uid }
+    renderWorkspaceFreeCredit()
+  }, (error) => console.error('[Audinoo credits] Could not sync account credits', error))
   stopFreeCreditPolicyListener = onSnapshot(doc(db, 'settings', 'credits'), (snapshot) => {
     if (auth.currentUser?.uid !== profile.uid) return
     freeCreditPolicy = snapshot.exists()
@@ -1515,6 +1551,25 @@ async function pollGeneration(taskId, card) {
   card.querySelector('.generation-status').textContent = 'La génération continue côté serveur. Retrouve son état dans Ma bibliothèque dans quelques instants.'
 }
 
+const paymentReturnParams = new URLSearchParams(window.location.search)
+const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
+if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+  if (returnedPaymentId) {
+    void callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+      .then((result) => {
+        toast.textContent = result.credited ? 'Paiement confirmé : ton crédit est disponible.' : 'Paiement en attente de confirmation. Ton crédit sera ajouté après validation.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
+      .catch((error) => {
+        toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
+  }
+}
+
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
   if (!requireAccount()) return
   const enteredPrompt = prompt.trim()
@@ -1555,6 +1610,9 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     toast.textContent = `${generationErrorMessage(error.message)}${providerDetail} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 4500)
+    if (error.message === 'no-free-credit') {
+      windowPricingOpen()
+    }
   } finally {
     submitButton.disabled = false
     submitButton.textContent = originalText
