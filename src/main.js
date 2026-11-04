@@ -992,10 +992,18 @@ const adminExportsSection = createAdminSection('exports', 'Rapports et exportati
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
-adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Les fichiers archivés dans R2 peuvent être écoutés et publiés depuis cette rubrique. Les créations restent privées tant qu’elles ne sont pas publiées.</p>'
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Filtrer par jour</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Écoute les créations des utilisateurs, filtre-les par jour et publie celles que tu souhaites mettre en avant.</p>'
 adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
+const adminGenerationDateFilter = adminGenerationsSection.querySelector('#admin-generation-date')
+function adminGenerationMatchesDay(item) {
+  if (!adminGenerationDateFilter.value) return true
+  const date = item.createdAt ? new Date(item.createdAt) : null
+  if (!date || !Number.isFinite(date.getTime())) return false
+  const localDay = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+  return localDay === adminGenerationDateFilter.value
+}
 function adminDateLabel(value) {
   const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
   return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
@@ -1044,7 +1052,7 @@ async function loadAdminGenerations(silent = false) {
 function renderAdminGenerationsTable() {
   const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
   const usersById = new Map(latestAdminUsers.map(user => [user.uid,user]))
-  const records = adminGenerationRecords.filter(item => [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const records = adminGenerationRecords.filter(item => adminGenerationMatchesDay(item) && [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
   const body = adminGenerationsSection.querySelector('#admin-generation-cards')
   replaceNodeChildren(body)
   adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + ' création(s)'
@@ -1091,7 +1099,11 @@ function renderAdminGenerationsTable() {
 
 
 adminUserSearch.addEventListener('input',renderAdminUsersTable)
-adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)
+adminGenerationDateFilter.addEventListener('change', () => {
+  renderAdminGenerationsTable()
+  void loadAdminAudioGenerations()
+})
 adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
 
 adminCreditsSection.append(workspaceCreditPanel)
@@ -1354,8 +1366,8 @@ async function loadAdminAudioGenerations(silent = false) {
     const result = await callAudinooApi('/api/admin/generations')
     replaceNodeChildren(container)
     let count = 0
-    for (const generation of result.generations || []) for (const track of generation.tracks || []) {
-      if (!track.archived || !track.audioUrl) continue
+    for (const generation of (result.generations || []).filter(adminGenerationMatchesDay)) for (const track of generation.tracks || []) {
+      if (!track.audioUrl) continue
       count++
       const card = document.createElement('article')
       card.className = 'admin-panel admin-audio-generation-card'
