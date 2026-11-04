@@ -2066,8 +2066,6 @@ function openLibraryForGenerationPreview(preview) {
   window.history.replaceState(null, '', '#library')
   setWorkspaceSidebarOpen(false)
 
-  // La simulation est un élément supplémentaire du groupe d'aujourd'hui,
-  // pas une nouvelle section séparée de la bibliothèque.
   let todayGroup = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
     .find(group => group.querySelector('.library-generation-date')?.textContent === "Aujourd'hui")
   if (!todayGroup) {
@@ -2084,7 +2082,12 @@ function openLibraryForGenerationPreview(preview) {
   card.className = 'library-song-item library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
   card.setAttribute('aria-label', 'Nouvelle chanson en préparation')
-  // Insérée juste après l'en-tête Aujourd'hui, avant les chansons déjà créées ce jour.
+  const cover = document.createElement('div')
+  cover.className = 'generation-track-cover generation-preview-cover'
+  cover.setAttribute('aria-hidden', 'true')
+  const content = document.createElement('div')
+  content.className = 'generation-track-content generation-preview-content'
+  card.append(cover, content)
   todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
