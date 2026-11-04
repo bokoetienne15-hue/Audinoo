@@ -1165,3 +1165,29 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .library-song-item .generation-track-cover.cover-fallback[data-palette="lime"]{background:linear-gradient(135deg,#628b42,#176f70)!important}
 .library-song-item .generation-track-cover.cover-fallback[data-palette="violet"]{background:linear-gradient(135deg,#8051bb,#302044)!important}
 .library-song-item .generation-track-cover.cover-fallback{color:#fff;font-size:30px;text-shadow:0 2px 12px rgba(0,0,0,.25)}
+
+/* Mini-lecteur compact : structure nette, commandes SVG et progression discrète. */
+.library-mini-player{position:sticky;z-index:30;bottom:10px;display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:1fr 3px;column-gap:12px;row-gap:8px;align-items:center;width:min(100% - 20px,620px);min-height:68px;margin:18px auto 10px;padding:10px 14px 9px;border:1px solid rgba(186,151,255,.22);border-radius:14px;background:linear-gradient(105deg,rgba(22,19,32,.97),rgba(31,24,46,.97));box-shadow:0 8px 26px rgba(0,0,0,.28);backdrop-filter:blur(18px)}
+.library-mini-player[hidden]{display:none!important}
+.library-mini-cover{grid-column:1;grid-row:1;width:44px;height:44px;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:linear-gradient(135deg,#7951b8,#32234d);color:#fff;font-size:24px}
+.library-mini-cover[data-palette="ocean"]{background:linear-gradient(135deg,#087e8b,#243b75)}
+.library-mini-cover[data-palette="sunset"]{background:linear-gradient(135deg,#f08a4b,#8b356d)}
+.library-mini-cover[data-palette="electric"]{background:linear-gradient(135deg,#275dad,#542b91)}
+.library-mini-cover[data-palette="rose"]{background:linear-gradient(135deg,#c34b83,#59346f)}
+.library-mini-cover[data-palette="lime"]{background:linear-gradient(135deg,#628b42,#176f70)}
+.library-mini-cover img{width:100%;height:100%;object-fit:cover}
+.library-mini-info{grid-column:2;grid-row:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.library-mini-eyebrow{display:flex;align-items:center;gap:6px;color:#b99be9;font-size:8px;font-weight:750;letter-spacing:.12em}
+.library-mini-eyebrow i{width:6px;height:6px;border-radius:50%;background:#bd83ff;box-shadow:0 0 8px #bd83ff}
+.library-mini-title{display:block;overflow:hidden;color:#fff;font-size:12px;font-weight:700;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.library-mini-actions{grid-column:3;grid-row:1;display:flex;align-items:center;gap:7px}
+.library-mini-play,.library-mini-next{width:32px;height:32px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(255,255,255,.07);color:#fff;cursor:pointer;transition:background .16s,transform .16s}
+.library-mini-play{width:36px;height:36px;border:0;background:linear-gradient(135deg,#a56aff,#d05ac5);box-shadow:0 3px 12px rgba(164,94,255,.24)}
+.library-mini-play:hover,.library-mini-next:hover{transform:scale(1.06);background-color:rgba(255,255,255,.16)}
+.library-mini-play svg{width:17px;height:17px}
+.library-mini-next svg{width:16px;height:16px}
+.library-mini-timeline{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:27px minmax(0,1fr) 27px;align-items:center;gap:7px;color:#9d91ae;font-size:8px;font-variant-numeric:tabular-nums}
+.library-mini-seek{appearance:none;width:100%;height:3px;margin:0;border-radius:9px;background:rgba(255,255,255,.16);accent-color:#bf8cff;cursor:pointer}
+.library-mini-seek::-webkit-slider-thumb{appearance:none;width:8px;height:8px;border-radius:50%;background:#c99cff;box-shadow:0 0 0 2px rgba(201,156,255,.15)}
+.library-mini-seek::-moz-range-thumb{width:8px;height:8px;border:0;border-radius:50%;background:#c99cff}
+@media(max-width:760px){.library-mini-player{width:calc(100% - 16px);min-height:64px;grid-template-columns:40px minmax(0,1fr) auto;column-gap:9px;row-gap:7px;margin:14px auto 8px;padding:9px 10px 8px;border-radius:12px}.library-mini-cover{width:40px;height:40px;border-radius:8px}.library-mini-title{font-size:11px}.library-mini-actions{gap:5px}.library-mini-play{width:34px;height:34px}.library-mini-next{width:30px;height:30px}.library-mini-eyebrow{font-size:7px}}
