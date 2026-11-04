@@ -1643,6 +1643,40 @@ libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
 libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-previous" type="button" aria-label="Chanson précédente" title="Chanson précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
+const libraryPlaybackParking = document.createElement('div')
+libraryPlaybackParking.className = 'library-playback-parking'
+libraryPlaybackParking.setAttribute('aria-hidden', 'true')
+libraryWorkspacePage.append(libraryPlaybackParking)
+let parkedLibraryEntry = null
+let parkedLibraryTaskId = ''
+function parkActiveLibraryEntry() {
+  if (!activeLibraryAudio || activeLibraryAudio.paused) return
+  const entry = activeLibraryAudio.closest('.library-generation-entry')
+  if (!entry) return
+  parkedLibraryTaskId = activeLibraryAudio.closest('.library-song-row')?.dataset.libraryTask || entry.querySelector('[data-library-task]')?.dataset.libraryTask || ''
+  parkedLibraryEntry = entry
+  libraryPlaybackParking.append(entry)
+}
+function restoreActiveLibraryEntry() {
+  if (!parkedLibraryEntry || !parkedLibraryTaskId) return
+  const entry = parkedLibraryEntry
+  const group = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .find(node => [...node.querySelectorAll('.library-generation-entry')].some(item => item.dataset.libraryTask === parkedLibraryTaskId))
+  if (group) {
+    const duplicate = [...group.querySelectorAll('.library-generation-entry')].find(item => item.dataset.libraryTask === parkedLibraryTaskId)
+    duplicate?.remove()
+    group.append(entry)
+    parkedLibraryEntry = null
+    parkedLibraryTaskId = ''
+  }
+}
+document.addEventListener('play', (event) => {
+  const current = event.target
+  if (!(current instanceof HTMLAudioElement)) return
+  document.querySelectorAll('audio').forEach(other => {
+    if (other !== current && !other.paused) other.pause()
+  })
+}, true)
 const libraryMiniCover = libraryMiniPlayer.querySelector('.library-mini-cover')
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
 const libraryMiniPrevious = libraryMiniPlayer.querySelector('.library-mini-previous')
@@ -1680,8 +1714,14 @@ function updateAudinooMediaSession() {
       artist: 'Audinoo',
       album: 'Ma bibliothèque'
     })
-    navigator.mediaSession.setActionHandler('play', () => activeLibraryAudio?.play().catch(() => {}))
-    navigator.mediaSession.setActionHandler('pause', () => activeLibraryAudio?.pause())
+    navigator.mediaSession.setActionHandler('play', () => {
+      const audio = activeLibraryAudio
+      if (audio?.paused) audio.play().catch(error => console.warn('[Audinoo media play]', error))
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      const audio = activeLibraryAudio
+      if (audio && !audio.paused) audio.pause()
+    })
     navigator.mediaSession.setActionHandler('previoustrack', () => playLibraryTrackAtOffset(-1, 'previous'))
     navigator.mediaSession.setActionHandler('nexttrack', () => playLibraryTrackAtOffset(1, 'next'))
     navigator.mediaSession.setActionHandler('seekbackward', (details) => { if (activeLibraryAudio) activeLibraryAudio.currentTime = Math.max(0, activeLibraryAudio.currentTime - (details.seekOffset || 10)) })
@@ -2385,6 +2425,8 @@ async function loadUserLibrary() {
   libraryGenerationList.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
   try {
+    // Keep the currently playing DOM entry connected while the library list is refreshed.
+    parkActiveLibraryEntry()
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
     result.generations.forEach((generation) => {
@@ -2394,6 +2436,7 @@ async function loadUserLibrary() {
         if (card) void pollGeneration(generation.taskId, card)
       }
     })
+    restoreActiveLibraryEntry()
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
     libraryGenerationList.hidden = false
     libraryLoading.hidden = true
