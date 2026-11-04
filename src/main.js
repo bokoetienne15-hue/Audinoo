@@ -1279,7 +1279,9 @@ function startAdminStatsListeners(uid) {
   stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations() }
 }
 async function recordAnonymousVisit() {
-  if (auth.currentUser) return
+  // Search crawlers and inspection tools should not create analytics writes in Firestore.
+  // Keep anonymous visit tracking for real visitors only.
+  if (auth.currentUser || /bot|crawler|spider|Google-InspectionTool|Googlebot|bingbot|facebookexternalhit|Twitterbot/i.test(navigator.userAgent)) return
   try {
     if (sessionStorage.getItem('audinoo-anonymous-visit-recorded') === 'true') return
     let visitId = sessionStorage.getItem('audinoo-anonymous-visit-id')
