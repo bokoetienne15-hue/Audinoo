@@ -1167,7 +1167,11 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .library-song-item .generation-track-cover.cover-fallback{color:#fff;font-size:30px;text-shadow:0 2px 12px rgba(0,0,0,.25)}
 
 /* Mini-lecteur compact : structure nette, commandes SVG et progression discrète. */
-.library-mini-player{position:sticky;z-index:30;bottom:10px;display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:1fr 3px;column-gap:12px;row-gap:8px;align-items:center;width:min(100% - 20px,620px);min-height:68px;margin:18px auto 10px;padding:10px 14px 9px;border:1px solid rgba(186,151,255,.22);border-radius:14px;background:linear-gradient(105deg,rgba(22,19,32,.97),rgba(31,24,46,.97));box-shadow:0 8px 26px rgba(0,0,0,.28);backdrop-filter:blur(18px)}
+.library-mini-player{position:fixed!important;z-index:999;left:calc(50% + 120px);transform:translateX(-50%);bottom:18px!important;display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:1fr 3px;column-gap:12px;row-gap:8px;align-items:center;width:min(620px,calc(100vw - 300px));min-height:68px;margin:0!important;padding:10px 14px 9px;border:1px solid rgba(186,151,255,.22);border-radius:14px;background:linear-gradient(105deg,rgba(22,19,32,.97),rgba(31,24,46,.97));box-shadow:0 8px 26px rgba(0,0,0,.38);backdrop-filter:blur(18px)}
+.library-generation-list{padding-bottom:112px!important}
+.library-generation-group{display:grid;gap:10px;margin:0 0 22px}
+.library-generation-date{padding:7px 2px 2px;color:#bba9d4;font-size:12px;font-weight:700;letter-spacing:.04em}
+.library-generation-group .library-pending-generation{margin:0}
 .library-mini-player[hidden]{display:none!important}
 .library-mini-cover{grid-column:1;grid-row:1;width:44px;height:44px;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:linear-gradient(135deg,#7951b8,#32234d);color:#fff;font-size:24px}
 .library-mini-cover[data-palette="ocean"]{background:linear-gradient(135deg,#087e8b,#243b75)}
@@ -1300,3 +1304,6 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 }
 .generation-download-locked .generation-download-lock svg{width:9px;height:9px}
 .generation-download-locked:hover{color:#ffe58a!important}
+
+@media(max-width:900px){.library-mini-player{left:50%;width:min(620px,calc(100vw - 32px));bottom:12px!important}}
+@media(max-width:760px){.library-mini-player{left:50%;width:calc(100vw - 20px)!important;bottom:10px!important;margin:0!important}.library-generation-list{padding-bottom:100px!important}}
