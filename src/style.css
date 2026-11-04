@@ -1538,3 +1538,32 @@ button.is-generating:disabled {
 @keyframes generation-submit-spin {
   to { transform: rotate(360deg); }
 }
+
+
+/* Administration musicale : écoute et publication réunies dans une seule bibliothèque claire. */
+.admin-generation-cards{display:flex;flex-direction:column;gap:22px}
+.admin-generation-day{display:flex;flex-direction:column;gap:12px}
+.admin-generation-day>h3{display:flex;align-items:center;gap:12px;margin:0;color:var(--workspace-text,#211b2d);font-size:15px;font-weight:800;text-transform:capitalize}
+.admin-generation-day>h3 span{color:var(--workspace-muted,#8992a3);font-size:11px;font-weight:600;text-transform:none}
+.admin-generation-review-card{display:flex;flex-direction:column;gap:14px;padding:16px;border:1px solid var(--workspace-border,rgba(148,163,184,.2));border-radius:16px;background:var(--workspace-panel,rgba(255,255,255,.04))}
+.admin-generation-review-heading{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:13px}
+.admin-generation-review-cover{width:58px;height:58px;display:grid;place-items:center;overflow:hidden;border-radius:11px;background:linear-gradient(135deg,#a855f7,#e879a9 55%,#f5bd69);color:white;font-size:25px}
+.admin-generation-review-cover img{width:100%;height:100%;object-fit:cover}
+.admin-generation-review-title{min-width:0}
+.admin-generation-review-title h4{margin:0 0 5px;color:var(--workspace-text,#211b2d);font-size:14px;font-weight:800;overflow-wrap:anywhere}
+.admin-generation-review-title p{margin:0;color:var(--workspace-muted,#8992a3);font-size:11px;line-height:1.5}
+.admin-generation-review-heading .admin-state-pill{white-space:nowrap}
+.admin-generation-review-track{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0 0;border-top:1px solid var(--workspace-border,rgba(148,163,184,.16))}
+.admin-generation-review-track>strong{min-width:120px;color:var(--workspace-text,#211b2d);font-size:12px}
+.admin-generation-review-controls{display:flex;flex:1 1 300px;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.admin-listen-button{min-height:36px;padding:8px 14px;border:1px solid rgba(168,85,247,.35);border-radius:10px;background:rgba(168,85,247,.1);color:#a855f7;font-size:12px;font-weight:800;cursor:pointer}
+.admin-listen-button:disabled{opacity:.6;cursor:wait}
+.admin-generation-review-controls audio{width:min(100%,320px);height:38px;min-width:180px}
+.admin-generation-review-controls audio[hidden]{display:none}
+.admin-generation-review-controls .admin-publish-button{min-height:36px;padding:8px 12px;white-space:nowrap}
+.admin-generation-review-controls .admin-publish-button.is-published{background:#16865b}
+.admin-generation-review-note,.admin-generation-empty{padding:18px;border:1px dashed var(--workspace-border,rgba(148,163,184,.25));border-radius:12px;color:var(--workspace-muted,#8992a3);font-size:13px;text-align:center}
+.admin-generation-review-track small{color:var(--workspace-muted,#8992a3);font-size:11px}
+.library-generation-group{display:flex;flex-direction:column;gap:10px}
+.library-generation-entry{display:flex;flex-direction:column;gap:10px;min-width:0}
+@media(max-width:760px){.admin-generation-review-heading{grid-template-columns:48px minmax(0,1fr);gap:10px}.admin-generation-review-cover{width:48px;height:48px}.admin-generation-review-heading .admin-state-pill{grid-column:2;justify-self:start}.admin-generation-review-controls{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start}.admin-generation-review-controls audio{order:3;width:100%;max-width:none}.admin-generation-review-controls .admin-publish-button{flex:1}.admin-generation-review-track{align-items:flex-start;flex-direction:column;gap:9px}}
