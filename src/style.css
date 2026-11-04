@@ -1573,3 +1573,8 @@ button.is-generating:disabled {
 .generation-play-spinner{display:block;width:17px;height:17px;border:2px solid rgba(255,255,255,.32);border-top-color:currentColor;border-radius:50%;animation:audinoo-audio-spin .72s linear infinite}
 @keyframes audinoo-audio-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.generation-play-spinner{animation-duration:1.8s}}
+
+/* Le lecteur actif reste connecté au document pendant le rafraîchissement de la bibliothèque. */
+.library-playback-parking{position:fixed;left:-2px;bottom:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;z-index:-1}
+.library-playback-parking .library-generation-entry{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+.library-mini-player button,.library-full-player button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
