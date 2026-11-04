@@ -998,15 +998,22 @@ function renderAdminUsersTable() {
   if(users.length>250){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Affichage limité aux 250 premiers résultats. Affine ta recherche.';row.append(cell);body.append(row)}
 }
 let adminGenerationRecords = []
-async function loadAdminGenerations() {
-  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+let adminGenerationsRequestRunning = false
+async function loadAdminGenerations(silent = false) {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsRequestRunning) return
   const target = adminGenerationsSection.querySelector('#admin-generation-cards')
-  target.textContent = 'Chargement des générations…'
+  adminGenerationsRequestRunning = true
+  if (!silent && !adminGenerationRecords.length) target.textContent = 'Chargement des générations…'
   try {
     const result = await callAudinooApi('/api/admin/generations')
     adminGenerationRecords = result.generations || []
     renderAdminGenerationsTable()
-  } catch (error) { target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message) }
+  } catch (error) {
+    if (!adminGenerationRecords.length) target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
+    else console.warn('[Audinoo admin] Actualisation des générations impossible', error)
+  } finally {
+    adminGenerationsRequestRunning = false
+  }
 }
 function renderAdminGenerationsTable() {
   const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
@@ -1074,6 +1081,10 @@ adminNavigation.addEventListener('click', (event) => {
   const button = event.target.closest('[data-admin-section]')
   if (!button) return
   activateAdminSection(button.dataset.adminSection)
+  if (button.dataset.adminSection === 'generations') {
+    void loadAdminGenerations()
+    void loadAdminAudioGenerations()
+  }
 })
 activateAdminSection('overview')
 
@@ -1200,6 +1211,7 @@ async function refreshAdminAccess(uid) {
     verifiedAdminUid = uid
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
+    void loadAdminGenerations()
     void loadAdminAudioGenerations()
     return true
   } catch (error) {
@@ -1233,11 +1245,13 @@ function renderAdminSuggestions(suggestions) {
   })
 }
 
-async function loadAdminAudioGenerations() {
+let adminAudioRequestRunning = false
+async function loadAdminAudioGenerations(silent = false) {
   const container = adminGenerationsSection.querySelector('#admin-audio-generations')
   const status = adminGenerationsSection.querySelector('#admin-audio-status')
-  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
-  status.textContent = 'Chargement des archives audio…'
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminAudioRequestRunning) return
+  adminAudioRequestRunning = true
+  if (!silent && !container.childElementCount) status.textContent = 'Chargement des archives audio…'
   try {
     const result = await callAudinooApi('/api/admin/generations')
     replaceNodeChildren(container)
@@ -1261,9 +1275,22 @@ async function loadAdminAudioGenerations() {
       card.append(title, meta, audio, publish); container.append(card)
     }
     status.textContent = count ? count + ' variante(s) archivée(s).' : 'Aucune variante archivée pour le moment.'
-  } catch (error) { status.textContent = 'Chargement impossible : ' + error.message }
+  } catch (error) {
+    if (!container.childElementCount) status.textContent = 'Chargement impossible : ' + error.message
+    else console.warn('[Audinoo admin] Actualisation des archives impossible', error)
+  } finally {
+    adminAudioRequestRunning = false
+  }
 }
-adminGenerationsSection.querySelector('#admin-refresh-audio-generations').addEventListener('click', loadAdminAudioGenerations)
+adminGenerationsSection.querySelector('#admin-refresh-audio-generations').addEventListener('click', () => {
+  void loadAdminGenerations()
+  void loadAdminAudioGenerations()
+})
+window.setInterval(() => {
+  if (document.visibilityState !== 'visible' || !auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsSection.hidden) return
+  void loadAdminGenerations(true)
+  void loadAdminAudioGenerations(true)
+}, 15000)
 async function loadAdminSuggestions() {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   adminSuggestionStatus.textContent = 'Chargement des suggestions…'
