@@ -2102,10 +2102,17 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     window.setTimeout(() => toast.classList.remove('show'), 4500)
     return
   }
+
   if (pendingGenerationPreview) {
     window.clearTimeout(pendingGenerationPreview.timer)
     pendingGenerationPreview.card?.remove()
+    pendingGenerationPreview = null
   }
+
+  // Recharge les véritables chansons avec le même mécanisme que l'ouverture normale
+  // de la bibliothèque, puis ajoute seulement la carte de simulation au-dessus.
+  await loadUserLibrary()
+
   const preview = {
     id: `preview-${Date.now()}`,
     prompt: cleanPrompt,
@@ -2114,9 +2121,6 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     customMode
   }
   openLibraryForGenerationPreview(preview)
-  toast.textContent = 'Ton aperçu est en préparation. Aucune requête musicale n’a été envoyée.'
-  toast.classList.add('show')
-  window.setTimeout(() => toast.classList.remove('show'), 3500)
 }
 async function loadUserLibrary() {
   if (!auth.currentUser) return
