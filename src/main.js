@@ -1757,7 +1757,7 @@ function renderLibraryGeneration(generation) {
     row.className = 'library-song-row'
     row.dataset.libraryTask = generation.taskId
     const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
-    const displayTrack = { ...track, title: track.title || generation.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
+    const displayTrack = { ...track, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
     const wrapper = document.createElement('div')
     wrapper.className = 'library-song-player'
     renderGenerationTracks(wrapper, [displayTrack])
@@ -1766,7 +1766,7 @@ function renderLibraryGeneration(generation) {
     song.classList.add('library-song-item')
     const meta = document.createElement('span')
     meta.className = 'library-song-variant'
-    meta.textContent = track.title || generation.title || 'Sans titre'
+    meta.textContent = generation.title || track.title || 'Sans titre'
     song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
     row.append(song)
     libraryGenerationList.append(row)
@@ -1853,7 +1853,7 @@ async function pollGeneration(taskId, card) {
       await new Promise((resolve) => window.setTimeout(resolve, 10000))
       if (!auth.currentUser) return
       const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
-      const generation = { taskId, title: result.tracks?.[0]?.title || '', status: result.status, tracks: result.tracks || [], failed: result.failed }
+      const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
       renderLibraryGeneration(generation)
       if (result.completed || result.failed) {
