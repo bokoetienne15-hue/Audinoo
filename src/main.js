@@ -1832,23 +1832,40 @@ fullSeek.addEventListener('input', () => {
 })
 
 
+function libraryGenerationDateLabel(value) {
+  const date = value ? new Date(value) : null
+  if (!date || !Number.isFinite(date.getTime())) return 'Date inconnue'
+  const today = new Date()
+  const startOfDay = (item) => new Date(item.getFullYear(), item.getMonth(), item.getDate()).getTime()
+  const difference = Math.round((startOfDay(today) - startOfDay(date)) / 86400000)
+  if (difference === 0) return "Aujourd'hui"
+  if (difference === 1) return 'Hier'
+  if (difference === 2) return 'Avant-hier'
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+}
+
 function renderLibraryGeneration(generation) {
-  const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
+  const existing = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .filter(node => node.dataset.libraryTask === generation.taskId)
+  existing.forEach(node => node.remove())
+
+  const group = document.createElement('section')
+  group.className = 'library-generation-group'
+  group.dataset.libraryTask = generation.taskId
+  const dateLabel = document.createElement('div')
+  dateLabel.className = 'library-generation-date'
+  dateLabel.textContent = libraryGenerationDateLabel(generation.createdAt)
+  group.append(dateLabel)
+
   if (!generation.tracks?.length) {
-    let pending = existing.find(node => node.classList.contains('library-pending-generation'))
-    existing.filter(node => node !== pending).forEach(node => node.remove())
-    if (!pending) {
-      pending = createGenerationCard(generation)
-      pending.dataset.libraryTask = generation.taskId
-      pending.classList.add('library-pending-generation')
-      libraryGenerationList.prepend(pending)
-    } else {
-      const status = pending.querySelector('.generation-status')
-      if (status) status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
-    }
+    const pending = createGenerationCard(generation)
+    pending.dataset.libraryTask = generation.taskId
+    pending.classList.add('library-pending-generation')
+    group.append(pending)
+    libraryGenerationList.append(group)
     return
   }
-  existing.forEach(node => node.remove())
+
   generation.tracks.forEach((track, index) => {
     if (!track?.audioUrl) return
     const row = document.createElement('div')
@@ -1867,8 +1884,9 @@ function renderLibraryGeneration(generation) {
     meta.textContent = generation.title || track.title || 'Sans titre'
     song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
     row.append(song)
-    libraryGenerationList.append(row)
+    group.append(row)
   })
+  libraryGenerationList.append(group)
 }
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
