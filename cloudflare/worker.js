@@ -43,6 +43,98 @@ function tracksIn(value, output = [], depth = 0) {
   Object.values(value).forEach(x => tracksIn(x, output, depth + 1))
   return output
 }
+const CREDIT_PRICE_XOF = 300
+const CREDIT_QUANTITY = 1
+function fedapayBase(env) {
+  return env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox-api.fedapay.com/v1' : 'https://api.fedapay.com/v1'
+}
+function fedapayObject(body, key) {
+  return body?.[key] || body?.data?.[key] || body?.[key.replace(/^v1\//, '')] || body?.data || body
+}
+async function fedapayRequest(env, path, options = {}) {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  const result = await fetch(fedapayBase(env) + path, {
+    ...options,
+    headers: { authorization: 'Bearer ' + env.FEDAPAY_SECRET_KEY, accept: 'application/json', ...(options.body ? { 'content-type': 'application/json' } : {}), ...options.headers },
+    signal: AbortSignal.timeout(20000)
+  })
+  const body = await result.json().catch(() => ({}))
+  if (!result.ok) {
+    console.error('[Audinoo FedaPay]', result.status, body)
+    throw new Error('fedapay-request-failed')
+  }
+  return body
+}
+async function createCreditPayment(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) return response(404, { error: 'profile-not-found' })
+  const email = typeof user.email === 'string' ? user.email : ''
+  if (!email) return response(400, { error: 'customer-email-required' })
+  const origin = new URL(request.url).origin
+  const transactionBody = {
+    description: 'Audinoo — 1 crédit de génération musicale',
+    amount: CREDIT_PRICE_XOF,
+    currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=1',
+    customer: { email }
+  }
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify(transactionBody) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: CREDIT_PRICE_XOF, currency: 'XOF',
+    credits: CREDIT_QUANTITY, status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const token = fedapayObject(tokenResponse, 'v1/token')
+  const checkoutUrl = token?.url || token?.token?.url
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmCreditPayment(env, db, transactionId) {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) {
+    const profile = await db.get('users/' + order.data.uid)
+    return { status: 'approved', credited: true, paidCredits: Number(profile.data?.paidCredits || 0) }
+  }
+  const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId), { method: 'GET' })
+  const transaction = fedapayObject(responseBody, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (status !== 'approved') return { status: status || 'pending', credited: false }
+  const amount = Number(transaction.amount)
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (amount !== Number(order.data.amount) || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  await db.runTransaction(async tx => {
+    const [currentOrder, profile] = await Promise.all([tx.get(orderRef), tx.get(db.doc('users/' + order.data.uid))])
+    if (!currentOrder.exists || !profile.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    tx.update(db.doc('users/' + order.data.uid), { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + Number(currentOrder.data().credits || CREDIT_QUANTITY), updatedAt: SERVER_TIMESTAMP })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP })
+  })
+  const refreshed = await db.get('users/' + order.data.uid)
+  return { status: 'approved', credited: true, paidCredits: Number(refreshed.data?.paidCredits || 0) }
+}
+async function fedapayWebhook(request, env, db) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const payload = await request.json().catch(() => ({}))
+  const event = payload?.name || payload?.event || ''
+  const transactionId = String(payload?.entity?.id || payload?.data?.entity?.id || payload?.data?.id || payload?.entity?.id || '')
+  if (event !== 'transaction.approved' || !/^\d+$/.test(transactionId)) return response(200, { received: true, ignored: true })
+  try {
+    await confirmCreditPayment(env, db, transactionId)
+    return response(200, { received: true })
+  } catch (error) {
+    console.error('[Audinoo FedaPay webhook]', error)
+    return response(400, { error: 'payment-confirmation-failed' })
+  }
+}
 async function generate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
@@ -65,8 +157,10 @@ async function generate(request, env, db, user) {
       if (l.exists) throw new Error('generation-already-running')
       const data = p.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
       campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
-      if (!rules.enabled || !campaign || campaign !== rules.activeCampaignId || data.freeCreditUsed === true) throw new Error('no-free-credit')
-      tx.create(db.doc(lock), { requestId, uid: user.uid, campaignId: campaign, createdAt: SERVER_TIMESTAMP })
+      const hasFreeCredit = Boolean(rules.enabled && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const hasPaidCredit = Number(data.paidCredits || 0) > 0
+      if (!hasFreeCredit && !hasPaidCredit) throw new Error('no-free-credit')
+      tx.create(db.doc(lock), { requestId, uid: user.uid, creditType: hasFreeCredit ? 'free' : 'paid', campaignId: hasFreeCredit ? campaign : null, createdAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
     const mapped = { 'profile-not-found': [404, 'profile-not-found'], 'generation-already-running': [409, 'generation-already-running'], 'no-free-credit': [402, 'no-free-credit'] }[error.message]
@@ -84,7 +178,13 @@ async function generate(request, env, db, user) {
   await db.runTransaction(async tx => {
     const [p,l] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock))])
     if (!p.exists || !l.exists || l.data().requestId !== requestId) throw new Error('generation-reservation-lost')
-    tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
+    if (l.data().creditType === 'paid') {
+      const remaining = Number(p.data().paidCredits || 0)
+      if (remaining < 1) throw new Error('no-free-credit')
+      tx.update(db.doc(profile), { paidCredits: remaining - 1, updatedAt: SERVER_TIMESTAMP })
+    } else {
+      tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
+    }
     tx.delete(db.doc(lock))
     tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: title.slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP, expiresAt })
   })
@@ -196,6 +296,7 @@ export default {
     if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); return await publicTracks(request, db) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
     if (url.pathname === '/api/suno-callback') return request.method === 'POST' ? response(200,{received:true}) : response(405,{error:'method-not-allowed'})
+    if (url.pathname === '/api/fedapay-webhook') return await fedapayWebhook(request,env,new FirestoreRest(env))
     if (url.pathname === '/api/session-check') {
       if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
       try { const u = await userFrom(request,env); return u ? response(200,{authenticated:true,uid:u.uid}) : response(401,{error:'authentication-required'}) } catch { return response(401,{error:'invalid-session'}) }
@@ -205,6 +306,14 @@ export default {
       user = await userFrom(request,env)
       if (!user) return response(401,{error:'authentication-required'})
       const db = new FirestoreRest(env)
+      if (url.pathname === '/api/credits/purchase') return await createCreditPayment(request,env,db,user)
+      if (url.pathname === '/api/credits/confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        const transactionId = url.searchParams.get('transaction_id') || ''
+        const order = await db.get('fedapayOrders/' + transactionId)
+        if (!order.exists || order.data.uid !== user.uid) return response(404,{error:'payment-order-not-found'})
+        return response(200, await confirmCreditPayment(env,db,transactionId))
+      }
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,db,user)
