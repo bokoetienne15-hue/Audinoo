@@ -1527,8 +1527,8 @@ function renderGenerationTracks(container, tracks) {
     item.className = 'generation-track'
     const cover = document.createElement('div')
     cover.className = 'generation-track-cover'
-    const imageSource = track.imageUrl || (track.coverUrl || track.cover_url || track.image_url || '')
-    if (imageSource && /^https?:\/\//i.test(imageSource)) {
+    const imageSource = track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+    if (imageSource && (/^https?:\/\//i.test(imageSource) || imageSource.startsWith('/api/'))) {
       const image = document.createElement('img')
       image.src = imageSource
       image.alt = 'Pochette de ' + (track.title || 'la chanson')
