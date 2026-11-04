@@ -3031,6 +3031,7 @@ function openProfile(profile, { requireCountry = false } = {}) {
 }
 
 function openWorkspace(profile) {
+  listenToFeedbackPolicy()
   hasAudinooProfile = true
   profileUid = profile.uid
   studioWorkspacePage.hidden = false
