@@ -2,8 +2,8 @@
 
 > Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Elle permet de créer des musiques originales en décrivant une ambiance, une émotion ou une scène.
 
-- Site officiel : https://test--audinoo.netlify.app/
-- Page officielle de référence (présentation, mission, vision, fonctionnement et fondateur) : https://test--audinoo.netlify.app/a-propos/
+- Site officiel : https://audinoo.com/
+- Page officielle de référence (présentation, mission, vision, fonctionnement et fondateur) : https://audinoo.com/a-propos/
 - Fondateur : ETIENNE BOKO
 - Profil du fondateur : entrepreneur technologique et développeur Full Stack spécialisé dans les solutions Web, Mobile et numériques intégrant l'intelligence artificielle
 - Langue principale du site : français
@@ -30,12 +30,12 @@ Pour les conditions à jour, consulter le site officiel.
 
 ## Pages officielles de référence
 
-- Présentation complète d’Audinoo et du fondateur : https://test--audinoo.netlify.app/a-propos/
-- Accueil et accès à la plateforme : https://test--audinoo.netlify.app/
+- Présentation complète d’Audinoo et du fondateur : https://audinoo.com/a-propos/
+- Accueil et accès à la plateforme : https://audinoo.com/
 
 ## Documentation
 
-- Documentation complète : https://test--audinoo.netlify.app/documentation/
+- Documentation complète : https://audinoo.com/documentation/
 
 Le site annonce des ressources portant notamment sur :
 - Bien commencer avec Audinoo.
