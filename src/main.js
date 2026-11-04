@@ -1535,8 +1535,8 @@ function renderGenerationTracks(container, tracks) {
     const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
     const actions = document.createElement('div'); actions.className = 'generation-track-actions'
     const player = document.createElement('audio'); player.preload = 'none'; player.setAttribute('aria-label', 'Écouter ' + name.textContent)
-    const play = document.createElement('button'); play.type = 'button'; play.className = 'generation-action generation-play'; play.setAttribute('aria-label','Lire la chanson'); play.textContent = '▶'
-    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'generation-action generation-favorite'; favorite.setAttribute('aria-label','Ajouter aux favoris'); favorite.textContent = '♥'
+    const play = document.createElement('button'); play.type = 'button'; play.className = 'generation-action generation-play'; play.setAttribute('aria-label','Lire la chanson'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'
+    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'generation-action generation-favorite'; favorite.setAttribute('aria-label','Ajouter aux favoris'); favorite.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.8c0 5.2-8.8 10-8.8 10s-8.8-4.8-8.8-10a4.7 4.7 0 0 1 8.8-2.3 4.7 4.7 0 0 1 8.8 2.3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
     const favoriteKey = 'audinoo-favorites-' + (auth.currentUser?.uid || 'guest')
     const favoriteId = String(track.audioUrl)
     const readFavorites = () => { try { return new Set(JSON.parse(readBrowserStorage('localStorage', favoriteKey) || '[]')) } catch { return new Set() } }
@@ -1561,10 +1561,10 @@ function renderGenerationTracks(container, tracks) {
         } catch (error) { name.textContent = 'Audio temporairement indisponible'; console.warn('[Audinoo audio]', error) }
       }, { once: true })
     } else player.src = track.audioUrl
-    player.addEventListener('play', () => { play.textContent = 'Ⅱ'; play.setAttribute('aria-label','Mettre en pause') })
-    player.addEventListener('pause', () => { play.textContent = '▶'; play.setAttribute('aria-label','Lire la chanson') })
+    player.addEventListener('play', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; play.setAttribute('aria-label','Mettre en pause') })
+    player.addEventListener('pause', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'; play.setAttribute('aria-label','Lire la chanson') })
     play.addEventListener('click', async () => { if (player.paused) { try { await player.play() } catch (error) { console.warn('[Audinoo player]', error) } } else player.pause() })
-    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.textContent = '↗'
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     share.addEventListener('click', async () => {
       const data = { title: name.textContent, text: 'Découvre ma création musicale sur Audinoo : ' + name.textContent, url: window.location.origin + '/#studio' }
       if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
@@ -1577,14 +1577,21 @@ function renderGenerationTracks(container, tracks) {
 
 function renderLibraryGeneration(generation) {
   const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
-  existing.forEach(node => node.remove())
   if (!generation.tracks?.length) {
-    const pending = createGenerationCard(generation)
-    pending.dataset.libraryTask = generation.taskId
-    pending.classList.add('library-pending-generation')
-    libraryGenerationList.prepend(pending)
+    let pending = existing.find(node => node.classList.contains('library-pending-generation'))
+    existing.filter(node => node !== pending).forEach(node => node.remove())
+    if (!pending) {
+      pending = createGenerationCard(generation)
+      pending.dataset.libraryTask = generation.taskId
+      pending.classList.add('library-pending-generation')
+      libraryGenerationList.prepend(pending)
+    } else {
+      const status = pending.querySelector('.generation-status')
+      if (status) status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+    }
     return
   }
+  existing.forEach(node => node.remove())
   generation.tracks.forEach((track, index) => {
     if (!track?.audioUrl) return
     const row = document.createElement('div')
