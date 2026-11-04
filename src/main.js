@@ -2095,13 +2095,7 @@ function openLibraryForGenerationPreview(preview) {
   progress.setAttribute('aria-valuenow', '0')
   progress.innerHTML = '<span class="generation-preview-progress-label">0%</span>'
   cover.append(progress)
-  const content = document.createElement('div')
-  content.className = 'generation-track-content generation-preview-content'
-  const slimTile = document.createElement('div')
-  slimTile.className = 'generation-preview-slim-tile'
-  slimTile.setAttribute('aria-hidden', 'true')
-  content.append(slimTile)
-  card.append(cover, content)
+  card.append(cover)
   todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
@@ -2156,9 +2150,26 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     pendingGenerationPreview = null
   }
 
-  // Recharge les véritables chansons avec le même mécanisme que l'ouverture normale
-  // de la bibliothèque, puis ajoute seulement la carte de simulation au-dessus.
-  await loadUserLibrary()
+  // Retour visuel immédiat : l'utilisateur voit que sa demande est prise en compte.
+  const originalButtonContent = submitButton?.innerHTML
+  if (submitButton) {
+    submitButton.disabled = true
+    submitButton.classList.add('is-generating')
+    submitButton.innerHTML = '<span class="generation-submit-spinner" aria-hidden="true"></span><span>Génération en cours…</span>'
+    submitButton.setAttribute('aria-live', 'polite')
+  }
+
+  try {
+    // Recharge la bibliothèque avant de l'afficher, sans lancer de génération musicale réelle.
+    await loadUserLibrary()
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.classList.remove('is-generating')
+      submitButton.innerHTML = originalButtonContent
+      submitButton.removeAttribute('aria-live')
+    }
+  }
 
   const preview = {
     id: `preview-${Date.now()}`,
