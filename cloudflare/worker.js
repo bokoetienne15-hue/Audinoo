@@ -396,7 +396,7 @@ export default {
       const callbackDb = new FirestoreRest(env)
       const rows = await callbackDb.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], where: { fieldFilter: { field: { fieldPath: 'taskId' }, op: 'EQUAL', value: { stringValue: taskId } } }, limit: 1 })
       const doc = rows?.[0]?.document
-      const match = doc?.name?.match(/\\/documents\\/users\\/([^/]+)\\/generations\\/([^/]+)$/)
+      const match = doc?.name?.match(/\/documents\/users\/([^/]+)\/generations\/([^/]+)$/)
       if (!match || match[2] !== taskId) return response(200,{received:true,ignored:true})
       const uid = match[1], path = 'users/' + uid + '/generations/' + taskId
       const callbackType = String(callbackData.callbackType || '').toLowerCase()
