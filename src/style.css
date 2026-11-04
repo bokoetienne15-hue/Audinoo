@@ -1481,42 +1481,23 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   z-index: 4;
   box-sizing: border-box;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 49px;
-  min-height: 32px;
-  padding: 4px 5px;
-  border: 1px solid rgba(85,227,155,.48);
-  border-radius: 6px;
-  color: #8affc2;
-  background: rgba(5,16,12,.94);
-  box-shadow: 0 0 11px rgba(45,220,139,.2), inset 0 0 8px rgba(85,227,155,.1);
+  width: 30px;
+  height: 17px;
+  padding: 0 2px;
+  border: 1px solid rgba(85,227,155,.52);
+  border-radius: 5px;
+  color: #9bffcb;
+  background: rgba(5,16,12,.96);
+  box-shadow: 0 0 7px rgba(45,220,139,.18);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: .025em;
+  letter-spacing: -.025em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   text-align: center;
-}
-.library-generation-preview .generation-preview-progress-track {
-  display: block;
-  width: 100%;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: rgba(255,255,255,.18);
-}
-.library-generation-preview .generation-preview-progress-value {
-  display: block;
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg,#35cf91,#8bffc1);
-  box-shadow: 0 0 7px rgba(85,227,155,.8);
-  transition: width .12s linear;
 }
 .library-generation-preview .generation-preview-progress-label {
   display: block;
@@ -1567,6 +1548,6 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   transition: opacity .18s ease, visibility .18s ease;
 }
 @media(max-width:760px) {
-  .library-generation-preview .generation-preview-progress { right: 2px; bottom: 2px; width: 47px; min-height: 30px; padding: 3px 4px; font-size: 10px; gap: 3px; }
+  .library-generation-preview .generation-preview-progress { right: 2px; bottom: 2px; width: 29px; height: 16px; padding: 0 1px; font-size: 8px; }
   .library-generation-preview .generation-preview-slim-tile { flex-basis: 120px; width: 120px; max-width: 60%; height: 21px; transform: translateY(-3px); }
 }
