@@ -158,7 +158,7 @@ async function createTrackPurchase(request, env, db, user) {
   const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
   const token = fedapayObject(tokenResponse, 'v1/token')
   const checkoutUrl = token?.url || token?.token?.url
-  if (typeof checkoutUrl !== 'string' || !/^https:\\/\\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
 }
 async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
