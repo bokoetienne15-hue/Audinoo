@@ -134,7 +134,7 @@ async function createTrackPurchase(request, env, db, user) {
   const track = generation.data?.tracks?.[trackIndex]
   if (!generation.exists || !track) return response(404, { error: 'track-not-found' })
   if (track.downloadPurchased === true) return response(200, { alreadyPurchased: true })
-  if (!track.r2Key && !/^https?:\\/\\//i.test(track.audioUrl || '')) return response(409, { error: 'audio-not-ready' })
+  if (!track.r2Key && !/^https?:\/\//i.test(track.audioUrl || '')) return response(409, { error: 'audio-not-ready' })
   const profile = await db.get('users/' + user.uid)
   if (!profile.exists) return response(404, { error: 'profile-not-found' })
   const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
