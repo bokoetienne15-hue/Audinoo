@@ -2226,7 +2226,6 @@ if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
       .then(async (result) => {
         if (result.purchased) {
           toast.textContent = 'Paiement confirmé : cette chanson est maintenant téléchargeable en MP3.'
-          await loadLibraryGenerations?.()
         } else toast.textContent = 'Paiement en attente de confirmation. Réessaie dans quelques instants.'
         toast.classList.add('show')
         window.setTimeout(() => toast.classList.remove('show'), 6000)
