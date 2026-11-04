@@ -1567,3 +1567,9 @@ button.is-generating:disabled {
 .library-generation-group{display:flex;flex-direction:column;gap:10px}
 .library-generation-entry{display:flex;flex-direction:column;gap:10px;min-width:0}
 @media(max-width:760px){.admin-generation-review-heading{grid-template-columns:48px minmax(0,1fr);gap:10px}.admin-generation-review-cover{width:48px;height:48px}.admin-generation-review-heading .admin-state-pill{grid-column:2;justify-self:start}.admin-generation-review-controls{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start}.admin-generation-review-controls audio{order:3;width:100%;max-width:none}.admin-generation-review-controls .admin-publish-button{flex:1}.admin-generation-review-track{align-items:flex-start;flex-direction:column;gap:9px}}
+
+/* Bibliothèque : état de chargement visible pendant la préparation et le démarrage audio. */
+.library-song-item .generation-play.is-loading{display:grid;place-items:center;pointer-events:none;opacity:1}
+.generation-play-spinner{display:block;width:17px;height:17px;border:2px solid rgba(255,255,255,.32);border-top-color:currentColor;border-radius:50%;animation:audinoo-audio-spin .72s linear infinite}
+@keyframes audinoo-audio-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.generation-play-spinner{animation-duration:1.8s}}
