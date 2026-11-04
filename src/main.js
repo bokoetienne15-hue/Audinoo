@@ -1414,6 +1414,10 @@ function renderAdminFeedbackResponses(items) {
     heading.className = 'admin-feedback-response-heading'
     const campaign = document.createElement('strong')
     campaign.textContent = item.title || 'Retour sur Audinoo'
+    const respondent = latestAdminUsers.find((user) => user.uid === item.userId)
+    const identity = document.createElement('small')
+    identity.className = 'admin-feedback-response-identity'
+    identity.textContent = respondent ? (respondent.displayName || respondent.username || respondent.email || respondent.uid) : 'Utilisateur Audinoo'
     const date = document.createElement('time')
     const created = item.createdAt ? new Date(item.createdAt) : null
     date.textContent = created && Number.isFinite(created.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(created) : 'Date inconnue'
@@ -1425,7 +1429,7 @@ function renderAdminFeedbackResponses(items) {
     const comment = document.createElement('p')
     comment.className = 'admin-feedback-response-comment'
     comment.textContent = item.comment || 'Aucun commentaire.'
-    card.append(heading, rating, comment)
+    card.append(heading, identity, rating, comment)
     adminFeedbackResponsesList.append(card)
   })
 }
