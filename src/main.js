@@ -2083,8 +2083,6 @@ function openLibraryForGenerationPreview(preview) {
   card.dataset.previewId = preview.id
   card.setAttribute('aria-label', 'Nouvelle chanson en préparation')
 
-  const coverColumn = document.createElement('div')
-  coverColumn.className = 'generation-preview-cover-column'
   const cover = document.createElement('div')
   cover.className = 'generation-track-cover generation-preview-cover'
   cover.setAttribute('aria-hidden', 'true')
@@ -2096,15 +2094,14 @@ function openLibraryForGenerationPreview(preview) {
   progress.setAttribute('aria-valuemax', '100')
   progress.setAttribute('aria-valuenow', '0')
   progress.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="generation-preview-progress-track" cx="18" cy="18" r="15.5"></circle><circle class="generation-preview-progress-value" cx="18" cy="18" r="15.5"></circle></svg><span class="generation-preview-progress-label">0%</span>'
-  coverColumn.append(cover, progress)
-
+  cover.append(progress)
   const content = document.createElement('div')
   content.className = 'generation-track-content generation-preview-content'
   const slimTile = document.createElement('div')
   slimTile.className = 'generation-preview-slim-tile'
   slimTile.setAttribute('aria-hidden', 'true')
   content.append(slimTile)
-  card.append(coverColumn, content)
+  card.append(cover, content)
   todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
