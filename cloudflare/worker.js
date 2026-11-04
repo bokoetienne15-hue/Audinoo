@@ -70,7 +70,7 @@ async function createCreditPayment(request, env, db, user) {
   if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
   const profile = await db.get('users/' + user.uid)
   if (!profile.exists) return response(404, { error: 'profile-not-found' })
-  const email = typeof user.email === 'string' ? user.email : ''
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
   if (!email) return response(400, { error: 'customer-email-required' })
   const origin = new URL(request.url).origin
   const transactionBody = {
@@ -323,8 +323,12 @@ export default {
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
-      const status = e.message === 'firebase-admin-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
+      const status = e.message === 'firebase-admin-not-configured' || e.message === 'fedapay-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
       if (status >= 500) console.error('[Audinoo Cloudflare]',e)
+      if (url.pathname.startsWith('/api/credits/')) {
+        const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
+        return response(status, { error: allowedPaymentErrors.has(e.message) ? e.message : 'payment-processing-failed' })
+      }
       const err = status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
       return response(status,{error:err})
     }
