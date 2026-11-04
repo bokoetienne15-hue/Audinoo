@@ -1899,11 +1899,50 @@ function renderGenerationTracks(container, tracks) {
         }
       } else player.pause()
     })
-    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-download-locked'; share.setAttribute('aria-label','Télécharger · bientôt disponible'); share.title = 'Télécharger 🔒'; share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="generation-download-lock" aria-hidden="true"><svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.2" fill="currentColor"/><path d="M4 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>'
-    share.addEventListener('click', () => {
-      toast.textContent = 'Télécharger 🔒 · Cette fonctionnalité sera bientôt disponible.'
-      toast.classList.add('show')
-      window.setTimeout(() => toast.classList.remove('show'), 2600)
+    const share = document.createElement('button')
+    share.type = 'button'
+    share.className = 'generation-action generation-download-locked'
+    const updateDownloadButton = () => {
+      const purchased = track.downloadPurchased === true
+      share.classList.toggle('generation-download-locked', !purchased)
+      share.title = purchased ? 'Télécharger MP3' : 'Acheter le téléchargement · 300 FCFA'
+      share.setAttribute('aria-label', share.title)
+      share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' + (purchased ? '' : '<span class="generation-download-lock" aria-hidden="true">300</span>')
+    }
+    updateDownloadButton()
+    share.addEventListener('click', async () => {
+      if (!auth.currentUser) { toast.textContent = 'Connecte-toi pour acheter le téléchargement.'; toast.classList.add('show'); return }
+      share.disabled = true
+      try {
+        const taskId = String(track.taskId || container.closest('[data-library-task]')?.dataset.libraryTask || '')
+        const trackIndex = Number.isInteger(track.trackIndex) ? track.trackIndex : 0
+        if (!taskId) throw new Error('track-not-found')
+        if (track.downloadPurchased !== true) {
+          const purchase = await callAudinooApi('/api/tracks/purchase', { method: 'POST', body: JSON.stringify({ taskId, trackIndex }) })
+          if (purchase.alreadyPurchased) track.downloadPurchased = true
+          else if (purchase.checkoutUrl) { window.location.assign(purchase.checkoutUrl); return }
+          else throw new Error('fedapay-checkout-unavailable')
+        }
+        const downloadUrl = '/api/my-download?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex
+        const token = await auth.currentUser.getIdToken()
+        const fileResponse = await fetch(downloadUrl, { headers: { authorization: 'Bearer ' + token }, cache: 'no-store' })
+        if (!fileResponse.ok) throw new Error(fileResponse.status === 403 ? 'download-purchase-required' : 'media-not-found')
+        const blob = await fileResponse.blob()
+        const objectUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = objectUrl
+        link.download = (String(track.title || name.textContent || 'audinoo').replace(/[^a-z0-9_-]/gi, '-').slice(0, 60) || 'audinoo') + '.mp3'
+        document.body.append(link); link.click(); link.remove()
+        URL.revokeObjectURL(objectUrl)
+        track.downloadPurchased = true
+        updateDownloadButton()
+        toast.textContent = 'Téléchargement MP3 prêt.'
+        toast.classList.add('show')
+      } catch (error) {
+        toast.textContent = generationErrorMessage(error.message)
+        toast.classList.add('show')
+        console.error('[Audinoo download]', error)
+      } finally { share.disabled = false }
     })
     actions.append(favorite, play, share)
     content.append(name, actions, player); item.append(cover, content); container.append(item)
@@ -2052,7 +2091,7 @@ function renderLibraryGeneration(generation) {
       row.className = 'library-song-row'
       row.dataset.libraryTask = taskId
       const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
-      const displayTrack = { ...track, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(taskId) + '&track=' + index }
+      const displayTrack = { ...track, taskId, trackIndex: index, downloadPurchased: track.downloadPurchased === true, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(taskId) + '&track=' + index }
       const wrapper = document.createElement('div')
       wrapper.className = 'library-song-player'
       renderGenerationTracks(wrapper, [displayTrack])
@@ -2182,7 +2221,22 @@ const paymentReturnParams = new URLSearchParams(window.location.search)
 const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
 if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
   window.history.replaceState(null, '', window.location.pathname + window.location.hash)
-  if (returnedPaymentId) {
+  if (returnedPaymentId && paymentReturnParams.get('payment_return') === 'track') {
+    void callAudinooApi('/api/tracks/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+      .then(async (result) => {
+        if (result.purchased) {
+          toast.textContent = 'Paiement confirmé : cette chanson est maintenant téléchargeable en MP3.'
+          await loadLibraryGenerations?.()
+        } else toast.textContent = 'Paiement en attente de confirmation. Réessaie dans quelques instants.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
+      .catch((error) => {
+        toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
+  } else if (returnedPaymentId) {
     void callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
       .then((result) => {
         toast.textContent = result.credited ? 'Paiement confirmé : ton crédit est disponible.' : 'Paiement en attente de confirmation. Ton crédit sera ajouté après validation.'
