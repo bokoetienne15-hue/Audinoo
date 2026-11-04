@@ -75,7 +75,7 @@ export async function createCreditCheckout(event) {
     })
     const transaction = unwrap(created, 'v1/transaction')
     const transactionId = String(transaction?.id || '')
-    if (!/^\\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+    if (!/^[0-9]+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
     await db.collection('fedapayOrders').doc(transactionId).set({
       uid: user.uid,
       transactionId,
@@ -92,7 +92,7 @@ export async function createCreditCheckout(event) {
     })
     const token = unwrap(tokenResponse, 'v1/token')
     const checkoutUrl = token?.url || token?.token?.url
-    if (typeof checkoutUrl !== 'string' || !/^https:\\/\\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+    if (typeof checkoutUrl !== 'string' || !checkoutUrl.startsWith('https://')) throw new Error('fedapay-checkout-unavailable')
     return jsonResponse(200, { checkoutUrl, transactionId })
   } catch (error) {
     console.error('[Audinoo credit checkout]', error)
@@ -108,7 +108,7 @@ export async function confirmCredit(event) {
     if (!process.env.FEDAPAY_SECRET_KEY) return jsonResponse(503, { error: 'fedapay-not-configured' })
     const params = new URLSearchParams(event.rawQuery || event.queryStringParameters || {})
     const transactionId = String(params.get ? params.get('transaction_id') : event.queryStringParameters?.transaction_id || '')
-    if (!/^\\d+$/.test(transactionId)) return jsonResponse(400, { error: 'invalid-transaction-id' })
+    if (!/^[0-9]+$/.test(transactionId)) return jsonResponse(400, { error: 'invalid-transaction-id' })
     const { db } = getFirebaseServices()
     const orderRef = db.collection('fedapayOrders').doc(transactionId)
     const order = await orderRef.get()
@@ -149,7 +149,7 @@ export async function handleFedaPayWebhook(event) {
     const payload = JSON.parse(event.body || '{}')
     const eventName = payload?.name || payload?.event || ''
     const transactionId = String(payload?.entity?.id || payload?.data?.entity?.id || payload?.data?.id || '')
-    if (eventName !== 'transaction.approved' || !/^\\d+$/.test(transactionId)) return jsonResponse(200, { received: true, ignored: true })
+    if (eventName !== 'transaction.approved' || !/^[0-9]+$/.test(transactionId)) return jsonResponse(200, { received: true, ignored: true })
     if (!process.env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
     const { db } = getFirebaseServices()
     const orderRef = db.collection('fedapayOrders').doc(transactionId)
