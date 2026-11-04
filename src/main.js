@@ -992,10 +992,18 @@ const adminExportsSection = createAdminSection('exports', 'Rapports et exportati
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
-adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Les fichiers archivés dans R2 peuvent être écoutés et publiés depuis cette rubrique. Les créations restent privées tant qu’elles ne sont pas publiées.</p>'
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Filtrer par jour</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Écoute les créations des utilisateurs, filtre-les par jour et publie celles que tu souhaites mettre en avant.</p>'
 adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
+const adminGenerationDateFilter = adminGenerationsSection.querySelector('#admin-generation-date')
+function adminGenerationMatchesDay(item) {
+  if (!adminGenerationDateFilter.value) return true
+  const date = item.createdAt ? new Date(item.createdAt) : null
+  if (!date || !Number.isFinite(date.getTime())) return false
+  const localDay = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+  return localDay === adminGenerationDateFilter.value
+}
 function adminDateLabel(value) {
   const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
   return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
@@ -1044,7 +1052,7 @@ async function loadAdminGenerations(silent = false) {
 function renderAdminGenerationsTable() {
   const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
   const usersById = new Map(latestAdminUsers.map(user => [user.uid,user]))
-  const records = adminGenerationRecords.filter(item => [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const records = adminGenerationRecords.filter(item => adminGenerationMatchesDay(item) && [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
   const body = adminGenerationsSection.querySelector('#admin-generation-cards')
   replaceNodeChildren(body)
   adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + ' création(s)'
@@ -1091,7 +1099,11 @@ function renderAdminGenerationsTable() {
 
 
 adminUserSearch.addEventListener('input',renderAdminUsersTable)
-adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)
+adminGenerationDateFilter.addEventListener('change', () => {
+  renderAdminGenerationsTable()
+  void loadAdminAudioGenerations()
+})
 adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
 
 adminCreditsSection.append(workspaceCreditPanel)
@@ -1354,14 +1366,32 @@ async function loadAdminAudioGenerations(silent = false) {
     const result = await callAudinooApi('/api/admin/generations')
     replaceNodeChildren(container)
     let count = 0
-    for (const generation of result.generations || []) for (const track of generation.tracks || []) {
-      if (!track.archived || !track.audioUrl) continue
+    for (const generation of (result.generations || []).filter(adminGenerationMatchesDay)) for (const track of generation.tracks || []) {
+      if (!track.audioUrl) continue
       count++
       const card = document.createElement('article')
       card.className = 'admin-panel admin-audio-generation-card'
       const title = document.createElement('strong'); title.textContent = track.title || generation.title || 'Création Audinoo'
-      const meta = document.createElement('small'); meta.textContent = 'UID : ' + generation.uid + ' · ID : ' + generation.taskId + ' · ' + adminDateLabel(generation.createdAt)
-      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = track.audioUrl
+      const owner = latestAdminUsers.find(user => user.uid === generation.uid)
+      const meta = document.createElement('small'); meta.textContent = (owner?.displayName || owner?.username || owner?.email || generation.uid) + ' · ' + adminDateLabel(generation.createdAt) + ' · ' + (track.archived ? 'Archive R2' : 'Source audio')
+      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'
+      audio.addEventListener('play', async () => {
+        if (audio.dataset.loaded === 'true' || audio.dataset.loading === 'true') return
+        audio.dataset.loading = 'true'
+        audio.pause()
+        try {
+          const token = await auth.currentUser?.getIdToken()
+          if (!token) throw new Error('admin-session-required')
+          const response = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+          if (!response.ok) throw new Error('audio-http-' + response.status)
+          audio.src = URL.createObjectURL(await response.blob())
+          audio.dataset.loaded = 'true'
+          await audio.play()
+        } catch (error) {
+          status.textContent = 'Lecture impossible : ' + error.message
+          console.error('[Audinoo admin audio]', error)
+        } finally { audio.dataset.loading = 'false' }
+      })
       const publish = document.createElement('button'); publish.type = 'button'; publish.className = 'admin-publish-button'; publish.textContent = 'Publier sur l’accueil'
       publish.addEventListener('click', async () => {
         publish.disabled = true
@@ -1372,7 +1402,7 @@ async function loadAdminAudioGenerations(silent = false) {
       })
       card.append(title, meta, audio, publish); container.append(card)
     }
-    status.textContent = count ? count + ' variante(s) archivée(s).' : 'Aucune variante archivée pour le moment.'
+    status.textContent = count ? count + ' variante(s) disponible(s) à écouter et examiner.' : 'Aucune création trouvée pour cette date.'
   } catch (error) {
     if (!container.childElementCount) status.textContent = 'Chargement impossible : ' + error.message
     else console.warn('[Audinoo admin] Actualisation des archives impossible', error)
@@ -1538,6 +1568,76 @@ studioWorkspacePage.querySelector('.workspace-empty').before(generationPanel)
 const libraryGenerationList = document.createElement('div')
 libraryGenerationList.className = 'generation-list library-generation-list'
 libraryWorkspacePage.querySelector('.workspace-library-empty').after(libraryGenerationList)
+const libraryLoading = document.createElement('div')
+libraryLoading.className = 'library-loading'
+libraryLoading.setAttribute('role', 'status')
+libraryLoading.setAttribute('aria-live', 'polite')
+libraryLoading.innerHTML = '<span class="library-loading-spinner" aria-hidden="true"></span><span>Chargement de ta bibliothèque…</span>'
+libraryGenerationList.before(libraryLoading)
+libraryLoading.hidden = true
+const libraryMiniPlayer = document.createElement('section')
+libraryMiniPlayer.className = 'library-mini-player'
+libraryMiniPlayer.hidden = true
+libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-previous" type="button" aria-label="Chanson précédente" title="Chanson précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
+libraryWorkspacePage.append(libraryMiniPlayer)
+const libraryMiniCover = libraryMiniPlayer.querySelector('.library-mini-cover')
+const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
+const libraryMiniPrevious = libraryMiniPlayer.querySelector('.library-mini-previous')
+const libraryMiniNext = libraryMiniPlayer.querySelector('.library-mini-next')
+const libraryMiniTitle = libraryMiniPlayer.querySelector('.library-mini-title')
+const libraryMiniSeek = libraryMiniPlayer.querySelector('.library-mini-seek')
+const libraryMiniCurrent = libraryMiniPlayer.querySelector('.library-mini-current')
+const libraryMiniDuration = libraryMiniPlayer.querySelector('.library-mini-duration')
+let activeLibraryAudio = null
+function formatAudioTime(value) {
+  if (!Number.isFinite(value) || value < 0) return '0:00'
+  const seconds = Math.floor(value)
+  return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0')
+}
+function syncLibraryMiniPlayer() {
+  if (!activeLibraryAudio) return
+  const duration = Number.isFinite(activeLibraryAudio.duration) ? activeLibraryAudio.duration : 0
+  libraryMiniSeek.max = String(Math.max(1, Math.round(duration * 10)))
+  libraryMiniSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
+  const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
+  libraryMiniSeek.style.setProperty('--track-progress', progress + '%')
+  libraryMiniPlayer.style.setProperty('--track-progress', progress + '%')
+  libraryMiniCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
+  libraryMiniDuration.textContent = formatAudioTime(duration)
+  libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
+  libraryMiniPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = activeLibraryAudio.paused ? 'paused' : 'playing'
+  if (typeof syncFullPlayer === 'function' && !libraryFullPlayer.hidden) syncFullPlayer()
+}
+function updateAudinooMediaSession() {
+  if (!('mediaSession' in navigator) || !activeLibraryAudio) return
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: libraryMiniTitle.textContent || 'Sans titre',
+      artist: 'Audinoo',
+      album: 'Ma bibliothèque'
+    })
+    navigator.mediaSession.setActionHandler('play', () => activeLibraryAudio?.play().catch(() => {}))
+    navigator.mediaSession.setActionHandler('pause', () => activeLibraryAudio?.pause())
+    navigator.mediaSession.setActionHandler('previoustrack', () => playLibraryTrackAtOffset(-1, 'previous'))
+    navigator.mediaSession.setActionHandler('nexttrack', () => playLibraryTrackAtOffset(1, 'next'))
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => { if (activeLibraryAudio) activeLibraryAudio.currentTime = Math.max(0, activeLibraryAudio.currentTime - (details.seekOffset || 10)) })
+    navigator.mediaSession.setActionHandler('seekforward', (details) => { if (activeLibraryAudio && Number.isFinite(activeLibraryAudio.duration)) activeLibraryAudio.currentTime = Math.min(activeLibraryAudio.duration, activeLibraryAudio.currentTime + (details.seekOffset || 10)) })
+  } catch (error) { console.debug('[Audinoo media session]', error) }
+}
+function activateLibraryMiniPlayer(player, title) {
+  activeLibraryAudio = player
+  libraryMiniTitle.textContent = title || 'Sans titre'
+  updateAudinooMediaSession()
+  const cover = player.closest('.library-song-item')?.querySelector('.generation-track-cover')
+  const image = cover?.querySelector('img')
+  libraryMiniCover.innerHTML = image?.src ? '<img src="' + image.src.replace(/"/g, '&quot;') + '" alt="">' : '<span>♫</span>'
+  libraryMiniCover.classList.toggle('has-image', !!image?.src)
+  if (cover?.dataset.palette) libraryMiniCover.dataset.palette = cover.dataset.palette
+  libraryMiniPlayer.hidden = false
+  syncLibraryMiniPlayer()
+  if (!libraryFullPlayer.hidden) openLibraryFullPlayer()
+}
 
 const generationStatusLabels = {
   PENDING: 'En attente de génération…',
@@ -1585,6 +1685,8 @@ function renderGenerationTracks(container, tracks) {
     item.className = 'generation-track'
     const cover = document.createElement('div')
     cover.className = 'generation-track-cover'
+    const coverPalette = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
+    cover.dataset.palette = coverPalette[(index + (String(track.id || track.audioUrl).length % coverPalette.length)) % coverPalette.length]
     const imageSource = track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
     if (imageSource && (/^https?:\/\//i.test(imageSource) || imageSource.startsWith('/api/'))) {
       const image = document.createElement('img')
@@ -1592,7 +1694,7 @@ function renderGenerationTracks(container, tracks) {
       image.loading = 'eager'
       image.decoding = 'async'
       image.referrerPolicy = 'no-referrer'
-      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable'); cover.textContent = '♫' }, { once: true })
+      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable', 'cover-fallback'); cover.textContent = '♫' }, { once: true })
       image.addEventListener('load', () => cover.classList.add('cover-loaded'), { once: true })
       cover.append(image)
       if (imageSource.startsWith('/api/')) {
@@ -1610,12 +1712,12 @@ function renderGenerationTracks(container, tracks) {
           } catch (error) {
             console.warn('[Audinoo cover]', error)
             image.remove()
-            cover.classList.add('cover-unavailable')
+            cover.classList.add('cover-unavailable', 'cover-fallback')
             cover.textContent = '♫'
           }
         })()
       } else image.src = imageSource
-    } else cover.textContent = '♫'
+    } else { cover.classList.add('cover-fallback'); cover.textContent = '♫' }
     const content = document.createElement('div'); content.className = 'generation-track-content'
     const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
     const actions = document.createElement('div'); actions.className = 'generation-track-actions'
@@ -1632,58 +1734,193 @@ function renderGenerationTracks(container, tracks) {
       writeBrowserStorage('localStorage', favoriteKey, JSON.stringify([...current]))
       favorite.classList.toggle('is-favorite', current.has(favoriteId))
     })
+    const isLibraryTrack = () => !!item.closest('.library-song-item')
+    const showLoadingSpinner = () => { play.classList.add('is-loading'); play.innerHTML = '<span class="generation-play-spinner" aria-hidden="true"></span>'; play.setAttribute('aria-label', 'Chargement de la chanson') }
+    const showPlayIcon = () => { play.classList.remove('is-loading'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'; play.setAttribute('aria-label', 'Lire la chanson') }
+    const showPauseIcon = () => { play.classList.remove('is-loading'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; play.setAttribute('aria-label', 'Mettre en pause') }
     if (track.audioUrl.startsWith('/api/')) {
       player.addEventListener('play', async () => {
-        if (player.dataset.loaded === 'true') return
+        if (player.dataset.loaded === 'true' || player.dataset.loading === 'true') return
+        player.dataset.loading = 'true'
+        showLoadingSpinner()
         player.pause()
         try {
           const token = await auth.currentUser?.getIdToken()
+          if (!token) throw new Error('authentication-required')
           const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
           if (!audioResponse.ok) throw new Error('audio-unavailable')
-          player.src = URL.createObjectURL(await audioResponse.blob())
+          const blob = await audioResponse.blob()
+          if (/^(text\/|application\/json)/i.test(blob.type)) throw new Error('invalid-audio-content-type')
+          player.src = URL.createObjectURL(blob)
           player.dataset.loaded = 'true'
+          player.dataset.loading = 'false'
           await player.play()
-        } catch (error) { name.textContent = 'Audio temporairement indisponible'; console.warn('[Audinoo audio]', error) }
-      }, { once: true })
+        } catch (error) {
+          player.dataset.loading = 'false'
+          showPlayIcon()
+          name.textContent = 'Audio indisponible · Réessaie dans un instant'
+          console.warn('[Audinoo audio]', { url: track.audioUrl, error })
+        }
+      })
     } else player.src = track.audioUrl
-    player.addEventListener('play', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; play.setAttribute('aria-label','Mettre en pause') })
-    player.addEventListener('pause', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'; play.setAttribute('aria-label','Lire la chanson') })
-    play.addEventListener('click', async () => { if (player.paused) { try { await player.play() } catch (error) { console.warn('[Audinoo player]', error) } } else player.pause() })
-    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    share.addEventListener('click', async () => {
-      const data = { title: name.textContent, text: 'Découvre ma création musicale sur Audinoo : ' + name.textContent, url: window.location.origin + '/#studio' }
-      if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
-      window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank', 'noopener,noreferrer')
+    player.addEventListener('play', () => { if (player.dataset.loading !== 'true') showPauseIcon() })
+    player.addEventListener('playing', () => {
+      player.dataset.loading = 'false'
+      showPauseIcon()
+      if (isLibraryTrack()) activateLibraryMiniPlayer(player, name.textContent)
+    })
+    player.addEventListener('pause', () => {
+      if (player.dataset.loading !== 'true') showPlayIcon()
+      if (activeLibraryAudio === player) syncLibraryMiniPlayer()
+    })
+    player.addEventListener('ended', () => { showPlayIcon(); if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    player.addEventListener('timeupdate', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    player.addEventListener('loadedmetadata', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    player.addEventListener('durationchange', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    play.addEventListener('click', async () => {
+      if (player.paused) {
+        if (player.dataset.loaded !== 'true' && track.audioUrl.startsWith('/api/')) showLoadingSpinner()
+        try { await player.play() } catch (error) { player.dataset.loading = 'false'; showPlayIcon(); console.warn('[Audinoo player]', error) }
+      } else player.pause()
+    })
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-download-locked'; share.setAttribute('aria-label','Télécharger · bientôt disponible'); share.title = 'Télécharger 🔒'; share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="generation-download-lock" aria-hidden="true"><svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.2" fill="currentColor"/><path d="M4 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>'
+    share.addEventListener('click', () => {
+      toast.textContent = 'Télécharger 🔒 · Cette fonctionnalité sera bientôt disponible.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 2600)
     })
     actions.append(favorite, play, share)
     content.append(name, actions, player); item.append(cover, content); container.append(item)
   })
 }
 
+libraryMiniPlay.addEventListener('click', async () => {
+  if (!activeLibraryAudio) return
+  try { if (activeLibraryAudio.paused) await activeLibraryAudio.play(); else activeLibraryAudio.pause() }
+  catch (error) { console.warn('[Audinoo mini player]', error) }
+})
+async function playLibraryTrackAtOffset(offset, label) {
+  const songs = [...libraryGenerationList.querySelectorAll('.library-song-item audio')]
+  if (!songs.length) return
+  const currentIndex = songs.indexOf(activeLibraryAudio)
+  const nextIndex = currentIndex < 0 ? (offset > 0 ? 0 : songs.length - 1) : (currentIndex + offset + songs.length) % songs.length
+  const targetAudio = songs[nextIndex]
+  if (!targetAudio) return
+  try {
+    if (activeLibraryAudio && activeLibraryAudio !== targetAudio) activeLibraryAudio.pause()
+    await targetAudio.play()
+  } catch (error) { console.warn('[Audinoo '+label+' track]', error) }
+}
+libraryMiniPrevious.addEventListener('click', () => playLibraryTrackAtOffset(-1, 'previous'))
+libraryMiniNext.addEventListener('click', () => playLibraryTrackAtOffset(1, 'next'))
+libraryMiniSeek.addEventListener('input', () => {
+  if (!activeLibraryAudio || !Number.isFinite(activeLibraryAudio.duration)) return
+  activeLibraryAudio.currentTime = Number(libraryMiniSeek.value) / 10
+})
+
+const libraryFullPlayer = document.createElement('section')
+libraryFullPlayer.className = 'library-full-player'
+libraryFullPlayer.hidden = true
+libraryFullPlayer.setAttribute('aria-label', 'Lecteur audio')
+libraryFullPlayer.innerHTML = '<button class="library-full-close" type="button" aria-label="Fermer le lecteur">✕</button><div class="library-full-content"><div class="library-full-cover library-mini-cover"><span>♫</span></div><div class="library-full-meta"><span class="library-mini-eyebrow"><i></i> AUDINOO PLAYER</span><h2 class="library-full-title">Sans titre</h2></div><div class="library-audio-visualizer" role="img" aria-label="Visualisation animée de la musique"></div><div class="library-full-controls"><span class="library-full-current">0:00</span><input class="library-full-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-full-duration">0:00</span></div><div class="library-full-actions"><button class="library-full-previous" type="button" aria-label="Chanson précédente"><svg viewBox="0 0 24 24"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-full-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-full-next" type="button" aria-label="Chanson suivante"><svg viewBox="0 0 24 24"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></div>'
+libraryWorkspacePage.append(libraryFullPlayer)
+const fullCover = libraryFullPlayer.querySelector('.library-full-cover')
+const fullTitle = libraryFullPlayer.querySelector('.library-full-title')
+const fullVisualizer = libraryFullPlayer.querySelector('.library-audio-visualizer')
+const fullSeek = libraryFullPlayer.querySelector('.library-full-seek')
+const fullCurrent = libraryFullPlayer.querySelector('.library-full-current')
+const fullDuration = libraryFullPlayer.querySelector('.library-full-duration')
+const fullPlay = libraryFullPlayer.querySelector('.library-full-play')
+Array.from({ length: 64 }, (_, index) => {
+  const bar = document.createElement('i')
+  const pattern = index % 8
+  bar.className = pattern === 0 || pattern === 5 ? 'visualizer-tall' : pattern === 2 || pattern === 7 ? 'visualizer-soft' : pattern === 3 ? 'visualizer-dot' : 'visualizer-line'
+  bar.style.setProperty('--bar-index', String(index))
+  bar.style.setProperty('--bar-peak', (26 + ((index * 29 + 13) % 70)) + '%')
+  bar.style.setProperty('--bar-speed', (0.48 + ((index * 7) % 34) / 100) + 's')
+  bar.style.setProperty('--bar-delay', (-((index * 19) % 83) / 100) + 's')
+  fullVisualizer.append(bar)
+})
+function syncFullPlayer() {
+  if (!activeLibraryAudio) return
+  const duration = Number.isFinite(activeLibraryAudio.duration) ? activeLibraryAudio.duration : 0
+  fullSeek.max = String(Math.max(1, Math.round(duration * 10)))
+  fullSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
+  const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
+  fullSeek.style.setProperty('--track-progress', progress + '%')
+  fullVisualizer.style.setProperty('--audio-progress', progress + '%')
+  fullCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
+  fullDuration.textContent = formatAudioTime(duration)
+  fullPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
+  fullPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
+  fullVisualizer.classList.toggle('is-playing', !activeLibraryAudio.paused)
+}
+function openLibraryFullPlayer() {
+  if (!activeLibraryAudio) return
+  fullTitle.textContent = libraryMiniTitle.textContent
+  fullCover.innerHTML = libraryMiniCover.innerHTML
+  fullCover.dataset.palette = libraryMiniCover.dataset.palette || ''
+  fullCover.classList.toggle('has-image', libraryMiniCover.classList.contains('has-image'))
+  libraryFullPlayer.hidden = false
+  syncFullPlayer()
+}
+libraryMiniPlayer.addEventListener('click', (event) => {
+  if (event.target.closest('button,input')) return
+  openLibraryFullPlayer()
+})
+libraryFullPlayer.querySelector('.library-full-close').addEventListener('click', () => { libraryFullPlayer.hidden = true })
+libraryFullPlayer.querySelector('.library-full-play').addEventListener('click', async () => {
+  if (!activeLibraryAudio) return
+  try { if (activeLibraryAudio.paused) await activeLibraryAudio.play(); else activeLibraryAudio.pause() } catch (error) { console.warn('[Audinoo full player]', error) }
+})
+libraryFullPlayer.querySelector('.library-full-previous').addEventListener('click', () => playLibraryTrackAtOffset(-1, 'previous'))
+libraryFullPlayer.querySelector('.library-full-next').addEventListener('click', () => playLibraryTrackAtOffset(1, 'next'))
+fullSeek.addEventListener('input', () => {
+  if (activeLibraryAudio && Number.isFinite(activeLibraryAudio.duration)) activeLibraryAudio.currentTime = Number(fullSeek.value) / 10
+})
+
+
+function libraryGenerationDateLabel(value) {
+  const date = value ? new Date(value) : null
+  if (!date || !Number.isFinite(date.getTime())) return 'Date inconnue'
+  const today = new Date()
+  const startOfDay = (item) => new Date(item.getFullYear(), item.getMonth(), item.getDate()).getTime()
+  const difference = Math.round((startOfDay(today) - startOfDay(date)) / 86400000)
+  if (difference === 0) return "Aujourd'hui"
+  if (difference === 1) return 'Hier'
+  if (difference === 2) return 'Avant-hier'
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+}
+
 function renderLibraryGeneration(generation) {
-  const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
+  const existing = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .filter(node => node.dataset.libraryTask === generation.taskId)
+  existing.forEach(node => node.remove())
+
+  const group = document.createElement('section')
+  group.className = 'library-generation-group'
+  group.dataset.libraryTask = generation.taskId
+  const dateLabel = document.createElement('div')
+  dateLabel.className = 'library-generation-date'
+  dateLabel.textContent = libraryGenerationDateLabel(generation.createdAt)
+  group.append(dateLabel)
+
   if (!generation.tracks?.length) {
-    let pending = existing.find(node => node.classList.contains('library-pending-generation'))
-    existing.filter(node => node !== pending).forEach(node => node.remove())
-    if (!pending) {
-      pending = createGenerationCard(generation)
-      pending.dataset.libraryTask = generation.taskId
-      pending.classList.add('library-pending-generation')
-      libraryGenerationList.prepend(pending)
-    } else {
-      const status = pending.querySelector('.generation-status')
-      if (status) status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
-    }
+    const pending = createGenerationCard(generation)
+    pending.dataset.libraryTask = generation.taskId
+    pending.classList.add('library-pending-generation')
+    group.append(pending)
+    libraryGenerationList.append(group)
     return
   }
-  existing.forEach(node => node.remove())
+
   generation.tracks.forEach((track, index) => {
     if (!track?.audioUrl) return
     const row = document.createElement('div')
     row.className = 'library-song-row'
     row.dataset.libraryTask = generation.taskId
     const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
-    const displayTrack = { ...track, imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
+    const displayTrack = { ...track, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
     const wrapper = document.createElement('div')
     wrapper.className = 'library-song-player'
     renderGenerationTracks(wrapper, [displayTrack])
@@ -1692,11 +1929,12 @@ function renderLibraryGeneration(generation) {
     song.classList.add('library-song-item')
     const meta = document.createElement('span')
     meta.className = 'library-song-variant'
-    meta.textContent = generation.title || track.title || 'Création Audinoo'
+    meta.textContent = generation.title || track.title || 'Sans titre'
     song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
     row.append(song)
-    libraryGenerationList.append(row)
+    group.append(row)
   })
+  libraryGenerationList.append(group)
 }
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
@@ -1769,19 +2007,19 @@ async function pollGeneration(taskId, card) {
   const bar = card.querySelector('.generation-progress-track span')
   const message = card.querySelector('.generation-progress-message')
   const timer = window.setInterval(() => {
-    percent = Math.min(92, percent + (percent < 65 ? 3 : 1))
+    percent = Math.min(92, percent + (percent < 65 ? 2 : 1))
     if (percentNode) percentNode.textContent = percent + '%'
     if (bar) bar.style.width = percent + '%'
     if (message) message.textContent = messages[messageIndex++ % messages.length]
-  }, 6500)
+  }, 1800)
   try {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, 10000))
-      if (!auth.currentUser) return
+    while (auth.currentUser && card.isConnected) {
+      await new Promise((resolve) => window.setTimeout(resolve, 5000))
+      if (!auth.currentUser || !card.isConnected) return
       const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
       const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
-      renderLibraryGeneration(generation)
+      if (result.tracks?.length || result.completed || result.failed) renderLibraryGeneration(generation)
       if (result.completed || result.failed) {
         if (percentNode) percentNode.textContent = result.completed ? '100%' : '—'
         if (bar) bar.style.width = result.completed ? '100%' : '0%'
@@ -1789,11 +2027,14 @@ async function pollGeneration(taskId, card) {
         return
       }
     }
-    if (message) message.textContent = 'La création continue sur nos serveurs…'
   } catch (error) {
-    card.querySelector('.generation-status').textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
-  } finally { window.clearInterval(timer) }
+    const status = card.querySelector('.generation-status')
+    if (status) status.textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+  } finally {
+    window.clearInterval(timer)
+  }
 }
+
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
 const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
@@ -1814,10 +2055,133 @@ if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
   }
 }
 
+let pendingGenerationPreview = null
+
+function openLibraryForGenerationPreview(preview) {
+  pendingGenerationPreview = preview
+  homeWorkspacePage.hidden = true
+  studioWorkspacePage.hidden = true
+  modelWorkspacePage.hidden = true
+  adminWorkspacePage.hidden = true
+  libraryWorkspacePage.hidden = false
+  workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#library'))
+  workspaceModelChoice.classList.remove('is-active')
+  window.history.replaceState(null, '', '#library')
+  setWorkspaceSidebarOpen(false)
+
+  const group = document.createElement('section')
+  group.className = 'library-generation-group'
+  group.dataset.libraryTask = preview.id
+  const card = document.createElement('article')
+  card.className = 'library-song-item library-generation-preview is-preparing'
+  card.dataset.previewId = preview.id
+  card.setAttribute('aria-label', 'Nouvelle chanson en cours de génération')
+
+  const cover = document.createElement('div')
+  cover.className = 'generation-track-cover generation-preview-cover'
+  cover.setAttribute('aria-hidden', 'true')
+  const progress = document.createElement('div')
+  progress.className = 'generation-preview-progress'
+  progress.setAttribute('role', 'progressbar')
+  progress.setAttribute('aria-label', 'Progression de la génération')
+  progress.setAttribute('aria-valuemin', '0')
+  progress.setAttribute('aria-valuemax', '100')
+  progress.setAttribute('aria-valuenow', '0')
+  progress.innerHTML = '<span class="generation-preview-progress-label">0%</span>'
+  cover.append(progress)
+  card.append(cover)
+  group.append(card)
+  libraryGenerationList.prepend(group)
+  libraryGenerationList.hidden = false
+  libraryLoading.hidden = true
+  libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
+
+  preview.card = card
+  preview.group = group
+  preview.progressNode = progress
+  preview.percent = 0
+  preview.progressTimer = window.setInterval(() => {
+    if (pendingGenerationPreview !== preview || !card.isConnected) return
+    preview.percent = Math.min(92, preview.percent + (preview.percent < 60 ? 2 : 1))
+    progress.querySelector('.generation-preview-progress-label').textContent = preview.percent + '%'
+    progress.setAttribute('aria-valuenow', String(preview.percent))
+  }, 1100)
+}
+
+async function pollLibraryGenerationPreview(preview, taskId) {
+  const messages = ['Nous composons la production…','Nous créons la mélodie…','Les instruments prennent leur place…','Nous travaillons le mixage…','Nous peaufinons les voix…','Nous préparons les variantes…']
+  let messageIndex = 0
+  while (pendingGenerationPreview === preview && auth.currentUser && preview.card?.isConnected) {
+    await new Promise((resolve) => window.setTimeout(resolve, 5000))
+    if (pendingGenerationPreview !== preview || !auth.currentUser || !preview.card?.isConnected) return
+    try {
+      const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
+      const tracks = result.tracks || []
+      if (result.failed) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = 'La génération n’a pas abouti. Tu peux réessayer.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        return
+      }
+      if (result.completed && !tracks.length) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = 'Le service a terminé, mais aucune URL audio n’a été reçue. Réessaie dans un instant.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5500)
+        return
+      }
+      if (result.completed && tracks.length) {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        renderLibraryGeneration({
+          taskId,
+          title: preview.title,
+          prompt: preview.prompt,
+          status: result.status,
+          tracks,
+          createdAt: new Date().toISOString()
+        })
+        const completedGroup = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+          .find((item) => item.dataset.libraryTask === taskId)
+        if (completedGroup) libraryGenerationList.prepend(completedGroup)
+        libraryGenerationList.hidden = false
+        libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
+        toast.textContent = 'Votre chanson est prête !'
+        toast.classList.add('show', 'is-success')
+        window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
+        return
+      }
+      const label = preview.progressNode?.querySelector('.generation-preview-progress-label')
+      if (label) label.textContent = Math.max(preview.percent, 60 + (messageIndex % 30)) + '%'
+      if (preview.progressNode) preview.progressNode.setAttribute('aria-valuenow', String(Math.max(preview.percent, 60 + (messageIndex % 30))))
+      messageIndex = (messageIndex + 1) % messages.length
+    } catch (error) {
+      if (error.message === 'invalid-session' || error.message === 'generation-not-found') {
+        window.clearInterval(preview.progressTimer)
+        preview.group?.remove()
+        pendingGenerationPreview = null
+        toast.textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        return
+      }
+      // Une erreur réseau temporaire ne termine pas la génération : on réessaie au prochain cycle.
+      console.warn('[Audinoo generation status]', error)
+    }
+  }
+}
+
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
   if (!requireAccount()) return
-  const enteredPrompt = prompt.trim()
-  const cleanPrompt = enteredPrompt
+  const cleanPrompt = prompt.trim()
+  const cleanStyle = style.trim()
+  const cleanTitle = title.trim()
   if (cleanPrompt.length < 10) {
     toast.textContent = generationErrorMessage('prompt-too-short')
     toast.classList.add('show')
@@ -1830,45 +2194,81 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     window.setTimeout(() => toast.classList.remove('show'), 4500)
     return
   }
-  const originalText = submitButton.textContent
-  submitButton.disabled = true
-  submitButton.textContent = 'Création en cours…'
+  if (customMode && (!cleanStyle || !cleanTitle)) {
+    toast.textContent = generationErrorMessage('advanced-fields-required')
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
+    return
+  }
+
+  if (pendingGenerationPreview) {
+    window.clearInterval(pendingGenerationPreview.progressTimer)
+    pendingGenerationPreview.group?.remove()
+    pendingGenerationPreview = null
+  }
+
+  const preview = {
+    id: 'preview-' + Date.now(),
+    prompt: cleanPrompt,
+    style: cleanStyle,
+    title: cleanTitle || 'Création Audinoo',
+    customMode
+  }
+  openLibraryForGenerationPreview(preview)
+
+  const originalButtonContent = submitButton?.innerHTML
+  if (submitButton) {
+    submitButton.disabled = true
+    submitButton.classList.add('is-generating')
+    submitButton.innerHTML = '<span class="generation-submit-spinner" aria-hidden="true"></span><span>Génération en cours…</span>'
+    submitButton.setAttribute('aria-live', 'polite')
+  }
+
   try {
     const result = await callAudinooApi('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ prompt: cleanPrompt, style, title: title || 'Création Audinoo', customMode })
+      body: JSON.stringify({
+        prompt: cleanPrompt,
+        ...(customMode ? { style: cleanStyle, title: cleanTitle } : {}),
+        customMode
+      })
     })
-    const generation = { taskId: result.taskId, title: title || 'Ta création Audinoo', prompt: cleanPrompt, status: result.status, tracks: [] }
-    const card = upsertGenerationCard(generationPanel, generation)
-    addGenerationToLibrary(generation)
-    studioPrompt.value = ''; advancedPrompt.value = ''; advancedStyle.value = ''; advancedTitle.value = ''
-    homeWorkspacePage.hidden = true; studioWorkspacePage.hidden = true; modelWorkspacePage.hidden = true; adminWorkspacePage.hidden = true; libraryWorkspacePage.hidden = false
-    workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#library'))
-    workspaceModelChoice.classList.remove('is-active')
-    window.history.replaceState(null, '', '#library')
-    setWorkspaceSidebarOpen(false)
-    toast.textContent = 'Ta création est lancée. Nous préparons tes variantes…'
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 3500)
-    void pollGeneration(result.taskId, card)
-  } catch (error) {
-    const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
-      ? ` Motif SunoAPI : ${error.providerMessage}`
-      : ''
-    toast.textContent = `${generationErrorMessage(error.message)}${providerDetail} Détail exact : ${exactErrorDetails(error)}`
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 4500)
-    if (error.message === 'no-free-credit') {
-      windowPricingOpen()
+    if (!result.taskId) throw new Error('generation-failed')
+    preview.taskId = result.taskId
+    preview.group.dataset.libraryTask = result.taskId
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.classList.remove('is-generating')
+      submitButton.innerHTML = originalButtonContent
+      submitButton.removeAttribute('aria-live')
     }
+    void pollLibraryGenerationPreview(preview, result.taskId)
+  } catch (error) {
+    window.clearInterval(preview.progressTimer)
+    preview.group?.remove()
+    pendingGenerationPreview = null
+    const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
+      ? ' Motif du fournisseur : ' + error.providerMessage
+      : ''
+    toast.textContent = generationErrorMessage(error.message) + providerDetail + ' Détail exact : ' + exactErrorDetails(error)
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 5500)
+    if (error.message === 'no-free-credit') windowPricingOpen()
   } finally {
-    submitButton.disabled = false
-    submitButton.textContent = originalText
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.classList.remove('is-generating')
+      submitButton.innerHTML = originalButtonContent
+      submitButton.removeAttribute('aria-live')
+    }
   }
 }
 
 async function loadUserLibrary() {
   if (!auth.currentUser) return
+  libraryLoading.hidden = false
+  libraryGenerationList.hidden = true
+  libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
   try {
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
@@ -1880,7 +2280,12 @@ async function loadUserLibrary() {
       }
     })
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
+    libraryGenerationList.hidden = false
+    libraryLoading.hidden = true
   } catch (error) {
+    libraryGenerationList.hidden = false
+    libraryLoading.hidden = true
+    libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
     toast.textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 3500)
