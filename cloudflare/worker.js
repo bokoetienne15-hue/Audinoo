@@ -386,7 +386,27 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
     if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); return await publicTracks(request, db) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
-    if (url.pathname === '/api/suno-callback') return request.method === 'POST' ? response(200,{received:true}) : response(405,{error:'method-not-allowed'})
+    if (url.pathname === '/api/suno-callback') {
+      if (request.method !== 'POST') return response(405,{error:'method-not-allowed'})
+      let payload
+      try { payload = await request.json() } catch { return response(400,{error:'invalid-json'}) }
+      const callbackData = payload?.data || {}
+      const taskId = String(callbackData.task_id || callbackData.taskId || '')
+      if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId)) return response(200,{received:true,ignored:true})
+      const callbackDb = new FirestoreRest(env)
+      const rows = await callbackDb.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], where: { fieldFilter: { field: { fieldPath: 'taskId' }, op: 'EQUAL', value: { stringValue: taskId } } }, limit: 1 })
+      const doc = rows?.[0]?.document
+      const match = doc?.name?.match(/\\/documents\\/users\\/([^/]+)\\/generations\\/([^/]+)$/)
+      if (!match || match[2] !== taskId) return response(200,{received:true,ignored:true})
+      const uid = match[1], path = 'users/' + uid + '/generations/' + taskId
+      const callbackType = String(callbackData.callbackType || '').toLowerCase()
+      const tracks = tracksIn(callbackData.data || [])
+      const state = payload.code === 200 ? (callbackType === 'complete' ? 'SUCCESS' : callbackType === 'first' ? 'FIRST_SUCCESS' : callbackType === 'text' ? 'TEXT_SUCCESS' : 'SUCCESS') : 'GENERATE_AUDIO_FAILED'
+      const existing = (await callbackDb.get(path)).data || {}
+      const merged = tracks.length ? tracks.map((track,index) => ({ ...(existing.tracks?.[index] || {}), ...track, imageUrl: track.imageUrl || track.sourceImageUrl || existing.tracks?.[index]?.imageUrl || '' })) : (existing.tracks || [])
+      await callbackDb.set(path,{ state, ...(merged.length ? { tracks: merged } : {}), callbackType, callbackMessage: String(payload.msg || '') },true)
+      return response(200,{received:true,savedTracks:merged.length})
+    }
     if (url.pathname === '/api/fedapay-webhook') return await fedapayWebhook(request,env,new FirestoreRest(env))
     if (url.pathname === '/api/session-check') {
       if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
