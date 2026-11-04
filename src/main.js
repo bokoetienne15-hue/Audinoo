@@ -125,7 +125,7 @@ app.innerHTML = `
       <div class="currency-toggle" id="currency-toggle" role="group" aria-label="Choisir la devise"><span class="currency-label">Devise</span><button class="currency-option is-active" type="button" data-currency="xof" aria-pressed="true">FCFA</button><button class="currency-option" type="button" data-currency="eur" aria-pressed="false">EUR</button></div>
       <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule adaptée à tes besoins et découvre les avantages inclus dans chaque offre.</p></div>
       <div class="pricing-grid">
-        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Une chanson</h3><p class="price-description">Une création musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / chanson</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 génération musicale, soit 2 variantes</span><span>Téléchargement au format MP3</span><span>Aucun abonnement requis</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
+        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Une chanson</h3><p class="price-description">Débloque le téléchargement MP3 d’une chanson que tu as déjà créée, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / chanson</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Achat individuel pour une chanson créée</span><span>Téléchargement MP3 de cette chanson uniquement</span><span>Aucun abonnement requis</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
         <article class="price-card"><p class="price-label">Plan Découverte</p><h3>Formule mensuelle</h3><p class="price-description">Chante avec ta propre voix.</p><div class="price-value"><span data-price data-xof="1000" data-eur="1.52">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>3 générations musicales, soit 6 variantes</span><span>3 clips vidéo, un par création</span><span>Téléchargement au format MP3</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Créateur / Artiste</p><h3>Formule mensuelle</h3><p class="price-description">Libérez tout votre potentiel créatif.</p><div class="price-value"><span data-price data-xof="3000" data-eur="4.57">3 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>8 générations musicales, soit 16 variantes</span><span>3 clips vidéo au choix parmi vos créations</span><span>Accès au mode sauvage</span><span>Chansons d'une durée pouvant atteindre 8 minutes</span><span>Téléchargement MP3 et WAV</span><span>Téléchargement séparé de la voix et de l'instrumental</span><span>Licence commerciale pour l'exploitation de vos créations musicales</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Pro</p><h3>Formule avancée</h3><p class="price-description">L'expérience complète pour vos productions musicales.</p><div class="price-value"><span data-price data-xof="6900" data-eur="10.52">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>30 générations musicales, soit 60 variantes</span><span>10 clips vidéo au choix parmi vos créations</span><span>Conservation permanente du profil vocal</span><span>Séparation avancée des pistes pour 10 chansons au choix</span><span>Licence commerciale</span><span>Téléchargement MP3 et WAV</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
@@ -434,25 +434,18 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const card = button.closest('.price-card')
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   if (isSingleCredit) {
-    button.textContent = 'Acheter 1 crédit · 300 FCFA'
-    button.href = '#buy-credit'
-    button.addEventListener('click', async (event) => {
+    button.textContent = 'Choisir une chanson à télécharger · 300 FCFA'
+    button.href = '#library'
+    button.addEventListener('click', (event) => {
       event.preventDefault()
-      button.setAttribute('aria-busy', 'true')
-      button.textContent = 'Préparation du paiement…'
-      button.classList.add('is-loading')
-      try {
-        const result = await callAudinooApi('/api/credits/purchase', { method: 'POST', body: JSON.stringify({}) })
-        if (!result.checkoutUrl) throw new Error('fedapay-checkout-unavailable')
-        window.location.assign(result.checkoutUrl)
-      } catch (error) {
-        toast.textContent = generationErrorMessage(error.message)
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 5000)
-        button.textContent = 'Acheter 1 crédit · 300 FCFA'
-        button.removeAttribute('aria-busy')
-        button.classList.remove('is-loading')
-      }
+      workspacePricingPage.hidden = true
+      libraryWorkspacePage.hidden = false
+      studioWorkspacePage.hidden = true
+      modelWorkspacePage.hidden = true
+      adminWorkspacePage.hidden = true
+      setWorkspaceSidebarOpen(false)
+      window.history.replaceState(null, '', '#library')
+      if (typeof loadLibrary === 'function') void loadLibrary()
     })
     return
   }
