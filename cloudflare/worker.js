@@ -257,7 +257,7 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
   }
   // Legacy/unarchived tracks can still be listened to by an authenticated administrator.
   // Publishing will archive this provider URL into R2 before making it public.
-  if (admin && kind === 'audio' && /^https?:\\/\\//i.test(track?.audioUrl || '')) {
+  if (admin && kind === 'audio' && /^https?:\/\//i.test(track?.audioUrl || '')) {
     const remote = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
     if (remote.ok && remote.body) return new Response(remote.body, { headers: { 'content-type': remote.headers.get('content-type') || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
   }
@@ -327,7 +327,7 @@ async function adminGenerations(request, db, user) {
         tracks: (Array.isArray(d.tracks) ? d.tracks : []).map((t, i) => ({
           title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '',
           archived: !!t.r2Key, trackIndex: i,
-          audioUrl: (t.r2Key || /^https?:\\/\\//i.test(t.audioUrl || ''))
+          audioUrl: (t.r2Key || /^https?:\/\//i.test(t.audioUrl || ''))
             ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(taskId) + '&track=' + i : ''
         }))
       }
@@ -346,7 +346,7 @@ async function publishTrack(request, env, db, user) {
   if (!snap.exists || !track) return response(409, { error: 'audio-not-available' })
   const id = taskId + '-' + index
   let source = track.r2Key ? await env.AUDIO_BUCKET?.get(track.r2Key) : null
-  if (!source && /^https?:\\/\\//i.test(track.audioUrl || '')) {
+  if (!source && /^https?:\/\//i.test(track.audioUrl || '')) {
     const remote = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
     if (remote.ok && remote.body && env.AUDIO_BUCKET) {
       const privateKey = 'private/' + uid + '/' + taskId + '/' + index + '.audio'
