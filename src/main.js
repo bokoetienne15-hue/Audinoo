@@ -1548,10 +1548,11 @@ libraryLoading.hidden = true
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
-libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
+libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-previous" type="button" aria-label="Chanson précédente" title="Chanson précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
 const libraryMiniCover = libraryMiniPlayer.querySelector('.library-mini-cover')
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
+const libraryMiniPrevious = libraryMiniPlayer.querySelector('.library-mini-previous')
 const libraryMiniNext = libraryMiniPlayer.querySelector('.library-mini-next')
 const libraryMiniTitle = libraryMiniPlayer.querySelector('.library-mini-title')
 const libraryMiniSeek = libraryMiniPlayer.querySelector('.library-mini-seek')
@@ -1696,7 +1697,7 @@ function renderGenerationTracks(container, tracks) {
           const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
           if (!audioResponse.ok) throw new Error('audio-unavailable')
           const blob = await audioResponse.blob()
-          if (!blob.type.startsWith('audio/')) throw new Error('invalid-audio-content-type')
+          if (/^(text\/|application\/json)/i.test(blob.type)) throw new Error('invalid-audio-content-type')
           player.src = URL.createObjectURL(blob)
           player.dataset.loaded = 'true'
           player.dataset.loading = 'false'
@@ -1704,8 +1705,8 @@ function renderGenerationTracks(container, tracks) {
         } catch (error) {
           player.dataset.loading = 'false'
           showPlayIcon()
-          name.textContent = 'Audio temporairement indisponible'
-          console.warn('[Audinoo audio]', error)
+          name.textContent = 'Audio indisponible · Réessaie dans un instant'
+          console.warn('[Audinoo audio]', { url: track.audioUrl, error })
         }
       })
     } else player.src = track.audioUrl
@@ -1745,17 +1746,20 @@ libraryMiniPlay.addEventListener('click', async () => {
   try { if (activeLibraryAudio.paused) await activeLibraryAudio.play(); else activeLibraryAudio.pause() }
   catch (error) { console.warn('[Audinoo mini player]', error) }
 })
-libraryMiniNext.addEventListener('click', async () => {
+async function playLibraryTrackAtOffset(offset, label) {
   const songs = [...libraryGenerationList.querySelectorAll('.library-song-item audio')]
   if (!songs.length) return
   const currentIndex = songs.indexOf(activeLibraryAudio)
-  const nextAudio = songs[(currentIndex + 1 + songs.length) % songs.length]
-  if (!nextAudio) return
+  const nextIndex = currentIndex < 0 ? (offset > 0 ? 0 : songs.length - 1) : (currentIndex + offset + songs.length) % songs.length
+  const targetAudio = songs[nextIndex]
+  if (!targetAudio) return
   try {
-    if (activeLibraryAudio && activeLibraryAudio !== nextAudio) activeLibraryAudio.pause()
-    await nextAudio.play()
-  } catch (error) { console.warn('[Audinoo next track]', error) }
-})
+    if (activeLibraryAudio && activeLibraryAudio !== targetAudio) activeLibraryAudio.pause()
+    await targetAudio.play()
+  } catch (error) { console.warn('[Audinoo '+label+' track]', error) }
+}
+libraryMiniPrevious.addEventListener('click', () => playLibraryTrackAtOffset(-1, 'previous'))
+libraryMiniNext.addEventListener('click', () => playLibraryTrackAtOffset(1, 'next'))
 libraryMiniSeek.addEventListener('input', () => {
   if (!activeLibraryAudio || !Number.isFinite(activeLibraryAudio.duration)) return
   activeLibraryAudio.currentTime = Number(libraryMiniSeek.value) / 10
