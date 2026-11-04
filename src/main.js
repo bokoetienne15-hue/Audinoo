@@ -1496,7 +1496,15 @@ function upsertGenerationCard(container, generation) {
 
 function generationErrorMessage(errorCode) {
   const messages = {
-    'no-free-credit': 'Ton crédit gratuit a déjà été utilisé ou l’offre est désactivée. Le paiement n’est pas encore disponible.',
+    'no-free-credit': 'Tu n’as plus de crédit disponible. Choisis un crédit supplémentaire pour continuer.',
+    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur Cloudflare. Contacte le support Audinoo.',
+    'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
+    'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
+    'fedapay-checkout-unavailable': 'Le lien de paiement FedaPay est momentanément indisponible.',
+    'customer-email-required': 'Ajoute une adresse e-mail à ton compte pour effectuer le paiement.',
+    'payment-order-not-found': 'Cette commande de paiement est introuvable.',
+    'payment-confirmation-failed': 'Le paiement n’a pas pu être vérifié. Ton crédit ne sera ajouté qu’après confirmation.',
+    'payment-amount-mismatch': 'Le montant de cette transaction ne correspond pas à la commande Audinoo.',
     'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
     'music-provider-not-configured': 'Le service musical n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret SUNOAPI_KEY dans les paramètres du Worker audinoo-test.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
@@ -1594,8 +1602,6 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
       method: 'POST',
       body: JSON.stringify({ prompt: cleanPrompt, style, title: title || 'Création Audinoo', customMode })
     })
-    activeWorkspaceProfile = { ...activeWorkspaceProfile, freeCreditUsed: true }
-    renderWorkspaceFreeCredit()
     const generation = { taskId: result.taskId, title: title || 'Ta création Audinoo', prompt: cleanPrompt, status: result.status, tracks: [] }
     const card = upsertGenerationCard(generationPanel, generation)
     addGenerationToLibrary(generation)
