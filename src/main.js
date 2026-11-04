@@ -849,6 +849,7 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
   renderAdminGenerationsTable()
+  renderAdminFeedbackRecipients()
   adminReportDataReady = true
   excelReportButton.disabled = false
   pdfReportButton.disabled = false
@@ -1034,6 +1035,7 @@ async function loadAdminGenerations(silent = false) {
     const result = await callAudinooApi('/api/admin/generations')
     adminGenerationRecords = result.generations || []
     renderAdminGenerationsTable()
+    renderAdminFeedbackRecipients()
   } catch (error) {
     if (!adminGenerationRecords.length) target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
     else console.warn('[Audinoo admin] Actualisation des générations impossible', error)
@@ -1162,6 +1164,160 @@ adminGrantCreditsForm.addEventListener('submit', async (event) => {
 })
 
 adminCommunicationSection.append(adminDashboardGrid)
+
+const adminFeedbackCampaignPanel = document.createElement('section')
+adminFeedbackCampaignPanel.className = 'admin-panel admin-feedback-campaign-panel'
+adminFeedbackCampaignPanel.innerHTML = '<div class="admin-panel-heading"><div><p>ÉCOUTE DE LA COMMUNAUTÉ</p><h2>Inviter des utilisateurs à donner leur avis</h2></div><span class="admin-credit-state">CAMPAGNE MANUELLE</span></div><p class="admin-panel-status">Sélectionne les membres qui ont déjà créé au moins une chanson. Le pays n’est pas un critère. L’invitation apparaîtra à leur prochaine connexion et restera facultative.</p><form id="admin-feedback-campaign-form" class="admin-notification-form"><label for="admin-feedback-title">Titre de l’invitation</label><input id="admin-feedback-title" name="title" type="text" minlength="2" maxlength="80" value="Ton avis compte pour Audinoo" required /><label for="admin-feedback-message">Message</label><textarea id="admin-feedback-message" name="message" minlength="2" maxlength="600" rows="4" required>Tu utilises Audinoo pour donner vie à tes idées musicales. Nous aimerions connaître ton expérience afin d’améliorer la plateforme. Quelques étoiles et un commentaire facultatif nous aideraient beaucoup. Merci pour ta confiance !</textarea><div class="admin-feedback-recipient-toolbar"><label class="admin-feedback-select-all"><input id="admin-feedback-select-all" type="checkbox" /> Sélectionner tous les utilisateurs éligibles</label><span id="admin-feedback-selection-count" class="admin-data-count">0 sélectionné</span></div><label class="admin-search-field admin-feedback-search"><span aria-hidden="true">⌕</span><input id="admin-feedback-user-search" type="search" placeholder="Rechercher un utilisateur, e-mail ou pays…" autocomplete="off" /></label><div id="admin-feedback-recipient-list" class="admin-feedback-recipient-list"><p class="admin-panel-status">Chargement des utilisateurs ayant créé une chanson…</p></div><button id="admin-feedback-send" class="admin-publish-button" type="submit" disabled>Envoyer l’invitation aux utilisateurs sélectionnés <span aria-hidden="true">→</span></button><p id="admin-feedback-campaign-status" class="admin-panel-status" role="status"></p></form>'
+const adminFeedbackResponsesPanel = document.createElement('section')
+adminFeedbackResponsesPanel.className = 'admin-panel admin-feedback-responses-panel'
+adminFeedbackResponsesPanel.innerHTML = '<div class="admin-panel-heading"><div><p>RETOURS DES UTILISATEURS</p><h2>Feedbacks reçus</h2></div><button id="admin-feedback-refresh" class="admin-refresh-button" type="button">Actualiser</button></div><p id="admin-feedback-responses-status" class="admin-panel-status" role="status">Les réponses apparaîtront ici après leur envoi.</p><div id="admin-feedback-responses-list" class="admin-feedback-responses-list"></div>'
+adminCommunicationSection.append(adminFeedbackCampaignPanel, adminFeedbackResponsesPanel)
+const adminFeedbackCampaignForm = adminFeedbackCampaignPanel.querySelector('#admin-feedback-campaign-form')
+const adminFeedbackTitle = adminFeedbackCampaignPanel.querySelector('#admin-feedback-title')
+const adminFeedbackMessage = adminFeedbackCampaignPanel.querySelector('#admin-feedback-message')
+const adminFeedbackRecipientList = adminFeedbackCampaignPanel.querySelector('#admin-feedback-recipient-list')
+const adminFeedbackRecipientSearch = adminFeedbackCampaignPanel.querySelector('#admin-feedback-user-search')
+const adminFeedbackSelectAll = adminFeedbackCampaignPanel.querySelector('#admin-feedback-select-all')
+const adminFeedbackSelectionCount = adminFeedbackCampaignPanel.querySelector('#admin-feedback-selection-count')
+const adminFeedbackSendButton = adminFeedbackCampaignPanel.querySelector('#admin-feedback-send')
+const adminFeedbackCampaignStatus = adminFeedbackCampaignPanel.querySelector('#admin-feedback-campaign-status')
+const adminFeedbackResponsesStatus = adminFeedbackResponsesPanel.querySelector('#admin-feedback-responses-status')
+const adminFeedbackResponsesList = adminFeedbackResponsesPanel.querySelector('#admin-feedback-responses-list')
+const selectedFeedbackUserIds = new Set()
+function getFeedbackEligibleUsers() {
+  const songsByUser = new Map()
+  adminGenerationRecords.forEach((generation) => {
+    const state = String(generation.status || '').toUpperCase()
+    if (!generation.uid || !['SUCCESS', 'COMPLETE', 'COMPLETED'].includes(state) || !Array.isArray(generation.tracks) || !generation.tracks.length) return
+    songsByUser.set(generation.uid, (songsByUser.get(generation.uid) || 0) + generation.tracks.length)
+  })
+  return latestAdminUsers.filter((user) => songsByUser.has(user.uid))
+    .map((user) => ({ ...user, feedbackSongCount: songsByUser.get(user.uid) }))
+    .sort((first, second) => String(first.displayName || first.username || first.email || '').localeCompare(String(second.displayName || second.username || second.email || ''), 'fr'))
+}
+function renderAdminFeedbackRecipients() {
+  if (!adminFeedbackRecipientList || !adminFeedbackSelectionCount) return
+  const eligible = getFeedbackEligibleUsers()
+  const term = adminFeedbackRecipientSearch.value.trim().toLocaleLowerCase('fr')
+  const visible = eligible.filter((user) => [user.displayName, user.username, user.email, user.country, user.countryCode].some((value) => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const eligibleIds = new Set(eligible.map((user) => user.uid))
+  for (const uid of selectedFeedbackUserIds) if (!eligibleIds.has(uid)) selectedFeedbackUserIds.delete(uid)
+  replaceNodeChildren(adminFeedbackRecipientList)
+  if (!eligible.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = adminGenerationRecords.length ? 'Aucun utilisateur ayant une chanson terminée avec un fichier audio disponible n’a été trouvé.' : 'Chargement des créations musicales…'
+    adminFeedbackRecipientList.append(empty)
+  } else if (!visible.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = 'Aucun utilisateur ne correspond à cette recherche.'
+    adminFeedbackRecipientList.append(empty)
+  } else {
+    visible.forEach((user) => {
+      const label = document.createElement('label')
+      label.className = 'admin-feedback-recipient'
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'
+      checkbox.checked = selectedFeedbackUserIds.has(user.uid)
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedFeedbackUserIds.add(user.uid)
+        else selectedFeedbackUserIds.delete(user.uid)
+        renderAdminFeedbackRecipients()
+      })
+      const identity = document.createElement('span')
+      identity.className = 'admin-feedback-recipient-identity'
+      const name = document.createElement('strong')
+      name.textContent = user.displayName || user.username || 'Utilisateur Audinoo'
+      const detail = document.createElement('small')
+      detail.textContent = [user.email || user.username || user.uid, user.country || user.countryCode || 'Pays non renseigné'].join(' · ')
+      identity.append(name, detail)
+      const songs = document.createElement('span')
+      songs.className = 'admin-feedback-recipient-songs'
+      songs.textContent = user.feedbackSongCount + ' chanson' + (user.feedbackSongCount > 1 ? 's' : '')
+      label.append(checkbox, identity, songs)
+      adminFeedbackRecipientList.append(label)
+    })
+  }
+  const selected = selectedFeedbackUserIds.size
+  adminFeedbackSelectionCount.textContent = selected + ' sélectionné' + (selected > 1 ? 's' : '') + ' · ' + eligible.length + ' éligible' + (eligible.length > 1 ? 's' : '')
+  adminFeedbackSendButton.disabled = selected === 0
+  adminFeedbackSelectAll.checked = visible.length > 0 && visible.every((user) => selectedFeedbackUserIds.has(user.uid))
+  adminFeedbackSelectAll.indeterminate = visible.some((user) => selectedFeedbackUserIds.has(user.uid)) && !adminFeedbackSelectAll.checked
+}
+adminFeedbackRecipientSearch.addEventListener('input', renderAdminFeedbackRecipients)
+adminFeedbackSelectAll.addEventListener('change', () => {
+  const term = adminFeedbackRecipientSearch.value.trim().toLocaleLowerCase('fr')
+  const visible = getFeedbackEligibleUsers().filter((user) => [user.displayName, user.username, user.email, user.country, user.countryCode].some((value) => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  visible.forEach((user) => adminFeedbackSelectAll.checked ? selectedFeedbackUserIds.add(user.uid) : selectedFeedbackUserIds.delete(user.uid))
+  renderAdminFeedbackRecipients()
+})
+adminFeedbackCampaignForm.addEventListener('submit', async (event) => {
+  event.preventDefault()
+  const userIds = [...selectedFeedbackUserIds]
+  if (!userIds.length || !auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  adminFeedbackSendButton.disabled = true
+  adminFeedbackCampaignStatus.textContent = 'Envoi des invitations…'
+  try {
+    const result = await callAudinooApi('/api/admin/feedback/campaign', { method: 'POST', body: JSON.stringify({ title: adminFeedbackTitle.value.trim(), message: adminFeedbackMessage.value.trim(), userIds }) })
+    selectedFeedbackUserIds.clear()
+    renderAdminFeedbackRecipients()
+    adminFeedbackCampaignStatus.textContent = 'Invitation envoyée à ' + result.recipientCount + ' utilisateur(s). Elle apparaîtra à leur prochaine connexion.'
+  } catch (error) {
+    console.error('[Audinoo admin] Could not send feedback campaign', error)
+    adminFeedbackCampaignStatus.textContent = 'Envoi impossible : ' + (error.message || 'erreur inconnue')
+  } finally {
+    renderAdminFeedbackRecipients()
+  }
+})
+function renderAdminFeedbackResponses(items) {
+  replaceNodeChildren(adminFeedbackResponsesList)
+  if (!items.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = 'Aucun feedback reçu pour le moment.'
+    adminFeedbackResponsesList.append(empty)
+    return
+  }
+  items.forEach((item) => {
+    const card = document.createElement('article')
+    card.className = 'admin-feedback-response-card'
+    const heading = document.createElement('div')
+    heading.className = 'admin-feedback-response-heading'
+    const campaign = document.createElement('strong')
+    campaign.textContent = item.title || 'Retour sur Audinoo'
+    const respondent = latestAdminUsers.find((user) => user.uid === item.userId)
+    const identity = document.createElement('small')
+    identity.className = 'admin-feedback-response-identity'
+    identity.textContent = respondent ? (respondent.displayName || respondent.username || respondent.email || respondent.uid) : 'Utilisateur Audinoo'
+    const date = document.createElement('time')
+    const created = item.createdAt ? new Date(item.createdAt) : null
+    date.textContent = created && Number.isFinite(created.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(created) : 'Date inconnue'
+    heading.append(campaign, date)
+    const rating = document.createElement('div')
+    rating.className = 'admin-feedback-response-stars'
+    rating.setAttribute('aria-label', item.stars ? item.stars + ' étoiles sur 5' : 'Aucune note')
+    rating.textContent = item.stars ? '★'.repeat(item.stars) + '☆'.repeat(5 - item.stars) : 'Aucune note'
+    const comment = document.createElement('p')
+    comment.className = 'admin-feedback-response-comment'
+    comment.textContent = item.comment || 'Aucun commentaire.'
+    card.append(heading, identity, rating, comment)
+    adminFeedbackResponsesList.append(card)
+  })
+}
+async function loadAdminFeedbackResponses() {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  adminFeedbackResponsesStatus.textContent = 'Chargement des retours…'
+  try {
+    const result = await callAudinooApi('/api/admin/feedback/responses')
+    const items = Array.isArray(result.responses) ? result.responses : []
+    renderAdminFeedbackResponses(items)
+    adminFeedbackResponsesStatus.textContent = items.length + ' feedback(s) reçu(s). Les réponses sont affichées sans identité utilisateur.'
+  } catch (error) {
+    adminFeedbackResponsesStatus.textContent = 'Chargement impossible : ' + (error.message || 'erreur inconnue')
+  }
+}
+
 adminExportsSection.append(adminExportGroup)
 function activateAdminSection(sectionId) {
   adminWorkspacePage.querySelectorAll('[data-admin-panel]').forEach((section) => { section.hidden = section.dataset.adminPanel !== sectionId })
@@ -1178,6 +1334,10 @@ adminNavigation.addEventListener('click', (event) => {
   if (button.dataset.adminSection === 'generations') {
     void loadAdminGenerations()
     void loadAdminAudioGenerations()
+  }
+  if (button.dataset.adminSection === 'communications') {
+    renderAdminFeedbackRecipients()
+    void loadAdminFeedbackResponses()
   }
 })
 activateAdminSection('overview')
@@ -2444,6 +2604,87 @@ async function syncGoogleProfilePhoto(user, profile) {
   return { ...profile, photoURL: googlePhotoURL }
 }
 
+const feedbackPromptOverlay = document.createElement('div')
+feedbackPromptOverlay.className = 'feedback-prompt-overlay'
+feedbackPromptOverlay.hidden = true
+feedbackPromptOverlay.innerHTML = '<section class="feedback-prompt-card" role="dialog" aria-modal="true" aria-labelledby="feedback-prompt-title"><button class="feedback-prompt-close" type="button" aria-label="Fermer" data-feedback-dismiss>×</button><p class="feedback-prompt-kicker">TON AVIS COMPTE</p><h2 id="feedback-prompt-title">Aide-nous à améliorer Audinoo</h2><p id="feedback-prompt-message" class="feedback-prompt-message"></p><form id="feedback-prompt-form"><fieldset class="feedback-rating-field"><legend>Comment évalues-tu ton expérience ? <span>(facultatif)</span></legend><div class="feedback-rating-stars" role="group" aria-label="Choisir une note de 1 à 5"><button type="button" data-feedback-star="1" aria-label="1 étoile" aria-pressed="false">★</button><button type="button" data-feedback-star="2" aria-label="2 étoiles" aria-pressed="false">★</button><button type="button" data-feedback-star="3" aria-label="3 étoiles" aria-pressed="false">★</button><button type="button" data-feedback-star="4" aria-label="4 étoiles" aria-pressed="false">★</button><button type="button" data-feedback-star="5" aria-label="5 étoiles" aria-pressed="false">★</button></div></fieldset><label class="feedback-comment-label" for="feedback-prompt-comment">Ton commentaire <span>(facultatif)</span></label><textarea id="feedback-prompt-comment" maxlength="1200" rows="4" placeholder="Dis-nous ce que tu apprécies ou ce que nous pouvons améliorer…"></textarea><div class="feedback-prompt-actions"><button class="feedback-prompt-skip" type="button" data-feedback-dismiss>Pas maintenant</button><button class="feedback-prompt-submit" type="submit">Envoyer mon avis <span aria-hidden="true">→</span></button></div><p id="feedback-prompt-status" class="feedback-prompt-status" role="status"></p></form></section>'
+document.body.append(feedbackPromptOverlay)
+const feedbackPromptMessage = feedbackPromptOverlay.querySelector('#feedback-prompt-message')
+const feedbackPromptForm = feedbackPromptOverlay.querySelector('#feedback-prompt-form')
+const feedbackPromptComment = feedbackPromptOverlay.querySelector('#feedback-prompt-comment')
+const feedbackPromptStatus = feedbackPromptOverlay.querySelector('#feedback-prompt-status')
+let activeFeedbackInvitation = null
+let selectedFeedbackRating = null
+let feedbackPromptBusy = false
+function closeFeedbackPrompt() {
+  feedbackPromptOverlay.hidden = true
+  activeFeedbackInvitation = null
+  feedbackPromptBusy = false
+  feedbackPromptForm.querySelector('button[type="submit"]').disabled = false
+}
+function setFeedbackRating(value) {
+  selectedFeedbackRating = value
+  feedbackPromptOverlay.querySelectorAll('[data-feedback-star]').forEach((button) => {
+    const rating = Number(button.dataset.feedbackStar)
+    button.classList.toggle('is-selected', value !== null && rating <= value)
+    button.setAttribute('aria-pressed', String(rating === value))
+  })
+}
+async function loadPendingFeedbackPrompt() {
+  if (!auth.currentUser || activeFeedbackInvitation || !feedbackPromptOverlay.hidden) return
+  try {
+    const result = await callAudinooApi('/api/feedback/pending')
+    const invitation = Array.isArray(result.invitations) ? result.invitations[0] : null
+    if (!invitation || !auth.currentUser) return
+    activeFeedbackInvitation = invitation
+    selectedFeedbackRating = null
+    feedbackPromptMessage.textContent = invitation.message || 'Ton avis nous aidera à améliorer Audinoo.'
+    feedbackPromptOverlay.querySelector('#feedback-prompt-title').textContent = invitation.title || 'Aide-nous à améliorer Audinoo'
+    feedbackPromptComment.value = ''
+    feedbackPromptStatus.textContent = ''
+    setFeedbackRating(null)
+    feedbackPromptOverlay.hidden = false
+  } catch (error) {
+    console.warn('[Audinoo feedback] Could not load pending invitation', error)
+  }
+}
+feedbackPromptOverlay.querySelectorAll('[data-feedback-star]').forEach((button) => {
+  button.addEventListener('click', () => setFeedbackRating(Number(button.dataset.feedbackStar)))
+})
+feedbackPromptOverlay.querySelectorAll('[data-feedback-dismiss]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const invitation = activeFeedbackInvitation
+    closeFeedbackPrompt()
+    if (!invitation || !auth.currentUser) return
+    try { await callAudinooApi('/api/feedback/dismiss', { method: 'POST', body: JSON.stringify({ invitationId: invitation.id }) }) }
+    catch (error) { console.warn('[Audinoo feedback] Could not dismiss invitation', error) }
+  })
+})
+feedbackPromptForm.addEventListener('submit', async (event) => {
+  event.preventDefault()
+  if (!activeFeedbackInvitation || !auth.currentUser || feedbackPromptBusy) return
+  feedbackPromptBusy = true
+  const submit = feedbackPromptForm.querySelector('button[type="submit"]')
+  submit.disabled = true
+  feedbackPromptStatus.textContent = 'Envoi de ton avis…'
+  try {
+    await callAudinooApi('/api/feedback/submit', { method: 'POST', body: JSON.stringify({ invitationId: activeFeedbackInvitation.id, stars: selectedFeedbackRating, comment: feedbackPromptComment.value.trim() }) })
+    closeFeedbackPrompt()
+    toast.textContent = 'Merci pour ton retour ! Il a bien été transmis à Audinoo.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3600)
+  } catch (error) {
+    feedbackPromptStatus.textContent = 'Envoi impossible. Réessaie dans un instant.'
+    feedbackPromptBusy = false
+    submit.disabled = false
+    console.error('[Audinoo feedback] Could not submit response', error)
+  }
+})
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !feedbackPromptOverlay.hidden) feedbackPromptOverlay.querySelector('[data-feedback-dismiss]').click()
+})
+
+
 function openProfile(profile, { requireCountry = false } = {}) {
   hasAudinooProfile = true
   profileUid = profile.uid
@@ -2456,6 +2697,7 @@ function openProfile(profile, { requireCountry = false } = {}) {
   }
   closeCountrySelection()
   openWorkspace(profile)
+  void loadPendingFeedbackPrompt()
 }
 
 function openWorkspace(profile) {
@@ -2483,6 +2725,7 @@ function openWorkspace(profile) {
 }
 
 function openLanding() {
+  closeFeedbackPrompt()
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
   adminWorkspacePage.hidden = true
