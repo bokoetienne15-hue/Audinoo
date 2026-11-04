@@ -11,12 +11,15 @@ async function archiveTracks(env, db, path, tracks, uid, taskId) {
   const saved = []
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i] || {}
-    if (track.r2Key || !/^https:\/\//i.test(track.audioUrl || '')) { saved.push(track); continue }
+    if (!track.r2Key && !/^https?:\/\//i.test(track.audioUrl || '')) { saved.push(track); continue }
     try {
-      const source = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
-      if (!source.ok || !source.body) { saved.push(track); continue }
-      const key = 'private/' + uid + '/' + taskId + '/' + i + '.audio'
-      await env.AUDIO_BUCKET.put(key, source.body, { httpMetadata: { contentType: source.headers.get('content-type') || 'audio/mpeg', cacheControl: 'private, no-store' }, customMetadata: { uid, taskId } })
+      let audioKey = track.r2Key || ''
+      if (!audioKey) {
+        const source = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
+        if (!source.ok || !source.body) { saved.push(track); continue }
+        audioKey = 'private/' + uid + '/' + taskId + '/' + i + '.audio'
+        await env.AUDIO_BUCKET.put(audioKey, source.body, { httpMetadata: { contentType: source.headers.get('content-type') || 'audio/mpeg', cacheControl: 'private, no-store' }, customMetadata: { uid, taskId } })
+      }
       let coverKey = track.coverKey || ''
       if (!coverKey && /^https?:\/\//i.test(track.imageUrl || '')) {
         try {
@@ -25,10 +28,10 @@ async function archiveTracks(env, db, path, tracks, uid, taskId) {
           if (coverResponse.ok && coverResponse.body && contentType.startsWith('image/')) {
             coverKey = 'private/' + uid + '/' + taskId + '/' + i + '.cover'
             await env.AUDIO_BUCKET.put(coverKey, coverResponse.body, { httpMetadata: { contentType, cacheControl: 'private, max-age=86400' }, customMetadata: { uid, taskId } })
-          }
+          } else console.warn('[Audinoo cover archive] provider returned', coverResponse.status, contentType)
         } catch (coverError) { console.warn('[Audinoo cover archive]', coverError) }
       }
-      saved.push({ ...track, ...(coverKey ? { coverKey } : {}), r2Key: key, archivedAt: new Date().toISOString() })
+      saved.push({ ...track, ...(coverKey ? { coverKey } : {}), r2Key: audioKey, archivedAt: track.archivedAt || new Date().toISOString() })
     } catch (error) {
       console.error('[Audinoo R2 archive]', error)
       saved.push(track)
@@ -214,7 +217,9 @@ async function generationStatus(request, env, db, user) {
   const body = await r.json().catch(() => ({}))
   if (!r.ok || body.code !== 200) return response(502, { error: 'music-status-unavailable' })
   const data = body.data || {}, state = String(data.status || data.taskStatus || body.status || 'PENDING').toUpperCase()
-  let tracks = tracksIn(data)
+  // SunoAPI record-info returns tracks under data.response.sunoData.
+  // Keep a fallback for callback/legacy payload shapes.
+  let tracks = tracksIn(data.response?.sunoData || data.response || data)
   if (!tracks.length) tracks = (await db.get(path)).data?.tracks || []
   if (tracks.length) tracks = await archiveTracks(env, db, path, tracks, user.uid, taskId)
   await db.set(path, { state, ...(tracks.length ? { tracks } : {}) }, true)
@@ -239,9 +244,21 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
     if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, max-age=86400', ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
   }
   if (kind === 'cover' && /^https?:\/\//i.test(track?.imageUrl || '')) {
-    const remote = await fetch(track.imageUrl, { signal: AbortSignal.timeout(15000), headers: { accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' } })
-    const type = remote.headers.get('content-type') || ''
-    if (remote.ok && remote.body && type.startsWith('image/')) return new Response(remote.body, { headers: { 'content-type': type, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' } })
+    try {
+      const remote = await fetch(track.imageUrl, { signal: AbortSignal.timeout(20000), headers: { accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' } })
+      const type = remote.headers.get('content-type') || ''
+      if (remote.ok && remote.body && type.startsWith('image/')) {
+        if (env.AUDIO_BUCKET && !track.coverKey) {
+          const coverKey = 'private/' + uid + '/' + taskId + '/' + index + '.cover'
+          await env.AUDIO_BUCKET.put(coverKey, remote.body, { httpMetadata: { contentType: type, cacheControl: 'private, max-age=86400' }, customMetadata: { uid, taskId } })
+          await db.set('users/' + uid + '/generations/' + taskId, { tracks: snap.data.tracks.map((item, i) => i === index ? { ...item, coverKey } : item) }, true)
+          const stored = await env.AUDIO_BUCKET.get(coverKey)
+          if (stored) return new Response(stored.body, { headers: { 'content-type': type, 'cache-control': 'private, max-age=86400', 'x-content-type-options': 'nosniff' } })
+        }
+        return new Response(remote.body, { headers: { 'content-type': type, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' } })
+      }
+      console.warn('[Audinoo cover fetch]', remote.status, type)
+    } catch (error) { console.warn('[Audinoo cover fetch]', error) }
   }
   return response(404, { error: 'media-not-found' })
 }
