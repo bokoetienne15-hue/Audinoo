@@ -1571,7 +1571,6 @@ function syncLibraryMiniPlayer() {
   libraryMiniSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
   const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
   libraryMiniSeek.style.setProperty('--track-progress', progress + '%')
-  libraryMiniSeek.style.backgroundSize = progress + '% 100%, 100% 100%'
   libraryMiniPlayer.style.setProperty('--track-progress', progress + '%')
   libraryMiniCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
   libraryMiniDuration.textContent = formatAudioTime(duration)
