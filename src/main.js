@@ -1541,9 +1541,11 @@ libraryWorkspacePage.querySelector('.workspace-library-empty').after(libraryGene
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
-libraryMiniPlayer.innerHTML = '<button class="library-mini-play" type="button" aria-label="Lire la chanson"><span class="library-mini-play-icon">▶</span></button><div class="library-mini-details"><strong class="library-mini-title">Sans titre</strong><div class="library-mini-progress-row"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div></div>'
+libraryMiniPlayer.innerHTML = '<div class="library-mini-art" aria-hidden="true"><span>♫</span></div><div class="library-mini-main"><div class="library-mini-topline"><span class="library-mini-label">EN LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-controls"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><span class="library-mini-play-icon">▶</span></button><button class="library-mini-next" type="button" aria-label="Passer à la chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7L5 5Z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="library-mini-progress"><div class="library-mini-progress-row"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div></div></div></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
+const libraryMiniNext = libraryMiniPlayer.querySelector('.library-mini-next')
+const libraryMiniArt = libraryMiniPlayer.querySelector('.library-mini-art')
 const libraryMiniTitle = libraryMiniPlayer.querySelector('.library-mini-title')
 const libraryMiniSeek = libraryMiniPlayer.querySelector('.library-mini-seek')
 const libraryMiniCurrent = libraryMiniPlayer.querySelector('.library-mini-current')
@@ -1567,6 +1569,8 @@ function syncLibraryMiniPlayer() {
 function activateLibraryMiniPlayer(player, title) {
   activeLibraryAudio = player
   libraryMiniTitle.textContent = title || 'Sans titre'
+  const songIndex = [...libraryGenerationList.querySelectorAll('.library-song-item')].findIndex(node => node.querySelector('audio') === player)
+  libraryMiniArt.dataset.palette = String(Math.max(0, songIndex) % 6)
   libraryMiniPlayer.hidden = false
   syncLibraryMiniPlayer()
 }
@@ -1728,6 +1732,17 @@ libraryMiniPlay.addEventListener('click', async () => {
   if (!activeLibraryAudio) return
   try { if (activeLibraryAudio.paused) await activeLibraryAudio.play(); else activeLibraryAudio.pause() }
   catch (error) { console.warn('[Audinoo mini player]', error) }
+})
+libraryMiniNext.addEventListener('click', async () => {
+  const songs = [...libraryGenerationList.querySelectorAll('.library-song-item audio')]
+  if (!songs.length) return
+  const currentIndex = songs.indexOf(activeLibraryAudio)
+  const nextAudio = songs[(currentIndex + 1 + songs.length) % songs.length]
+  if (!nextAudio) return
+  try {
+    if (activeLibraryAudio && activeLibraryAudio !== nextAudio) activeLibraryAudio.pause()
+    await nextAudio.play()
+  } catch (error) { console.warn('[Audinoo next track]', error) }
 })
 libraryMiniSeek.addEventListener('input', () => {
   if (!activeLibraryAudio || !Number.isFinite(activeLibraryAudio.duration)) return
