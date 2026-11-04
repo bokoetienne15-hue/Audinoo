@@ -1108,20 +1108,27 @@ adminCreditsSection.append(workspaceCreditPanel)
 
 const adminGrantCreditsPanel = document.createElement('section')
 adminGrantCreditsPanel.className = 'admin-panel admin-credit-control'
-adminGrantCreditsPanel.innerHTML = '<div class="admin-panel-heading"><div><p>GESTE COMMERCIAL</p><h2>Offrir des crédits à un compte</h2></div><span class="admin-credit-state">ADMIN</span></div><p class="admin-panel-status">Recherche un compte par son adresse e-mail ou son identifiant, puis ajoute des crédits utilisables pour créer des chansons. Ces crédits sont ajoutés au solde payant et ne remplacent pas les crédits gratuits.</p><form id="admin-grant-credits-form" class="admin-notification-form"><label for="admin-grant-credits-account">E-mail ou identifiant du compte</label><input id="admin-grant-credits-account" name="account" type="text" list="admin-grant-credits-users" autocomplete="off" maxlength="254" placeholder="exemple@email.com ou @pseudo_nom" required /><datalist id="admin-grant-credits-users"></datalist><label for="admin-grant-credits-amount">Nombre de crédits à ajouter</label><input id="admin-grant-credits-amount" name="amount" type="number" min="1" max="1000" step="1" value="1" required /><button class="admin-publish-button" type="submit">Ajouter les crédits <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-grant-credits-status" role="status" aria-live="polite"></p></form>'
+adminGrantCreditsPanel.innerHTML = '<div class="admin-panel-heading"><div><p>GESTE COMMERCIAL</p><h2>Offrir des crédits à un compte</h2></div><span class="admin-credit-state">ADMIN</span></div><p class="admin-panel-status">Recherche un compte par son adresse e-mail ou son identifiant, puis ajoute des crédits utilisables pour créer des chansons. Ces crédits sont ajoutés au solde payant et ne remplacent pas les crédits gratuits.</p><form id="admin-grant-credits-form" class="admin-notification-form"><label for="admin-grant-credits-account">Choisir un utilisateur</label><select id="admin-grant-credits-account" name="account" required><option value="bokoetienne15@gmail.com">bokoetienne15@gmail.com · compte par défaut</option></select><label for="admin-grant-credits-amount">Nombre de crédits à ajouter</label><input id="admin-grant-credits-amount" name="amount" type="number" min="1" max="1000" step="1" value="1" required /><button class="admin-publish-button" type="submit">Ajouter les crédits <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-grant-credits-status" role="status" aria-live="polite"></p></form>'
 adminCreditsSection.append(adminGrantCreditsPanel)
 const adminGrantCreditsForm = adminGrantCreditsPanel.querySelector('#admin-grant-credits-form')
 const adminGrantCreditsInput = adminGrantCreditsForm.elements.account
 const adminGrantCreditsAmount = adminGrantCreditsForm.elements.amount
 const adminGrantCreditsStatus = adminGrantCreditsPanel.querySelector('#admin-grant-credits-status')
 function refreshAdminGrantCreditOptions() {
-  const list = adminGrantCreditsPanel.querySelector('#admin-grant-credits-users')
-  replaceNodeChildren(list, ...latestAdminUsers.flatMap((profile) => [profile.email, profile.username].filter(Boolean).map((value) => {
+  const preferredEmail = 'bokoetienne15@gmail.com'
+  const sortedUsers = [...latestAdminUsers].sort((a, b) => {
+    const first = String(a.email || '').toLowerCase() === preferredEmail ? 0 : 1
+    const second = String(b.email || '').toLowerCase() === preferredEmail ? 0 : 1
+    return first - second || String(a.email || a.username || '').localeCompare(String(b.email || b.username || ''), 'fr')
+  })
+  const options = sortedUsers.map((profile) => {
     const option = document.createElement('option')
-    option.value = value
-    option.label = profile.displayName || profile.username || profile.email || profile.uid
+    option.value = profile.email || profile.username || profile.uid
+    option.textContent = [profile.email || profile.username || profile.uid, profile.displayName || profile.username].filter(Boolean).join(' · ')
     return option
-  })))
+  })
+  replaceNodeChildren(adminGrantCreditsInput, ...options)
+  adminGrantCreditsInput.value = sortedUsers.find((profile) => String(profile.email || '').toLowerCase() === preferredEmail)?.email || sortedUsers[0]?.email || sortedUsers[0]?.username || sortedUsers[0]?.uid || ''
 }
 
 adminGrantCreditsForm.addEventListener('submit', async (event) => {
@@ -1500,31 +1507,46 @@ function createGenerationCard(generation) {
   status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
   heading.append(title, status)
   card.append(heading)
-  if (generation.prompt) {
-    const prompt = document.createElement('p')
-    prompt.className = 'generation-prompt'
-    prompt.textContent = generation.prompt
-    card.append(prompt)
-  }
+  const progress = document.createElement('div')
+  progress.className = 'generation-progress'
+  progress.innerHTML = '<div class="generation-progress-copy"><span class="generation-progress-message">Nous composons la production…</span><strong class="generation-progress-percent">10%</strong></div><div class="generation-progress-track"><span></span></div>'
+  card.append(progress)
   const tracks = document.createElement('div')
   tracks.className = 'generation-tracks'
   card.append(tracks)
   renderGenerationTracks(tracks, generation.tracks || [])
+  if (['SUCCESS','COMPLETE','COMPLETED'].includes(String(generation.status || '').toUpperCase()) || generation.failed) progress.hidden = true
   return card
 }
 
 function renderGenerationTracks(container, tracks) {
   replaceNodeChildren(container)
   tracks.forEach((track, index) => {
-    if (!track?.audioUrl || !(/^https:\/\//i.test(track.audioUrl) || track.audioUrl.startsWith('/api/'))) return
+    if (!track?.audioUrl || (!/^https:\/\//i.test(track.audioUrl) && !track.audioUrl.startsWith('/api/'))) return
     const item = document.createElement('article')
     item.className = 'generation-track'
+    const cover = document.createElement('div')
+    cover.className = 'generation-track-cover'
     if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
-      const cover = document.createElement('img'); cover.src = track.imageUrl; cover.alt = ''; cover.loading = 'lazy'; item.append(cover)
-    }
+      cover.style.backgroundImage = 'url("' + track.imageUrl.replace(/["\\]/g, '') + '")'
+      const image = document.createElement('img'); image.src = track.imageUrl; image.alt = ''; image.loading = 'lazy'; cover.append(image)
+    } else cover.textContent = '♫'
     const content = document.createElement('div'); content.className = 'generation-track-content'
-    const name = document.createElement('strong'); name.textContent = track.title || `Variante ${index + 1}`
-    const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.setAttribute('aria-label', `Écouter ${name.textContent}`)
+    const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
+    const actions = document.createElement('div'); actions.className = 'generation-track-actions'
+    const player = document.createElement('audio'); player.preload = 'none'; player.setAttribute('aria-label', 'Écouter ' + name.textContent)
+    const play = document.createElement('button'); play.type = 'button'; play.className = 'generation-action generation-play'; play.setAttribute('aria-label','Lire la chanson'); play.textContent = '▶'
+    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'generation-action generation-favorite'; favorite.setAttribute('aria-label','Ajouter aux favoris'); favorite.textContent = '♥'
+    const favoriteKey = 'audinoo-favorites-' + (auth.currentUser?.uid || 'guest')
+    const favoriteId = String(track.audioUrl)
+    const readFavorites = () => { try { return new Set(JSON.parse(readBrowserStorage('localStorage', favoriteKey) || '[]')) } catch { return new Set() } }
+    favorite.classList.toggle('is-favorite', readFavorites().has(favoriteId))
+    favorite.addEventListener('click', () => {
+      const current = readFavorites()
+      if (current.has(favoriteId)) current.delete(favoriteId); else current.add(favoriteId)
+      writeBrowserStorage('localStorage', favoriteKey, JSON.stringify([...current]))
+      favorite.classList.toggle('is-favorite', current.has(favoriteId))
+    })
     if (track.audioUrl.startsWith('/api/')) {
       player.addEventListener('play', async () => {
         if (player.dataset.loaded === 'true') return
@@ -1539,9 +1561,20 @@ function renderGenerationTracks(container, tracks) {
         } catch (error) { name.textContent = 'Audio temporairement indisponible'; console.warn('[Audinoo audio]', error) }
       }, { once: true })
     } else player.src = track.audioUrl
-    content.append(name, player); item.append(content); container.append(item)
+    player.addEventListener('play', () => { play.textContent = 'Ⅱ'; play.setAttribute('aria-label','Mettre en pause') })
+    player.addEventListener('pause', () => { play.textContent = '▶'; play.setAttribute('aria-label','Lire la chanson') })
+    play.addEventListener('click', async () => { if (player.paused) { try { await player.play() } catch (error) { console.warn('[Audinoo player]', error) } } else player.pause() })
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.textContent = '↗'
+    share.addEventListener('click', async () => {
+      const data = { title: name.textContent, text: 'Écoute ma création sur Audinoo', url: track.audioUrl.startsWith('https://') ? track.audioUrl : window.location.origin + track.audioUrl }
+      if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
+      window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank', 'noopener,noreferrer')
+    })
+    actions.append(favorite, play, share)
+    content.append(name, actions, player); item.append(cover, content); container.append(item)
   })
 }
+
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
   if (!card) {
@@ -1605,21 +1638,36 @@ function addGenerationToLibrary(generation) {
 }
 
 async function pollGeneration(taskId, card) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    await new Promise((resolve) => window.setTimeout(resolve, 10000))
-    if (!auth.currentUser) return
-    try {
-      const result = await callAudinooApi(`/api/generation-status?taskId=${encodeURIComponent(taskId)}`)
-      const generation = { taskId, status: result.status, tracks: result.tracks || [] }
+  let percent = 10, messageIndex = 0
+  const messages = ['Nous composons la production…','Nous créons la mélodie…','Les instruments prennent leur place…','Nous travaillons le mixage…','Nous peaufinons les voix…','Nous préparons les variantes…']
+  const percentNode = card.querySelector('.generation-progress-percent')
+  const bar = card.querySelector('.generation-progress-track span')
+  const message = card.querySelector('.generation-progress-message')
+  const timer = window.setInterval(() => {
+    percent = Math.min(92, percent + (percent < 65 ? 3 : 1))
+    if (percentNode) percentNode.textContent = percent + '%'
+    if (bar) bar.style.width = percent + '%'
+    if (message) message.textContent = messages[messageIndex++ % messages.length]
+  }, 6500)
+  try {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 10000))
+      if (!auth.currentUser) return
+      const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
+      const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
       upsertGenerationCard(libraryGenerationList, generation)
-      if (result.completed || result.failed) return
-    } catch (error) {
-      card.querySelector('.generation-status').textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
-      return
+      if (result.completed || result.failed) {
+        if (percentNode) percentNode.textContent = result.completed ? '100%' : '—'
+        if (bar) bar.style.width = result.completed ? '100%' : '0%'
+        if (message) message.textContent = result.completed ? 'Tes chansons sont prêtes.' : 'La génération n’a pas abouti.'
+        return
+      }
     }
-  }
-  card.querySelector('.generation-status').textContent = 'La génération continue côté serveur. Retrouve son état dans Ma bibliothèque dans quelques instants.'
+    if (message) message.textContent = 'La création continue sur nos serveurs…'
+  } catch (error) {
+    card.querySelector('.generation-status').textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+  } finally { window.clearInterval(timer) }
 }
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
@@ -1668,9 +1716,15 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     const generation = { taskId: result.taskId, title: title || 'Ta création Audinoo', prompt: cleanPrompt, status: result.status, tracks: [] }
     const card = upsertGenerationCard(generationPanel, generation)
     addGenerationToLibrary(generation)
-    toast.textContent = 'Ta chanson est en cours de création. Les variantes apparaîtront ici dès qu’elles seront prêtes.'
+    studioPrompt.value = ''; advancedPrompt.value = ''; advancedStyle.value = ''; advancedTitle.value = ''
+    homeWorkspacePage.hidden = true; studioWorkspacePage.hidden = true; modelWorkspacePage.hidden = true; adminWorkspacePage.hidden = true; libraryWorkspacePage.hidden = false
+    workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#library'))
+    workspaceModelChoice.classList.remove('is-active')
+    window.history.replaceState(null, '', '#library')
+    setWorkspaceSidebarOpen(false)
+    toast.textContent = 'Ta création est lancée. Nous préparons tes variantes…'
     toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 4500)
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
     void pollGeneration(result.taskId, card)
   } catch (error) {
     const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
