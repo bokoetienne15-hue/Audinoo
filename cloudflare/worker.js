@@ -49,7 +49,7 @@ function fedapayBase(env) {
   return env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox-api.fedapay.com/v1' : 'https://api.fedapay.com/v1'
 }
 function fedapayObject(body, key) {
-  return body?.[key] || body?.data?.[key] || body?.[key.replace(/^v1\//, '')] || body?.data || body
+  return body?.[key] || body?.data?.[key] || body?.transaction || body?.token || body?.data || body
 }
 async function fedapayRequest(env, path, options = {}) {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
@@ -104,7 +104,7 @@ async function confirmCreditPayment(env, db, transactionId) {
     const profile = await db.get('users/' + order.data.uid)
     return { status: 'approved', credited: true, paidCredits: Number(profile.data?.paidCredits || 0) }
   }
-  const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId), { method: 'GET' })
+  const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
   const transaction = fedapayObject(responseBody, 'v1/transaction')
   const status = String(transaction?.status || '').toLowerCase()
   if (status !== 'approved') return { status: status || 'pending', credited: false }
