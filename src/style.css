@@ -1377,8 +1377,11 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  flex: 0 0 150px;
   width: 100%;
-  min-height: clamp(150px, 19vw, 205px);
+  height: 150px;
+  min-height: 150px;
+  max-height: 150px;
   margin: 0 0 18px;
   padding: 24px;
   overflow: hidden;
@@ -1458,7 +1461,7 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   to { transform: translateX(78%) rotate(8deg); }
 }
 @media(max-width:600px) {
-  .library-generation-preview { min-height: 132px; border-radius: 18px; padding: 18px; }
+  .library-generation-preview { flex-basis: 132px; height: 132px; min-height: 132px; max-height: 132px; border-radius: 18px; padding: 18px; }
   .generation-preview-success-label { font-size: 13px; }
 }
 @media(prefers-reduced-motion:reduce) {
