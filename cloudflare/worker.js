@@ -214,7 +214,7 @@ async function generate(request, env, db, user) {
       tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
     }
     tx.delete(db.doc(lock))
-    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: title.slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP, expiresAt })
+    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: customMode ? title.slice(0,80) : (title || 'Sans titre').slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP, expiresAt })
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true })
 }
