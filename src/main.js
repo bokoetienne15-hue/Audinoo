@@ -2145,8 +2145,8 @@ function upsertGenerationCard(container, generation) {
 
 function generationErrorMessage(errorCode) {
   const messages = {
-    'no-free-credit': 'Tu n’as plus de crédit disponible. Choisis un crédit supplémentaire pour continuer.',
-    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur Cloudflare. Contacte le support Audinoo.',
+    'no-free-credit': 'Votre solde est insuffisant pour créer ce morceau.',
+    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur le serveur de paiement. Réessaie après activation de FedaPay.',
     'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
     'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
     'fedapay-checkout-unavailable': 'Le lien de paiement FedaPay est momentanément indisponible.',
@@ -2460,8 +2460,6 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     title: cleanTitle || 'Création Audinoo',
     customMode
   }
-  openLibraryForGenerationPreview(preview)
-
   const originalButtonContent = submitButton?.innerHTML
   if (submitButton) {
     submitButton.disabled = true
@@ -2480,6 +2478,7 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
       })
     })
     if (!result.taskId) throw new Error('generation-failed')
+    openLibraryForGenerationPreview(preview)
     preview.taskId = result.taskId
     preview.group.dataset.libraryTask = result.taskId
     if (submitButton) {
@@ -2496,10 +2495,16 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
       ? ' Motif du fournisseur : ' + error.providerMessage
       : ''
-    toast.textContent = generationErrorMessage(error.message) + providerDetail + ' Détail exact : ' + exactErrorDetails(error)
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 5500)
-    if (error.message === 'no-free-credit') windowPricingOpen()
+    if (error.message === 'no-free-credit') {
+      toast.textContent = 'Votre solde est insuffisant pour créer ce morceau.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 3500)
+      windowPricingOpen()
+    } else {
+      toast.textContent = generationErrorMessage(error.message) + providerDetail
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 5500)
+    }
   } finally {
     if (submitButton) {
       submitButton.disabled = false
