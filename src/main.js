@@ -1801,32 +1801,51 @@ function renderGenerationTracks(container, tracks) {
     const showLoadingSpinner = () => { play.classList.add('is-loading'); play.innerHTML = '<span class="generation-play-spinner" aria-hidden="true"></span>'; play.setAttribute('aria-label', 'Chargement de la chanson') }
     const showPlayIcon = () => { play.classList.remove('is-loading'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'; play.setAttribute('aria-label', 'Lire la chanson') }
     const showPauseIcon = () => { play.classList.remove('is-loading'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; play.setAttribute('aria-label', 'Mettre en pause') }
-    if (track.audioUrl.startsWith('/api/')) {
-      player.addEventListener('play', async () => {
-        if (player.dataset.loaded === 'true' || player.dataset.loading === 'true') return
-        player.dataset.loading = 'true'
-        showLoadingSpinner()
-        player.pause()
+    let audioLoadPromise = null
+    async function preparePrivateAudio() {
+      if (player.dataset.loaded === 'true') return
+      if (audioLoadPromise) return audioLoadPromise
+      player.dataset.loading = 'true'
+      showLoadingSpinner()
+      audioLoadPromise = (async () => {
         try {
           const token = await auth.currentUser?.getIdToken()
           if (!token) throw new Error('authentication-required')
-          const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
-          if (!audioResponse.ok) throw new Error('audio-unavailable')
+          const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token }, cache: 'force-cache' })
+          if (!audioResponse.ok) throw new Error(audioResponse.status === 404 ? 'audio-unavailable' : 'audio-fetch-' + audioResponse.status)
           const blob = await audioResponse.blob()
-          if (/^(text\/|application\/json)/i.test(blob.type)) throw new Error('invalid-audio-content-type')
+          if (!blob.size || /^(text\/|application\/json)/i.test(blob.type)) throw new Error('invalid-audio-content-type')
           player.src = URL.createObjectURL(blob)
           player.dataset.loaded = 'true'
           player.dataset.loading = 'false'
-          await player.play()
+          player.load()
         } catch (error) {
           player.dataset.loading = 'false'
           showPlayIcon()
           name.textContent = 'Audio indisponible · Réessaie dans un instant'
           console.warn('[Audinoo audio]', { url: track.audioUrl, error })
+          throw error
+        } finally { audioLoadPromise = null }
+      })()
+      return audioLoadPromise
+    }
+    player.addEventListener('play', async () => {
+      document.querySelectorAll('.generation-track audio').forEach(other => { if (other !== player && !other.paused) other.pause() })
+      if (player.dataset.loaded === 'true') return
+      if (track.audioUrl.startsWith('/api/')) {
+        player.pause()
+        try {
+          await preparePrivateAudio()
+          await player.play()
+        } catch (error) {
+          player.dataset.loading = 'false'
+          showPlayIcon()
         }
-      })
-    } else player.src = track.audioUrl
+      }
+    })
     player.addEventListener('play', () => { if (player.dataset.loading !== 'true') showPauseIcon() })
+    player.addEventListener('waiting', () => { if (!player.paused) showLoadingSpinner() })
+    player.addEventListener('canplay', () => { if (!player.paused && player.dataset.loading !== 'true') showPauseIcon() })
     player.addEventListener('playing', () => {
       player.dataset.loading = 'false'
       showPauseIcon()
@@ -1842,8 +1861,15 @@ function renderGenerationTracks(container, tracks) {
     player.addEventListener('durationchange', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
     play.addEventListener('click', async () => {
       if (player.paused) {
-        if (player.dataset.loaded !== 'true' && track.audioUrl.startsWith('/api/')) showLoadingSpinner()
-        try { await player.play() } catch (error) { player.dataset.loading = 'false'; showPlayIcon(); console.warn('[Audinoo player]', error) }
+        document.querySelectorAll('.generation-track audio').forEach(other => { if (other !== player && !other.paused) other.pause() })
+        if (track.audioUrl.startsWith('/api/') && player.dataset.loaded !== 'true') {
+          showLoadingSpinner()
+          try { await preparePrivateAudio(); await player.play() }
+          catch (error) { player.dataset.loading = 'false'; showPlayIcon() }
+        } else {
+          showLoadingSpinner()
+          try { await player.play() } catch (error) { player.dataset.loading = 'false'; showPlayIcon(); console.warn('[Audinoo player]', error) }
+        }
       } else player.pause()
     })
     const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-download-locked'; share.setAttribute('aria-label','Télécharger · bientôt disponible'); share.title = 'Télécharger 🔒'; share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="generation-download-lock" aria-hidden="true"><svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.2" fill="currentColor"/><path d="M4 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>'
