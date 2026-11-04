@@ -498,6 +498,18 @@ export default {
   },
   async fetch(request, env) {
     const url = new URL(request.url)
+
+    // Normalize the public editorial page URL and serve its HTML file directly.
+    // This avoids relying on implicit directory-index redirects for Googlebot.
+    if (url.pathname === '/a-propos') {
+      url.pathname = '/a-propos/'
+      return Response.redirect(url.toString(), 308)
+    }
+    if (url.pathname === '/a-propos/') {
+      url.pathname = '/a-propos/index.html'
+      return env.ASSETS ? env.ASSETS.fetch(new Request(url.toString(), request)) : new Response('Not Found', { status: 404 })
+    }
+
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
     if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); return await publicTracks(request, db) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
