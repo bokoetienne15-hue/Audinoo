@@ -1566,7 +1566,7 @@ function renderGenerationTracks(container, tracks) {
     play.addEventListener('click', async () => { if (player.paused) { try { await player.play() } catch (error) { console.warn('[Audinoo player]', error) } } else player.pause() })
     const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.textContent = '↗'
     share.addEventListener('click', async () => {
-      const data = { title: name.textContent, text: 'Écoute ma création sur Audinoo', url: track.audioUrl.startsWith('https://') ? track.audioUrl : window.location.origin + track.audioUrl }
+      const data = { title: name.textContent, text: 'Découvre ma création musicale sur Audinoo : ' + name.textContent, url: window.location.origin + '/#studio' }
       if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
       window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank', 'noopener,noreferrer')
     })
@@ -1584,6 +1584,8 @@ function upsertGenerationCard(container, generation) {
   }
   const status = card.querySelector('.generation-status')
   status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+  const progress = card.querySelector('.generation-progress')
+  if (progress) progress.hidden = !!generation.failed || ['SUCCESS','COMPLETE','COMPLETED'].includes(String(generation.status || '').toUpperCase())
   const tracks = card.querySelector('.generation-tracks')
   if (generation.tracks?.length) renderGenerationTracks(tracks, generation.tracks)
   return card
