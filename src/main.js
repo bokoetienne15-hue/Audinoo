@@ -550,7 +550,7 @@ const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><p class="workspace-kicker">AUDINOO STUDIO</p><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -1527,9 +1527,17 @@ function renderGenerationTracks(container, tracks) {
     item.className = 'generation-track'
     const cover = document.createElement('div')
     cover.className = 'generation-track-cover'
-    if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
-      cover.style.backgroundImage = 'url("' + track.imageUrl.replace(/["\\]/g, '') + '")'
-      const image = document.createElement('img'); image.src = track.imageUrl; image.alt = ''; image.loading = 'lazy'; cover.append(image)
+    const imageSource = track.imageUrl || (track.coverUrl || track.cover_url || track.image_url || '')
+    if (imageSource && /^https?:\/\//i.test(imageSource)) {
+      const image = document.createElement('img')
+      image.src = imageSource
+      image.alt = 'Pochette de ' + (track.title || 'la chanson')
+      image.loading = 'eager'
+      image.decoding = 'async'
+      image.referrerPolicy = 'no-referrer'
+      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable'); cover.textContent = '♫' }, { once: true })
+      image.addEventListener('load', () => cover.classList.add('cover-loaded'), { once: true })
+      cover.append(image)
     } else cover.textContent = '♫'
     const content = document.createElement('div'); content.className = 'generation-track-content'
     const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
@@ -1597,9 +1605,11 @@ function renderLibraryGeneration(generation) {
     const row = document.createElement('div')
     row.className = 'library-song-row'
     row.dataset.libraryTask = generation.taskId
+    const displayTrack = { ...track, imageUrl: track.imageUrl || track.coverUrl || track.cover_url || track.image_url || '' }
+    if (!/^https?:\/\//i.test(displayTrack.imageUrl) && !displayTrack.imageUrl.startsWith('/api/')) displayTrack.imageUrl = '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index
     const wrapper = document.createElement('div')
     wrapper.className = 'library-song-player'
-    renderGenerationTracks(wrapper, [track])
+    renderGenerationTracks(wrapper, [displayTrack])
     const song = wrapper.firstElementChild
     if (!song) return
     song.classList.add('library-song-item')
