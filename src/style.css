@@ -1110,7 +1110,30 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .generation-play-spinner{display:block;width:17px;height:17px;border:2px solid rgba(255,255,255,.28);border-top-color:#fff;border-radius:50%;animation:library-audio-spin .7s linear infinite}
 @keyframes library-audio-spin{to{transform:rotate(360deg)}}
 .library-song-item .generation-play.is-loading{pointer-events:none;color:#fff;background:rgba(255,255,255,.1)}
-.library-mini-player{position:sticky;z-index:20;bottom:12px;display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:13px;width:min(100%,760px);margin:22px auto 12px;padding:13px 16px;border:1px solid rgba(193,157,255,.24);border-radius:15px;background:rgba(24,19,35,.94);box-shadow:0 12px 38px rgba(0,0,0,.32);backdrop-filter:blur(18px)}
+.library-mini-player{position:sticky;z-index:30;bottom:12px;display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:15px;width:min(100%,820px);margin:24px auto 14px;padding:14px 17px;border:1px solid rgba(190,157,255,.28);border-radius:19px;background:linear-gradient(115deg,rgba(24,20,36,.98),rgba(35,25,48,.97) 58%,rgba(25,22,39,.98));box-shadow:0 16px 46px rgba(0,0,0,.38),0 0 28px rgba(151,91,255,.09);backdrop-filter:blur(22px)}
+.library-mini-art{width:58px;height:58px;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:linear-gradient(135deg,#ff8a5b,#9c45e8 55%,#402a85);box-shadow:inset 0 0 22px rgba(255,255,255,.14)}
+.library-mini-art span{color:#fff;font-size:30px;text-shadow:0 2px 12px rgba(0,0,0,.3)}
+.library-mini-art[data-palette="1"]{background:linear-gradient(135deg,#00c6a7,#2865d9 58%,#40256f)}
+.library-mini-art[data-palette="2"]{background:linear-gradient(135deg,#ffb347,#f05b85 55%,#6d3ba5)}
+.library-mini-art[data-palette="3"]{background:linear-gradient(135deg,#53d6ff,#6b5bdf 55%,#29245f)}
+.library-mini-art[data-palette="4"]{background:linear-gradient(135deg,#f779b9,#a43be0 55%,#34245d)}
+.library-mini-art[data-palette="5"]{background:linear-gradient(135deg,#b6e35b,#00a88f 55%,#24527b)}
+.library-mini-main{min-width:0;display:grid;gap:11px}
+.library-mini-topline{min-width:0;display:flex;align-items:center;gap:10px}
+.library-mini-label{flex:0 0 auto;color:#c39aff;font-size:8px;font-weight:800;letter-spacing:.14em}
+.library-mini-title{min-width:0;overflow:hidden;color:#fff;font-size:13px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.library-mini-controls{display:grid;grid-template-columns:38px 34px minmax(0,1fr);align-items:center;gap:9px}
+.library-mini-play,.library-mini-next{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(220,194,255,.22);border-radius:50%;color:#fff;background:rgba(255,255,255,.07);cursor:pointer;transition:transform .18s,background .18s}
+.library-mini-play{background:linear-gradient(135deg,#9c5bff,#d65dc9);box-shadow:0 4px 16px rgba(165,91,255,.25)}
+.library-mini-play:hover,.library-mini-next:hover{transform:scale(1.06);background-color:rgba(255,255,255,.16)}
+.library-mini-next svg{width:17px;height:17px}
+.library-mini-play-icon{margin-left:2px}.library-mini-pause-icon{font-size:17px;font-weight:800}
+.library-mini-progress{min-width:0}
+.library-mini-details{min-width:0;display:grid;gap:7px}
+.library-mini-progress-row{display:grid;grid-template-columns:31px minmax(0,1fr) 31px;align-items:center;gap:8px;color:#b7abc8;font-size:9px;font-variant-numeric:tabular-nums}
+.library-mini-seek{width:100%;height:4px;margin:0;accent-color:#c58cff;cursor:pointer}
+.library-mini-seek::-webkit-slider-thumb{cursor:grab}
+@media(max-width:760px){.library-mini-player{position:sticky;bottom:8px;width:calc(100% - 8px);margin:18px auto 8px;padding:11px 12px;gap:11px;grid-template-columns:48px minmax(0,1fr);border-radius:16px}.library-mini-art{width:48px;height:48px}.library-mini-controls{grid-template-columns:35px 31px minmax(0,1fr);gap:7px}.library-mini-play,.library-mini-next{width:33px;height:33px}.library-mini-title{font-size:12px}.library-mini-progress-row{grid-template-columns:27px minmax(0,1fr) 27px;gap:6px;font-size:8px}}
 .library-mini-player[hidden]{display:none!important}
 .library-mini-play{width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(210,174,255,.28);border-radius:50%;background:linear-gradient(135deg,rgba(145,83,255,.36),rgba(228,83,196,.25));color:#fff;font-size:16px;cursor:pointer}
 .library-mini-play-icon{margin-left:2px}.library-mini-pause-icon{font-size:17px;font-weight:800}
