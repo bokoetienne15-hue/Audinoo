@@ -1361,3 +1361,10 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
   width:9px!important;height:9px!important;border:2px solid #fff!important;border-radius:50%!important;background:#a855f7!important;
   box-shadow:0 0 0 2px rgba(168,85,247,.22),0 0 9px rgba(168,85,247,.5)!important;
 }
+
+
+.admin-generation-toolbar{flex-wrap:wrap}
+.admin-generation-date-filter{display:flex;align-items:center;gap:8px;color:var(--workspace-muted,#8992a3);font-size:11px;white-space:nowrap}
+.admin-generation-date-filter input{min-width:145px;padding:9px 10px;border:1px solid var(--workspace-border,rgba(148,163,184,.2));border-radius:10px;background:var(--workspace-panel,rgba(255,255,255,.65));color:inherit;font:inherit}
+.admin-audio-generation-card audio{display:block;width:100%;margin:12px 0}
+@media(max-width:640px){.admin-generation-toolbar{align-items:stretch}.admin-generation-toolbar .admin-search-field{width:100%;max-width:none}.admin-generation-date-filter{justify-content:space-between}.admin-generation-date-filter input{flex:1}}
