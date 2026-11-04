@@ -1571,16 +1571,35 @@ function syncLibraryMiniPlayer() {
   libraryMiniSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
   const progress = duration > 0 ? Math.min(100, Math.max(0, (activeLibraryAudio.currentTime / duration) * 100)) : 0
   libraryMiniSeek.style.setProperty('--track-progress', progress + '%')
+  libraryMiniSeek.style.backgroundSize = progress + '% 100%, 100% 100%'
   libraryMiniPlayer.style.setProperty('--track-progress', progress + '%')
   libraryMiniCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
   libraryMiniDuration.textContent = formatAudioTime(duration)
   libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
   libraryMiniPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = activeLibraryAudio.paused ? 'paused' : 'playing'
   if (typeof syncFullPlayer === 'function' && !libraryFullPlayer.hidden) syncFullPlayer()
+}
+function updateAudinooMediaSession() {
+  if (!('mediaSession' in navigator) || !activeLibraryAudio) return
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: libraryMiniTitle.textContent || 'Sans titre',
+      artist: 'Audinoo',
+      album: 'Ma bibliothèque'
+    })
+    navigator.mediaSession.setActionHandler('play', () => activeLibraryAudio?.play().catch(() => {}))
+    navigator.mediaSession.setActionHandler('pause', () => activeLibraryAudio?.pause())
+    navigator.mediaSession.setActionHandler('previoustrack', () => playLibraryTrackAtOffset(-1, 'previous'))
+    navigator.mediaSession.setActionHandler('nexttrack', () => playLibraryTrackAtOffset(1, 'next'))
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => { if (activeLibraryAudio) activeLibraryAudio.currentTime = Math.max(0, activeLibraryAudio.currentTime - (details.seekOffset || 10)) })
+    navigator.mediaSession.setActionHandler('seekforward', (details) => { if (activeLibraryAudio && Number.isFinite(activeLibraryAudio.duration)) activeLibraryAudio.currentTime = Math.min(activeLibraryAudio.duration, activeLibraryAudio.currentTime + (details.seekOffset || 10)) })
+  } catch (error) { console.debug('[Audinoo media session]', error) }
 }
 function activateLibraryMiniPlayer(player, title) {
   activeLibraryAudio = player
   libraryMiniTitle.textContent = title || 'Sans titre'
+  updateAudinooMediaSession()
   const cover = player.closest('.library-song-item')?.querySelector('.generation-track-cover')
   const image = cover?.querySelector('img')
   libraryMiniCover.innerHTML = image?.src ? '<img src="' + image.src.replace(/"/g, '&quot;') + '" alt="">' : '<span>♫</span>'
