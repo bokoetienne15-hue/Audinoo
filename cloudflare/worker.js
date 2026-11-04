@@ -306,7 +306,7 @@ async function grantAdminCredits(request, db, user) {
 async function adminGenerations(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 200 })
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 })
   const generations = (rows || []).filter(row => row.document).map(row => {
     const d = fromFields(row.document.fields || {})
     const parts = row.document.name.split('/documents/')[1].split('/')
