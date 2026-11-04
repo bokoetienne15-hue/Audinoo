@@ -233,28 +233,6 @@ const menuButton = document.querySelector('.menu-button')
 const mobileMenu = document.querySelector('#mobile-menu')
 const authOverlay = document.querySelector('#auth-overlay')
 const landingPage = document.querySelector('.page-shell')
-const publicMusicSection = document.createElement('section')
-publicMusicSection.className = 'audinoo-public-music'
-publicMusicSection.innerHTML = '<div class="section-heading"><p class="eyebrow">À DÉCOUVRIR</p><h2>Les créations de la communauté</h2><p>Écoute les morceaux sélectionnés par Audinoo.</p></div><div class="audinoo-public-music-list" id="audinoo-public-music-list"></div>'
-landingPage.append(publicMusicSection)
-async function loadPublicMusic() {
-  const list = publicMusicSection.querySelector('#audinoo-public-music-list')
-  try {
-    const result = await fetch('/api/public-tracks')
-    if (!result.ok) throw new Error('public-tracks-unavailable')
-    const data = await result.json()
-    replaceNodeChildren(list)
-    for (const track of data.tracks || []) {
-      const item = document.createElement('article'); item.className = 'public-music-card'
-      const title = document.createElement('strong'); title.textContent = track.title || 'Création Audinoo'
-      const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.src = track.audioUrl
-      item.append(title, player); list.append(item)
-    }
-    publicMusicSection.hidden = !(data.tracks || []).length
-  } catch (error) { publicMusicSection.hidden = true; console.warn('[Audinoo public music]', error) }
-}
-void loadPublicMusic()
-
 const workspace = document.querySelector('#workspace')
 const workspaceUsername = document.querySelector('#workspace-username')
 const workspaceGreeting = document.querySelector('#workspace-greeting')
