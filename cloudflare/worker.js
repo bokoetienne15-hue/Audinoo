@@ -47,13 +47,25 @@ async function userFrom(request, env) {
   return token ? verifyFirebaseToken(token, env) : null
 }
 function tracksIn(value, output = [], depth = 0) {
-  if (depth > 10 || value == null) return output
+  if (depth > 12 || value == null) return output
   if (Array.isArray(value)) { for (const x of value) tracksIn(x, output, depth + 1); return output }
   if (typeof value !== 'object') return output
-  const audioCandidate = [value.audio_url, value.audioUrl, value.source_audio_url, value.sourceAudioUrl, value.stream_audio_url, value.streamAudioUrl].find(candidate => typeof candidate === 'string' && /^https:\/\//i.test(candidate))
-  if (audioCandidate) {
-    const imageCandidate = [value.image_url, value.imageUrl, value.cover_url, value.coverUrl, value.source_image_url, value.sourceImageUrl, value.thumbnail_url, value.thumbnailUrl, value.image, value.cover].find(candidate => typeof candidate === 'string' && /^https?:\/\//i.test(candidate))
-    output.push({ id: String(value.id || value.song_id || value.songId || ''), title: String(value.title || value.song_title || value.songTitle || 'Ta création Audinoo'), audioUrl: audioCandidate, imageUrl: imageCandidate || '', duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : null })
+  const firstUrl = (...candidates) => candidates.find(candidate => typeof candidate === 'string' && /^https?:\/\//i.test(candidate.trim()))?.trim() || ''
+  const audioCandidate = firstUrl(value.audio_url, value.audioUrl, value.source_audio_url, value.sourceAudioUrl, value.stream_audio_url, value.streamAudioUrl)
+  const imageCandidate = firstUrl(value.image_url, value.imageUrl, value.source_image_url, value.sourceImageUrl, value.cover_url, value.coverUrl, value.thumbnail_url, value.thumbnailUrl, value.image, value.cover)
+  if (audioCandidate || imageCandidate) {
+    const id = String(value.id || value.song_id || value.songId || '')
+    const existing = output.findIndex(track => (id && track.id === id) || (audioCandidate && track.audioUrl === audioCandidate))
+    const track = {
+      ...(existing >= 0 ? output[existing] : {}),
+      ...(id ? { id } : {}),
+      title: String(value.title || value.song_title || value.songTitle || (existing >= 0 ? output[existing].title : 'Ta création Audinoo')),
+      ...(audioCandidate ? { audioUrl: audioCandidate } : {}),
+      ...(imageCandidate ? { imageUrl: imageCandidate, sourceImageUrl: imageCandidate } : {}),
+      duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : (existing >= 0 ? output[existing].duration : null)
+    }
+    if (existing >= 0) output[existing] = track
+    else output.push(track)
     return output
   }
   Object.values(value).forEach(x => tracksIn(x, output, depth + 1))
