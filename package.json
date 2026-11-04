@@ -7,7 +7,9 @@
     "dev": "vite",
     "dev:netlify": "netlify dev",
     "build": "vite build && node scripts/prerender.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "dev:cloudflare": "wrangler dev"
   },
   "devDependencies": {
     "firebase-tools": "^15.30.1",

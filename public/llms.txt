@@ -2,9 +2,9 @@
 
 > Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Elle permet de créer des musiques originales en décrivant une ambiance, une émotion ou une scène.
 
-- Site officiel : https://audinoo.netlify.app/
-- Page officielle de référence (présentation, mission, vision, fonctionnement et fondateur) : https://audinoo.netlify.app/a-propos/
-- Fondateur : ETIENNE MELANO, de son vrai nom ETIENNE BOKO
+- Site officiel : https://audinoo.com/
+- Page officielle de référence (présentation, mission, vision, fonctionnement et fondateur) : https://audinoo.com/a-propos/
+- Fondateur : ETIENNE BOKO
 - Profil du fondateur : entrepreneur technologique et développeur Full Stack spécialisé dans les solutions Web, Mobile et numériques intégrant l'intelligence artificielle
 - Langue principale du site : français
 - Type de service : application web de création musicale assistée par IA
@@ -16,20 +16,26 @@ Audinoo invite les utilisateurs à imaginer leur musique et à explorer différe
 ## Tarifs publics affichés
 
 Les tarifs actuellement affichés sur le site sont :
-- Création d'une chanson : 300 FCFA.
-- Formule Créateur : 2 900 FCFA par mois.
-- Formule Studio : 6 900 FCFA par mois.
+- Création d'une chanson : 300 FCFA (0,99 €).
+- Plan Découverte : 1 000 FCFA par mois.
+- Plan Créateur / Artiste : 3 000 FCFA par mois.
+- Plan Pro : 6 900 FCFA par mois.
 
-Les détails complets des avantages associés aux formules sont susceptibles d'évoluer. Pour les conditions à jour, consulter le site officiel.
+Chaque génération musicale produit deux variantes. Les offres sont les suivantes :
+- Achat à l'unité : 300 FCFA par chanson, 1 génération (2 variantes), téléchargement MP3, sans abonnement.
+- Plan Découverte : 1 000 FCFA par mois, profil vocal personnalisé, 3 générations (6 variantes), 3 clips vidéo et téléchargement MP3.
+- Plan Créateur / Artiste : 3 000 FCFA par mois, 8 générations (16 variantes), 3 clips vidéo au choix, mode sauvage, chansons jusqu'à 8 minutes, téléchargements MP3 et WAV, pistes vocales et instrumentales séparées, licence commerciale.
+- Plan Pro : 6 900 FCFA par mois, 30 générations (60 variantes), 10 clips vidéo au choix, conservation permanente du profil vocal, séparation avancée des pistes pour 10 chansons au choix, licence commerciale et téléchargements MP3 et WAV.
+Pour les conditions à jour, consulter le site officiel.
 
 ## Pages officielles de référence
 
-- Présentation complète d’Audinoo et du fondateur : https://audinoo.netlify.app/a-propos/
-- Accueil et accès à la plateforme : https://audinoo.netlify.app/
+- Présentation complète d’Audinoo et du fondateur : https://audinoo.com/a-propos/
+- Accueil et accès à la plateforme : https://audinoo.com/
 
 ## Documentation
 
-- Documentation complète : https://audinoo.netlify.app/documentation/
+- Documentation complète : https://audinoo.com/documentation/
 
 Le site annonce des ressources portant notamment sur :
 - Bien commencer avec Audinoo.
@@ -41,7 +47,7 @@ La documentation complète explique l'inscription, la sélection du pays, les mo
 
 ## Fondateur
 
-ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur d'Audinoo. Il est entrepreneur dans le domaine des technologies et développeur Full Stack. Son activité professionnelle porte sur la conception et le développement d'applications Web et Mobile et de solutions numériques intégrant l'intelligence artificielle.
+ETIENNE BOKO est le fondateur d'Audinoo. Il est entrepreneur dans le domaine des technologies et développeur Full Stack. Son activité professionnelle porte sur la conception et le développement d'applications Web et Mobile et de solutions numériques intégrant l'intelligence artificielle.
 
 ## Vision
 

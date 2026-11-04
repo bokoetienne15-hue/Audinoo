@@ -4,38 +4,55 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="canonical" href="https://audinoo.netlify.app/" />
-    <link rel="alternate" type="text/plain" href="https://audinoo.netlify.app/llms.txt" title="Informations publiques pour les assistants IA" />
+    <link rel="canonical" href="https://audinoo.com/" />
+    <link rel="alternate" type="text/plain" href="https://audinoo.com/llms.txt" title="Informations publiques pour les assistants IA" />
     <meta name="theme-color" content="#070710" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
-    <meta name="author" content="ETIENNE MELANO, de son vrai nom ETIENNE BOKO — fondateur d’Audinoo, entrepreneur technologique et développeur Full Stack" />
+    <meta name="author" content="ETIENNE BOKO — fondateur d’Audinoo, entrepreneur technologique et développeur Full Stack" />
     <meta name="description" content="Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Imagine une ambiance, une émotion ou une scène : crée une musique originale en quelques secondes." />
     <meta name="keywords" content="Audinoo, Etienne Boko, création musicale IA, générateur de musique, musique africaine, intelligence artificielle, création musicale" />
     <meta property="og:title" content="Audinoo — Transforme ton imagination en musique" />
-    <meta property="og:description" content="Découvre Audinoo, son studio de création musicale par IA, ses modes Simple et Avancé, ses offres et son fondateur ETIENNE MELANO (ETIENNE BOKO)." />
+    <meta property="og:description" content="Découvre Audinoo, son studio de création musicale par IA, ses modes Simple et Avancé, ses offres et son fondateur ETIENNE BOKO." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://audinoo.netlify.app/" />
+    <meta property="og:url" content="https://audinoo.com/" />
     <meta property="og:site_name" content="Audinoo" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Audinoo — Transforme ton imagination en musique" />
     <meta name="twitter:description" content="Une plateforme africaine pour créer des musiques originales avec l'intelligence artificielle." />
     <title>Audinoo — Transforme ton imagination en musique</title>
+    <script>document.documentElement.classList.add('js');</script>
+    <style>
+      /* Écran de chargement Audinoo : remplacé par l'application dès son initialisation. */
+      html,body{margin:0;min-width:320px;min-height:100%;background:#05050d;color:#f8f7ff}
+      .audinoo-loader{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(ellipse at 50% 45%,rgba(111,42,190,.2),transparent 42%),#05050d;font-family:'DM Sans',Arial,sans-serif}
+      .audinoo-loader-brand{display:flex;align-items:center;gap:12px;font:700 34px 'Space Grotesk',Arial,sans-serif;letter-spacing:-2px}
+      .audinoo-loader-mark{position:relative;width:38px;height:42px;display:inline-block;transform:skew(-12deg)}
+      .audinoo-loader-mark i,.audinoo-loader-mark b,.audinoo-loader-mark em{position:absolute;display:block;border-radius:3px;transform:skew(12deg)}
+      .audinoo-loader-mark i{width:13px;height:42px;top:0;left:13px;background:linear-gradient(180deg,#9547ff,#ff267e);clip-path:polygon(45% 0,100% 0,63% 100%,0 100%)}
+      .audinoo-loader-mark b{width:13px;height:35px;top:7px;left:0;background:#6427ff;clip-path:polygon(100% 0,100% 35%,0 100%,0 65%)}
+      .audinoo-loader-mark em{width:19px;height:5px;left:9px;top:24px;background:#ff8c2a}
+      .audinoo-spinner{width:42px;height:42px;border:3px solid rgba(255,255,255,.14);border-top-color:#a34cff;border-right-color:#ed3fcf;border-radius:50%;animation:audinoo-spin .8s linear infinite;filter:drop-shadow(0 0 9px rgba(211,48,220,.45))}
+      .audinoo-loader-label{font-size:13px;letter-spacing:2px;color:#c5bfd2}
+      @keyframes audinoo-spin{to{transform:rotate(360deg)}}
+      @media(prefers-reduced-motion:reduce){.audinoo-spinner{animation-duration:2s}}
+      .crawler-readable-homepage{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:normal!important;border:0!important}
+    </style>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Audinoo",
-        "url": "https://audinoo.netlify.app/",
+        "url": "https://audinoo.com/",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Web",
         "inLanguage": "fr",
         "description": "Plateforme africaine de création musicale par intelligence artificielle. Les utilisateurs décrivent une ambiance, une émotion ou une scène pour créer des musiques originales.",
         "creator": {
           "@type": "Person",
-          "name": "ETIENNE MELANO",
+          "name": "ETIENNE BOKO",
           "alternateName": "ETIENNE BOKO",
           "jobTitle": "Fondateur d’Audinoo, entrepreneur technologique et développeur Full Stack",
-          "description": "ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur et créateur d’Audinoo. Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit des solutions numériques, notamment des applications Web et Mobile intégrant l’intelligence artificielle."
+          "description": "ETIENNE BOKO est le fondateur et créateur d’Audinoo. Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit des solutions numériques, notamment des applications Web et Mobile intégrant l’intelligence artificielle."
         },
         "offers": [
           {
@@ -46,19 +63,31 @@
           },
           {
             "@type": "Offer",
-            "name": "Formule Créateur",
-            "price": "2900",
+            "name": "Plan Découverte",
+            "price": "1000",
             "priceCurrency": "XOF",
             "priceSpecification": {
               "@type": "UnitPriceSpecification",
-              "price": "2900",
+              "price": "1000",
               "priceCurrency": "XOF",
               "unitText": "mois"
             }
           },
           {
             "@type": "Offer",
-            "name": "Formule Studio",
+            "name": "Plan Créateur / Artiste",
+            "price": "3000",
+            "priceCurrency": "XOF",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "3000",
+              "priceCurrency": "XOF",
+              "unitText": "mois"
+            }
+          },
+          {
+            "@type": "Offer",
+            "name": "Plan Pro",
             "price": "6900",
             "priceCurrency": "XOF",
             "priceSpecification": {
@@ -73,18 +102,44 @@
     </script>
   </head>
   <body>
+    <script>
+      // Retire le fragment de fermeture parasite s'il est injecté comme texte dans la page.
+      (() => {
+        const isOrphan = (value) => (value || '').trim() === '/>';
+        const clean = (root) => {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          const nodes = [];
+          while (walker.nextNode()) {
+            if (isOrphan(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+          }
+          nodes.forEach((node) => node.remove());
+        };
+        clean(document.body);
+        new MutationObserver((records) => {
+          records.forEach((record) => record.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE && isOrphan(node.nodeValue)) node.remove();
+            else if (node.nodeType === Node.ELEMENT_NODE) clean(node);
+          }));
+        }).observe(document.body, { childList: true, subtree: true });
+      })();
+    </script>
     <div id="app">
-      <!-- Static, semantic homepage content for crawlers that do not execute JavaScript.
-           The Audinoo application replaces this fallback when src/main.js loads. -->
+      <!-- Écran initial propre : le module remplace ce contenu dès que l'application est prête à être montée. -->
+      <main class="audinoo-loader" role="status" aria-live="polite" aria-label="Chargement d'Audinoo">
+        <div class="audinoo-loader-brand"><span class="audinoo-loader-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></div>
+        <span class="audinoo-spinner" aria-hidden="true"></span>
+        <span class="audinoo-loader-label">CHARGEMENT</span>
+      </main>
+      <!-- Informations sémantiques complètes conservées dans le HTML pour les moteurs et assistants IA. -->
       <main class="crawler-readable-homepage">
         <header>
-          <a href="https://audinoo.netlify.app/" aria-label="Audinoo, accueil">Audinoo</a>
+          <a href="https://audinoo.com/" aria-label="Audinoo, accueil">Audinoo</a>
           <nav aria-label="Navigation">
-            <a href="https://audinoo.netlify.app/a-propos/">Présentation officielle complète</a>
+            <a href="https://audinoo.com/a-propos/">Présentation officielle complète</a>
             <a href="#presentation-audinoo">Présentation</a>
             <a href="#fonctionnement-audinoo">Comment ça marche</a>
             <a href="#createur-audinoo">Fondateur</a>
-            <a href="https://audinoo.netlify.app/documentation/">Documentation</a>
+            <a href="https://audinoo.com/documentation/">Documentation</a>
           </nav>
         </header>
         <article>
@@ -116,24 +171,24 @@
             <p>Un morceau calme pour travailler, une énergie afrobeat pour une vidéo ou une ambiance cinématographique pour raconter une histoire : l’utilisateur peut décrire ce qu’il imagine et explorer une forme sonore correspondante.</p>
           </section>
           <section id="tarifs-audinoo"><h2>Tarifs, crédits et formules</h2>
-            <p>La page Tarifs présente une création à la demande, une formule mensuelle Créateur et une formule mensuelle Studio. Les prix actuellement indiqués dans l’interface sont de 300 FCFA par chanson, 2 900 FCFA par mois pour Créateur et 6 900 FCFA par mois pour Studio. Les montants et avantages peuvent évoluer ; les conditions affichées sur le site au moment de l’achat font foi.</p>
-            <p>L’offre à la demande indique deux variantes générées, les téléchargements MP3 et WAV ainsi que le droit de commercialisation. Les détails des formules mensuelles peuvent évoluer.</p>
+            <p>Audinoo propose quatre formules : Achat à l'unité à 300 FCFA par chanson, Plan Découverte à 1 000 FCFA par mois, Plan Créateur / Artiste à 3 000 FCFA par mois et Plan Pro à 6 900 FCFA par mois. Chaque génération musicale produit deux variantes.</p>
+            <ul><li>Achat à l'unité : 1 génération, soit 2 variantes, téléchargement MP3, sans abonnement.</li><li>Plan Découverte : profil vocal personnalisé, 3 générations (6 variantes), 3 clips vidéo et téléchargement MP3.</li><li>Plan Créateur / Artiste : profil vocal, 8 générations (16 variantes), 3 clips au choix, mode sauvage, chansons jusqu'à 8 minutes, téléchargements MP3 et WAV, pistes vocales et instrumentales séparées et licence commerciale.</li><li>Plan Pro : profil vocal conservé de façon permanente, 30 générations (60 variantes), 10 clips au choix, séparation avancée pour 10 chansons, licence commerciale et téléchargements MP3 et WAV.</li></ul>
           </section>
           <section id="acces-audinoo"><h2>Comment commencer à utiliser Audinoo ?</h2>
             <ol><li>Ouvrir le site officiel.</li><li>Créer un compte ou se connecter avec les options proposées.</li><li>Choisir son pays lorsque le parcours le demande.</li><li>Accéder au studio et choisir le mode Simple ou Avancé.</li><li>Décrire son idée musicale et lancer la génération.</li><li>Écouter les variantes et retrouver ses créations dans « Ma bibliothèque ».</li></ol>
           </section>
-          <section id="createur-audinoo"><h2>Fondateur d’Audinoo</h2><h3>ETIENNE MELANO</h3>
-            <p><strong>ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur et le créateur d’Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il est spécialisé dans la conception, le développement et l’évolution de solutions numériques, notamment des applications Web et Mobile intégrant des technologies d’intelligence artificielle.</p>
+          <section id="createur-audinoo"><h2>Fondateur d’Audinoo</h2><h3>ETIENNE BOKO</h3>
+            <p><strong>ETIENNE BOKO est le fondateur et le créateur d’Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il est spécialisé dans la conception, le développement et l’évolution de solutions numériques, notamment des applications Web et Mobile intégrant des technologies d’intelligence artificielle.</p>
             <p>À travers Audinoo, il porte une démarche entrepreneuriale et technologique : concevoir un produit numérique accessible, faire évoluer une plateforme de création musicale assistée par IA et mettre les outils créatifs à la portée d’un public plus large. Son ambition est de contribuer au développement d’une technologie créative portée depuis l’Afrique et ouverte au monde.</p>
-            <p>Son identité publique liée au projet est présentée sous le nom professionnel <strong>ETIENNE MELANO</strong>, avec son nom légal <strong>ETIENNE BOKO</strong>.</p>
+            <p></p>
           </section>
           <section id="documentation-audinoo"><h2>Documentation et ressources officielles</h2>
             <p>La documentation explique la création d’un compte, l’accès au studio, les modes Simple et Avancé, les indications musicales, les crédits, les générations, les tarifs, les paiements et la bibliothèque.</p>
-            <ul><li><a href="https://audinoo.netlify.app/documentation/">Documentation complète d’Audinoo</a></li>
-            <li><a href="https://audinoo.netlify.app/a-propos/">Présentation détaillée d’Audinoo et de son fondateur</a></li>
-            <li><a href="https://audinoo.netlify.app/llms.txt">Informations structurées pour les assistants IA</a></li>
-            <li><a href="https://audinoo.netlify.app/robots.txt">Règles publiques d’exploration</a></li>
-            <li><a href="https://audinoo.netlify.app/sitemap.xml">Plan des pages publiques</a></li></ul>
+            <ul><li><a href="https://audinoo.com/documentation/">Documentation complète d’Audinoo</a></li>
+            <li><a href="https://audinoo.com/a-propos/">Présentation détaillée d’Audinoo et de son fondateur</a></li>
+            <li><a href="https://audinoo.com/llms.txt">Informations structurées pour les assistants IA</a></li>
+            <li><a href="https://audinoo.com/robots.txt">Règles publiques d’exploration</a></li>
+            <li><a href="https://audinoo.com/sitemap.xml">Plan des pages publiques</a></li></ul>
           </section>
           <section id="faq-audinoo"><h2>Questions fréquentes</h2>
             <h3>Faut-il savoir composer de la musique ?</h3><p>Non. Le mode Simple permet de commencer avec une description en langage courant.</p>
@@ -145,8 +200,8 @@
         </article>
         <footer>
           <p>Audinoo — Transforme ton imagination en musique.</p>
-          <p>Fondé par ETIENNE MELANO, de son vrai nom ETIENNE BOKO.</p>
-          <a href="https://audinoo.netlify.app/">Site officiel Audinoo</a>
+          <p>Fondé par ETIENNE BOKO.</p>
+          <a href="https://audinoo.com/">Site officiel Audinoo</a>
         </footer>
       </main>
     </div>
@@ -246,6 +301,6 @@
         window.addEventListener('unhandledrejection', (event) => reportClientError(event.reason))
       })()
     </script>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.js" onerror="document.documentElement.classList.remove('js')"></script>
   </body>
 </html>

@@ -2,8 +2,8 @@ import './style.css'
 import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
-import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
@@ -97,7 +97,7 @@ app.innerHTML = `
         <div class="wave wave-three"></div>
         <div class="record-card">
           <div class="record-cover"><span class="sun"></span><span class="horizon"></span><span class="palm palm-one"></span><span class="palm palm-two"></span></div>
-          <div class="record-info"><span class="play-icon">▶</span><div><strong>Etienne Melano</strong><small>Audinoo</small></div></div>
+          <div class="record-info"><span class="play-icon">▶</span><div><strong>ETIENNE BOKO</strong><small>Audinoo</small></div></div>
           <div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
       </div>
@@ -123,11 +123,12 @@ app.innerHTML = `
 
     <section class="content-section pricing-section" id="pricing" aria-labelledby="pricing-title">
       <div class="currency-toggle" id="currency-toggle" role="group" aria-label="Choisir la devise"><span class="currency-label">Devise</span><button class="currency-option is-active" type="button" data-currency="xof" aria-pressed="true">FCFA</button><button class="currency-option" type="button" data-currency="eur" aria-pressed="false">EUR</button></div>
-      <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule qui correspond à ton rythme. Les fonctionnalités détaillées de chaque formule seront précisées prochainement.</p></div>
+      <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule adaptée à tes besoins et découvre les avantages inclus dans chaque offre.</p></div>
       <div class="pricing-grid">
-        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Sans abonnement</p><h3>Une chanson</h3><p class="price-description">Paie uniquement lorsque tu veux créer un morceau.</p><div class="price-value"><span data-price data-xof="300">300</span> <small data-price-currency>FCFA</small><small data-price-period> / chanson</small></div><div class="benefit-placeholder"><strong>Inclus avec ta chanson</strong><span>Modèle de génération le plus avancé</span><span>Deux variantes générées</span><span>Téléchargement audio en MP3</span><span>Téléchargement audio en WAV</span><span>Droit de commercialisation</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
-        <article class="price-card"><p class="price-label">Créateur</p><h3>Formule mensuelle</h3><p class="price-description">Pour les créateurs qui veulent développer leur univers musical.</p><div class="price-value"><span data-price data-xof="2900">2 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages inclus</strong><span>Outils créatifs supplémentaires</span><span>Avantages du plan à préciser</span><span>Avantages supplémentaires à venir</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
-        <article class="price-card"><p class="price-label">Studio</p><h3>Formule avancée</h3><p class="price-description">Pour aller plus loin dans la production et les projets réguliers.</p><div class="price-value"><span data-price data-xof="6900">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages inclus</strong><span>Outils créatifs avancés</span><span>Avantages du plan à préciser</span><span>Avantages supplémentaires à venir</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
+        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Une chanson</h3><p class="price-description">Une création musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / chanson</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 génération musicale, soit 2 variantes</span><span>Téléchargement au format MP3</span><span>Aucun abonnement requis</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
+        <article class="price-card"><p class="price-label">Plan Découverte</p><h3>Formule mensuelle</h3><p class="price-description">Chante avec ta propre voix.</p><div class="price-value"><span data-price data-xof="1000" data-eur="1.52">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>3 générations musicales, soit 6 variantes</span><span>3 clips vidéo, un par création</span><span>Téléchargement au format MP3</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
+        <article class="price-card"><p class="price-label">Plan Créateur / Artiste</p><h3>Formule mensuelle</h3><p class="price-description">Libérez tout votre potentiel créatif.</p><div class="price-value"><span data-price data-xof="3000" data-eur="4.57">3 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>8 générations musicales, soit 16 variantes</span><span>3 clips vidéo au choix parmi vos créations</span><span>Accès au mode sauvage</span><span>Chansons d'une durée pouvant atteindre 8 minutes</span><span>Téléchargement MP3 et WAV</span><span>Téléchargement séparé de la voix et de l'instrumental</span><span>Licence commerciale pour l'exploitation de vos créations musicales</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
+        <article class="price-card"><p class="price-label">Plan Pro</p><h3>Formule avancée</h3><p class="price-description">L'expérience complète pour vos productions musicales.</p><div class="price-value"><span data-price data-xof="6900" data-eur="10.52">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>30 générations musicales, soit 60 variantes</span><span>10 clips vidéo au choix parmi vos créations</span><span>Conservation permanente du profil vocal</span><span>Séparation avancée des pistes pour 10 chansons au choix</span><span>Licence commerciale</span><span>Téléchargement MP3 et WAV</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
       </div>
     </section>
 
@@ -152,12 +153,12 @@ app.innerHTML = `
     <section class="content-section about-section" id="about" aria-labelledby="about-title">
       <div class="about-panel">
         <div><p class="section-kicker">Fondateur & vision</p><h2 id="about-title">Une vision portée par l'entrepreneuriat et la technologie.</h2></div>
-        <p><strong>ETIENNE MELANO, de son vrai nom ETIENNE BOKO, est le fondateur d'Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit et développe des applications Web et Mobile ainsi que des solutions numériques intégrant l'intelligence artificielle.</p>
+        <p><strong>ETIENNE BOKO est le fondateur d'Audinoo.</strong> Entrepreneur dans le domaine des technologies et développeur Full Stack, il conçoit et développe des applications Web et Mobile ainsi que des solutions numériques intégrant l'intelligence artificielle.</p>
         <p>À travers Audinoo, il souhaite rendre la création musicale assistée par intelligence artificielle plus accessible aux artistes, créateurs et passionnés, en Afrique et dans le monde. Son ambition est de bâtir une plateforme africaine solide, utile et évolutive, qui donne à chacun les moyens de transformer ses idées en créations musicales.</p>
       </div>
       <div class="founder-signature founder-signature-prominent">
         <img src="/favicon.svg" alt="Logo Audinoo" width="48" height="48" />
-        <div><strong>ETIENNE MELANO</strong><small>De son vrai nom ETIENNE BOKO</small><small>Fondateur d'Audinoo · Entrepreneur technologique · Développeur Full Stack</small></div>
+        <div><strong>ETIENNE BOKO</strong><small></small><small>Fondateur d'Audinoo · Entrepreneur technologique · Développeur Full Stack</small></div>
         <span class="signature-line"></span><em>Une vision africaine. Une ambition mondiale.</em>
       </div>
     </section>
@@ -167,7 +168,7 @@ app.innerHTML = `
         <div class="footer-brand-column">
           <a class="brand" href="#top" aria-label="Audinoo, accueil"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a>
           <p>La création musicale assistée par intelligence artificielle. Une idée, une émotion, une nouvelle musique.</p>
-          <small>Fondée par ETIENNE MELANO, de son vrai nom ETIENNE BOKO.</small>
+          <small>Fondée par ETIENNE BOKO.</small>
         </div>
         <div class="footer-link-column"><strong>Découvrir</strong><a href="#explore">Explorer Audinoo</a><a href="#create">Créer une musique</a><a href="#pricing">Tarifs</a></div>
         <div class="footer-link-column"><strong>Ressources</strong><a href="/documentation/">Documentation complète</a><a href="#documentation">Centre d'aide</a><a href="#about">À propos du fondateur</a></div>
@@ -178,8 +179,8 @@ app.innerHTML = `
   <main class="workspace" id="workspace" hidden>
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
-      <aside class="workspace-sidebar"><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty"><span class="workspace-empty-icon">♫</span><h2>Ta bibliothèque t’attend.</h2><p>Les morceaux que tu créeras apparaîtront ici.</p></section></section>
+      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
         <h1>Pars d’un <span>modèle</span>.</h1>
@@ -203,7 +204,7 @@ app.innerHTML = `
       <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="assertive" hidden></p>
       <button class="google-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"/><path fill="#34A853" d="M12 21.58c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.74 9.74 0 0 0 12 21.58Z"/><path fill="#FBBC05" d="M6.54 13.66A5.85 5.85 0 0 1 6.23 12c0-.58.1-1.14.31-1.66V7.81H3.3A9.73 9.73 0 0 0 2.26 12c0 1.52.36 2.96 1.04 4.19l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.31c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.31 14.63 2.42 12 2.42a9.74 9.74 0 0 0-8.7 5.39l3.24 2.53C7.31 8.03 9.46 6.31 12 6.31Z"/></svg><span>Continuer avec Google</span></button>
       <div class="auth-divider"><span>ou avec ton adresse e-mail</span></div>
-      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="current-password" minlength="8" required /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
+      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="current-password" minlength="8" required /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button><button class="password-reset-link" id="password-reset" type="button">Mot de passe oublié ?</button></form>
       <p class="auth-switch" id="auth-switch">Pas encore de compte ? <button type="button" data-auth-switch="signup">S'inscrire</button></p>
     </section>
   </div>
@@ -232,6 +233,28 @@ const menuButton = document.querySelector('.menu-button')
 const mobileMenu = document.querySelector('#mobile-menu')
 const authOverlay = document.querySelector('#auth-overlay')
 const landingPage = document.querySelector('.page-shell')
+const publicMusicSection = document.createElement('section')
+publicMusicSection.className = 'audinoo-public-music'
+publicMusicSection.innerHTML = '<div class="section-heading"><p class="eyebrow">À DÉCOUVRIR</p><h2>Les créations de la communauté</h2><p>Écoute les morceaux sélectionnés par Audinoo.</p></div><div class="audinoo-public-music-list" id="audinoo-public-music-list"></div>'
+landingPage.append(publicMusicSection)
+async function loadPublicMusic() {
+  const list = publicMusicSection.querySelector('#audinoo-public-music-list')
+  try {
+    const result = await fetch('/api/public-tracks')
+    if (!result.ok) throw new Error('public-tracks-unavailable')
+    const data = await result.json()
+    replaceNodeChildren(list)
+    for (const track of data.tracks || []) {
+      const item = document.createElement('article'); item.className = 'public-music-card'
+      const title = document.createElement('strong'); title.textContent = track.title || 'Création Audinoo'
+      const player = document.createElement('audio'); player.controls = true; player.preload = 'none'; player.src = track.audioUrl
+      item.append(title, player); list.append(item)
+    }
+    publicMusicSection.hidden = !(data.tracks || []).length
+  } catch (error) { publicMusicSection.hidden = true; console.warn('[Audinoo public music]', error) }
+}
+void loadPublicMusic()
+
 const workspace = document.querySelector('#workspace')
 const workspaceUsername = document.querySelector('#workspace-username')
 const workspaceGreeting = document.querySelector('#workspace-greeting')
@@ -270,7 +293,7 @@ const workspaceAccount = document.querySelector('.workspace-account')
 const workspaceHeader = workspace.querySelector('.workspace-header')
 const notificationControl = document.createElement('div')
 notificationControl.className = 'workspace-notifications'
-notificationControl.innerHTML = '<button class="workspace-notification-button" id="workspace-notification-button" type="button" aria-label="Ouvrir les notifications" aria-expanded="false" aria-controls="workspace-notification-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="workspace-notification-dot" aria-hidden="true" hidden></span></button><section class="workspace-notification-panel" id="workspace-notification-panel" role="dialog" aria-modal="true" aria-labelledby="workspace-notification-title" hidden><div class="workspace-notification-dialog"><div class="workspace-notification-heading"><div><p>TON ESPACE AUDINOO</p><strong id="workspace-notification-title">Notifications</strong></div></div><div class="workspace-notification-empty"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span><p>Tu es à jour.</p><small>Tes notifications apparaîtront ici.</small></div></div></section>'
+notificationControl.innerHTML = '<button class="workspace-notification-button" id="workspace-notification-button" type="button" aria-label="Ouvrir les notifications" aria-expanded="false" aria-controls="workspace-notification-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="workspace-notification-dot" aria-hidden="true" hidden></span></button><section class="workspace-notification-panel" id="workspace-notification-panel" role="dialog" aria-modal="true" aria-labelledby="workspace-notification-title" hidden><div class="workspace-notification-dialog"><div class="workspace-notification-heading"><div><p>TON ESPACE AUDINOO</p><strong id="workspace-notification-title">Notifications</strong></div></div></div></section>'
 workspaceHeader.insertBefore(notificationControl, workspaceAccount)
 const headerAvatar = document.createElement('span')
 headerAvatar.className = 'workspace-avatar workspace-header-avatar'
@@ -280,7 +303,6 @@ workspaceHeader.append(headerAvatar)
 workspaceHeader.insertBefore(headerAvatar, notificationControl)
 const workspaceNotificationButton = notificationControl.querySelector('#workspace-notification-button')
 const workspaceNotificationPanel = notificationControl.querySelector('#workspace-notification-panel')
-const workspaceNotificationEmpty = workspaceNotificationPanel.querySelector('.workspace-notification-empty')
 const workspaceNotificationList = document.createElement('div')
 workspaceNotificationList.className = 'workspace-notification-list'
 workspaceNotificationList.hidden = true
@@ -318,8 +340,6 @@ workspaceNotificationButton.addEventListener('click', () => {
   }
 })
 function renderUserNotifications() {
-  workspaceNotificationEmpty.querySelector('p').textContent = 'Tu es à jour.'
-  workspaceNotificationEmpty.querySelector('small').textContent = 'Tes notifications apparaîtront ici.'
   const user = auth.currentUser
   const unreadItems = liveNotificationItems.filter((item) => !liveNotificationReadIds.has(item.id))
   notificationDot.hidden = unreadItems.length === 0
@@ -332,13 +352,9 @@ function renderUserNotifications() {
   const currentDot = workspaceNotificationButton.querySelector('.workspace-notification-dot')
   if (currentDot) currentDot.hidden = unreadItems.length === 0
   replaceNodeChildren(workspaceNotificationList)
-  if (!liveNotificationItems.length) {
-    workspaceNotificationList.hidden = true
-    workspaceNotificationEmpty.hidden = false
-    return
-  }
-  workspaceNotificationEmpty.hidden = true
-  workspaceNotificationList.hidden = false
+  const hasNotifications = liveNotificationItems.length > 0
+  workspaceNotificationList.hidden = !hasNotifications
+  if (!hasNotifications) return
   liveNotificationItems.forEach((item) => {
     const card = document.createElement('article')
     card.className = `workspace-notification-item${liveNotificationReadIds.has(item.id) ? '' : ' is-unread'}`
@@ -397,9 +413,6 @@ function startNotificationListeners(user) {
     if (!workspaceNotificationPanel.hidden) void markVisibleNotificationsRead()
   }, (error) => {
     console.error('[Audinoo notifications] Live notification stream failed', error)
-    workspaceNotificationEmpty.hidden = false
-    workspaceNotificationEmpty.querySelector('p').textContent = 'Les notifications sont momentanément indisponibles.'
-    workspaceNotificationEmpty.querySelector('small').textContent = 'Réessaie dans un instant.'
   })
   const stopReads = onSnapshot(query(collection(db, 'notificationReads'), where('userId', '==', user.uid)), (snapshot) => {
     if (auth.currentUser?.uid !== user.uid) return
@@ -440,10 +453,35 @@ const pricingSource = document.querySelector('#pricing')
 workspacePricingPage.innerHTML = `<div class="workspace-pricing-heading"><p class="workspace-kicker">FORMULES AUDINOO</p><h1>Choisis ton espace de création.</h1><p class="workspace-intro">Retrouve ici les tarifs disponibles, sans quitter ton compte.</p></div>${pricingSource.querySelector('.currency-toggle').outerHTML}${pricingSource.querySelector('.pricing-grid').outerHTML}<button class="workspace-return-button workspace-pricing-return" type="button">Retour au studio <span aria-hidden="true">→</span></button>`
 workspacePricingPage.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'))
 workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
+  const card = button.closest('.price-card')
+  const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
+  if (isSingleCredit) {
+    button.textContent = 'Acheter 1 crédit · 300 FCFA'
+    button.href = '#buy-credit'
+    button.addEventListener('click', async (event) => {
+      event.preventDefault()
+      button.setAttribute('aria-busy', 'true')
+      button.textContent = 'Préparation du paiement…'
+      button.classList.add('is-loading')
+      try {
+        const result = await callAudinooApi('/api/credits/purchase', { method: 'POST', body: JSON.stringify({}) })
+        if (!result.checkoutUrl) throw new Error('fedapay-checkout-unavailable')
+        window.location.assign(result.checkoutUrl)
+      } catch (error) {
+        toast.textContent = generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        button.textContent = 'Acheter 1 crédit · 300 FCFA'
+        button.removeAttribute('aria-busy')
+        button.classList.remove('is-loading')
+      }
+    })
+    return
+  }
   const label = button.textContent.trim()
   const notice = document.createElement('span')
   notice.className = button.className
-  notice.textContent = label
+  notice.textContent = label + ' — bientôt disponible'
   notice.setAttribute('aria-label', `${label} — bientôt disponible`)
   button.replaceWith(notice)
 })
@@ -457,26 +495,29 @@ workspacePricingPage.querySelectorAll('.currency-option').forEach((option) => op
   })
   workspacePricingPage.querySelectorAll('[data-price]').forEach((price) => {
     const amount = Number(price.dataset.xof)
-    price.textContent = currency === 'xof' ? new Intl.NumberFormat('fr-FR').format(amount) : new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount / 655.957)
+    const euroAmount = Number(price.dataset.eur ?? (amount / 655.957).toFixed(2))
+    price.textContent = currency === 'xof' ? new Intl.NumberFormat('fr-FR').format(amount) : new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(euroAmount)
   })
   workspacePricingPage.querySelectorAll('[data-price-currency]').forEach((label) => { label.textContent = currency === 'xof' ? 'FCFA' : '€' })
 }))
 workspaceLayout.append(workspacePricingPage)
-const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
-workspaceUpgradeButton.addEventListener('click', () => {
+function windowPricingOpen() {
   ;[studioWorkspacePage, libraryWorkspacePage, adminWorkspacePage, modelWorkspacePage].forEach((page) => { if (page) page.hidden = true })
   workspacePricingPage.hidden = false
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
   window.history.replaceState(null, '', '#workspace-pricing')
-})
+}
+
+const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
+workspaceUpgradeButton.addEventListener('click', windowPricingOpen)
 workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener('click', () => {
   workspacePricingPage.hidden = true
   studioWorkspacePage.hidden = false
   window.history.replaceState(null, '', '#studio')
 })
+const homeNavIcon = workspaceSidebar.querySelector('.workspace-nav[href="#home"] span')
+homeNavIcon.className = 'workspace-nav-icon home-nav-icon'
+homeNavIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg>'
 const studioNavIcon = workspaceSidebar.querySelector('.workspace-nav[href="#studio"] span')
 studioNavIcon.className = 'workspace-nav-icon studio-nav-icon'
 studioNavIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v-2M8 17V7M12 20V4M16 16V8M20 13v-2"></path><path d="m3 7 2-2 2 2M17 18l2 2 2-2"></path></svg>'
@@ -485,15 +526,21 @@ libraryNavIcon.className = 'workspace-nav-icon library-nav-icon'
 libraryNavIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21z"></path><path d="M5 5h15M8.5 2v17"></path><path d="m13 8 4 2.3-4 2.3z"></path></svg>'
 const sidebarModelSection = document.createElement('section')
 sidebarModelSection.className = 'workspace-sidebar-section workspace-model-section'
-sidebarModelSection.innerHTML = '<p class="workspace-sidebar-section-label">Modèle</p><button class="workspace-model-choice" id="workspace-model-choice" type="button" aria-label="Découvrir les modèles Audinoo"><span class="workspace-model-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span><span class="workspace-model-name"><strong>Audinoo Model</strong><small>Des idées pour chaque occasion</small></span><span class="workspace-model-chevron" aria-hidden="true">⌄</span></button>'
+sidebarModelSection.innerHTML = '<p class="workspace-sidebar-section-label">Modèle</p><button class="workspace-model-choice" id="workspace-model-choice" type="button" aria-label="Découvrir les modèles Audinoo"><span class="workspace-model-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span><span class="workspace-model-name"><strong>Audinoo Model</strong><small>Des idées pour chaque occasion</small></span></button>'
 workspaceSidebar.insertBefore(sidebarModelSection, sidebarFooter)
 const workspaceModelChoice = workspaceSidebar.querySelector('#workspace-model-choice')
 const studioWorkspacePage = workspaceLayout.querySelector('.workspace-content')
+const homeWorkspacePage = document.createElement('section')
+homeWorkspacePage.className = 'workspace-content workspace-home-page'
+homeWorkspacePage.id = 'home-page'
+homeWorkspacePage.hidden = true
+homeWorkspacePage.innerHTML = '<p class="workspace-kicker">DÉCOUVRIR AUDINOO</p><h1>Accueil</h1><p class="workspace-intro">Retrouve ici les chansons sélectionnées et publiées par Audinoo.</p><section class="workspace-home-empty"><span class="workspace-home-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span><h2>Les premières chansons arrivent bientôt.</h2><p>Les créations publiées par Audinoo apparaîtront ici. Reviens découvrir les nouveautés musicales de la communauté.</p></section>'
+workspaceLayout.append(homeWorkspacePage)
 const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<p class="workspace-kicker">TON ESPACE MUSICAL</p><h1>Ma bibliothèque</h1><p class="workspace-intro">Retrouve ici toutes tes créations musicales.</p><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque commence ici.</h2><p>Tous tes projets et tes créations seront enregistrés ici.</p><a class="workspace-library-create" href="#studio">Aller au studio de création <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -511,9 +558,12 @@ const modelIdeas = [
   { name: 'Félicitations', description: 'Célèbre une réussite, un diplôme ou une nouvelle aventure.', image: 'reussite.jpg', photo: 'RDNE Stock project', source: 'https://www.pexels.com/photo/happy-students-celebrating-their-graduation-7713343/' },
   { name: 'Douce berceuse', description: 'Une mélodie tendre à offrir à ton petit trésor.', image: 'berceuse.jpg', photo: 'Alexander Mass', source: 'https://www.pexels.com/photo/tender-family-moment-with-sleeping-baby-35119991/' }
 ]
-modelWorkspacePage.innerHTML = `<div class="model-page-heading"><div><p class="workspace-kicker">DÉCOUVRE NOS MODÈLES EXCLUSIFS</p><h1>Audinoo Model</h1><p class="model-page-intro">La prochaine chanson commence par une idée. Choisis celle qui te ressemble.</p></div></div><section class="model-picker" aria-labelledby="available-models-title"><div class="model-picker-heading"><div><p class="model-picker-eyebrow">FAIT POUR TON HISTOIRE</p><h2 id="available-models-title">Une inspiration pour chaque occasion</h2></div></div><div class="model-grid">${modelIdeas.map((model) => `<article class="model-tile"><div class="model-tile-image-wrap"><img class="model-tile-image" src="/model-covers/${model.image}" alt="Inspiration photo pour ${model.name}" loading="lazy" /><span class="model-image-glow" aria-hidden="true"></span><span class="model-image-brand">AUDINOO MODEL</span></div><div class="model-tile-body"><h3>${model.name}</h3><p>${model.description}</p><button class="model-use-button" type="button" data-model-name="${model.name}">Utiliser ce modèle <span aria-hidden="true">→</span></button><a class="model-photo-credit" href="${model.source}" target="_blank" rel="noreferrer">Photo : ${model.photo} / Pexels</a></div></article>`).join('')}</div><section class="model-suggestion-panel" aria-labelledby="model-suggestion-title"><div class="model-suggestion-copy"><span class="model-suggestion-icon" aria-hidden="true">＋</span><p class="model-suggestion-kicker">UNE IDÉE EN TÊTE ?</p><h2 id="model-suggestion-title">Tu ne trouves pas ton modèle ?</h2><p>Dis-nous ce que tu aimerais créer. Ta suggestion pourrait inspirer une prochaine mise à jour d’Audinoo.</p></div><form class="model-suggestion-form" id="model-suggestion-form"><label for="model-suggestion-name">Le modèle que tu aimerais voir</label><input id="model-suggestion-name" name="modelName" type="text" minlength="2" maxlength="80" placeholder="Ex. Une chanson pour ma sœur" required /><label for="model-suggestion-reason">Pourquoi ce modèle est important pour toi ?</label><textarea id="model-suggestion-reason" name="reason" minlength="10" maxlength="1200" rows="4" placeholder="Explique-nous l’occasion, l’ambiance ou l’histoire que tu voudrais mettre en musique…" required></textarea><div class="model-suggestion-submit-row"><p id="model-suggestion-status" role="status" aria-live="polite"></p><button class="model-use-button" type="submit">Envoyer ma suggestion <span aria-hidden="true">→</span></button></div></form></section><div class="model-page-footer"><span>D’autres inspirations arriveront au fil des mises à jour.</span><button class="workspace-return-button" id="workspace-return-studio" type="button">Retourner au studio <span aria-hidden="true">→</span></button></div></section>`
+modelWorkspacePage.innerHTML = `<div class="model-page-heading"><div><p class="workspace-kicker">DÉCOUVRE NOS MODÈLES EXCLUSIFS</p><h1>Audinoo Model</h1><p class="model-page-intro">La prochaine chanson commence par une idée. Choisis celle qui te ressemble.</p></div></div><section class="model-picker" aria-labelledby="available-models-title"><div class="model-picker-heading"><div><p class="model-picker-eyebrow">FAIT POUR TON HISTOIRE</p><h2 id="available-models-title">Une inspiration pour chaque occasion</h2></div></div><div class="model-grid">${modelIdeas.map((model) => `<article class="model-tile"><div class="model-tile-image-wrap"><img class="model-tile-image" src="/model-covers/${model.image}" alt="Inspiration photo pour ${model.name}" loading="lazy" /><span class="model-image-glow" aria-hidden="true"></span><span class="model-image-brand">AUDINOO MODEL</span></div><div class="model-tile-body"><h3>${model.name}</h3><p>${model.description}</p><button class="model-use-button" type="button" data-model-name="${model.name}">Utiliser ce modèle <span aria-hidden="true">→</span></button><a class="model-photo-credit" href="${model.source}" target="_blank" rel="noreferrer">Photo : ${model.photo} / Pexels</a></div></article>`).join('')}</div><section class="model-suggestion-panel" aria-labelledby="model-suggestion-title"><div class="model-suggestion-copy"><span class="model-suggestion-icon" aria-hidden="true">＋</span><h2 id="model-suggestion-title">Tu ne trouves pas ton modèle ?</h2></div><form class="model-suggestion-form" id="model-suggestion-form"><label for="model-suggestion-name">Le modèle que tu aimerais voir</label><input id="model-suggestion-name" name="modelName" type="text" minlength="2" maxlength="80" placeholder="Ex. Une chanson pour ma sœur" required /><label for="model-suggestion-reason">Pourquoi ce modèle est important pour toi ?</label><textarea id="model-suggestion-reason" name="reason" minlength="10" maxlength="1200" rows="4" placeholder="Explique-nous l’occasion, l’ambiance ou l’histoire que tu voudrais mettre en musique…" required></textarea><div class="model-suggestion-submit-row"><p id="model-suggestion-status" role="status" aria-live="polite"></p><button class="model-use-button" type="submit">Envoyer ma suggestion <span aria-hidden="true">→</span></button></div></form></section><div class="model-page-footer"><span>D’autres inspirations arriveront au fil des mises à jour.</span><button class="workspace-return-button" id="workspace-return-studio" type="button">Retourner au studio <span aria-hidden="true">→</span></button></div></section>`
 const modelPicker = modelWorkspacePage.querySelector('.model-picker')
-modelPicker.insertBefore(modelPicker.querySelector('.model-suggestion-panel'), modelPicker.querySelector('.model-grid'))
+modelPicker.append(
+  modelPicker.querySelector('.model-suggestion-panel'),
+  modelPicker.querySelector('.model-page-footer')
+)
 workspaceLayout.append(modelWorkspacePage)
 workspaceModelChoice.addEventListener('click', () => {
   studioWorkspacePage.hidden = true
@@ -522,10 +572,7 @@ workspaceModelChoice.addEventListener('click', () => {
   modelWorkspacePage.hidden = false
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.remove('is-active'))
   workspaceModelChoice.classList.add('is-active')
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
   window.history.replaceState(null, '', '#model')
 })
 modelWorkspacePage.querySelector('#workspace-return-studio').addEventListener('click', () => {
@@ -587,7 +634,7 @@ const adminWorkspacePage = document.createElement('section')
 adminWorkspacePage.className = 'workspace-content workspace-admin-page'
 adminWorkspacePage.id = 'admin-page'
 adminWorkspacePage.hidden = true
-adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace-kicker">AUDINOO · CENTRE DE PILOTAGE</p><h1>Vue d’ensemble</h1><p class="workspace-intro">La communauté en direct, réunie au même endroit.</p></div><div class="admin-live-pill"><i></i> En direct</div></div><div class="admin-toolbar"><label><span>Période</span><select id="admin-period-filter"><option value="day">Par jour · 30 jours</option><option value="week">Par semaine · 12 semaines</option><option value="month">Par mois · 12 mois</option><option value="year">Par année · 5 ans</option></select></label><label><span>Pays</span><select id="admin-country-filter"><option value="all">Tous les pays</option></select></label><button class="admin-export-button" id="admin-export-report" type="button"><span aria-hidden="true">↧</span> Télécharger le rapport</button></div><p class="admin-panel-status admin-live-status" id="admin-stats-status" role="status">Connexion à Firebase…</p><section class="admin-stats-grid" aria-label="Indicateurs de la communauté"><article class="admin-stat-card admin-stat-total"><span>INSCRITS AU TOTAL</span><strong id="admin-total-users">—</strong><small>Profils enregistrés dans Firebase</small><i aria-hidden="true">♙</i></article><article class="admin-stat-card admin-stat-signups"><span>INSCRIPTIONS · PÉRIODE</span><strong id="admin-week-users">—</strong><small id="admin-signup-period-label">Dans la période choisie</small><i aria-hidden="true">↗</i></article><article class="admin-stat-card admin-stat-visitors"><span>VISITES ANONYMES · PÉRIODE</span><strong id="admin-total-visitors">—</strong><small>Sessions sans compte, période filtrée</small><i aria-hidden="true">◉</i></article></section><section class="admin-chart-grid"><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>CROISSANCE</p><h2>Inscriptions</h2></div><span class="admin-chart-total" id="admin-signup-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-signup-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des inscriptions par période"></svg></div><div class="admin-chart-legend"><i class="signup-legend-dot"></i> Nouveaux comptes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>FRÉQUENTATION</p><h2>Visites anonymes</h2></div><span class="admin-chart-total" id="admin-visitor-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-visitor-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des visiteurs anonymes par période"></svg></div><div class="admin-chart-legend"><i class="visitor-legend-dot"></i> Sessions anonymes</div></article></section><section class="admin-panel admin-country-panel"><div class="admin-panel-heading"><div><p>COMMUNAUTÉ MONDIALE</p><h2>Inscriptions par pays</h2></div><span class="admin-country-count" id="admin-country-total">—</span></div><p class="admin-panel-status">Chaque drapeau correspond au pays choisi par les membres.</p><div class="admin-country-list" id="admin-country-list"></div></section><div class="admin-dashboard-grid"><section class="admin-panel"><div class="admin-panel-heading"><div><p>BOÎTE À IDÉES</p><h2>Suggestions de modèles</h2></div><button class="admin-refresh-button" id="admin-refresh-suggestions" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-suggestions-status" role="status">Chargement des suggestions…</p><div class="admin-suggestion-list" id="admin-suggestion-list"></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>ANNONCES</p><h2>Envoyer une notification</h2></div></div><form class="admin-notification-form" id="admin-notification-form"><label for="admin-notification-title">Titre</label><input id="admin-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Nouveau modèle disponible" required /><label for="admin-notification-message">Message</label><textarea id="admin-notification-message" name="message" minlength="2" maxlength="600" rows="5" placeholder="Écris le message que les utilisateurs verront…" required></textarea><button class="admin-publish-button" type="submit">Publier à tous les utilisateurs <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-notification-status" role="status"></p></form></section></div>'
+adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace-kicker">AUDINOO · CENTRE DE PILOTAGE</p><h1>Vue d’ensemble</h1><p class="workspace-intro">La communauté en direct, réunie au même endroit.</p></div><div class="admin-live-pill"><i></i> En direct</div></div><div class="admin-toolbar"><label><span>Période</span><select id="admin-period-filter"><option value="day">Par jour · 30 jours</option><option value="week">Par semaine · 12 semaines</option><option value="month">Par mois · 12 mois</option><option value="year">Par année · 5 ans</option></select></label><label><span>Pays</span><select id="admin-country-filter"><option value="all">Tous les pays</option></select></label><button class="admin-export-button" id="admin-export-report" type="button"><span aria-hidden="true">↧</span> Télécharger le rapport</button></div><p class="admin-panel-status admin-live-status" id="admin-stats-status" role="status">Connexion à Firebase…</p><section class="admin-stats-grid" aria-label="Indicateurs de la communauté"><article class="admin-stat-card admin-stat-total"><span>INSCRITS AU TOTAL</span><strong id="admin-total-users">—</strong><small>Profils enregistrés dans Firebase</small><i aria-hidden="true">♙</i></article><article class="admin-stat-card admin-stat-signups"><span>INSCRIPTIONS · PÉRIODE</span><strong id="admin-week-users">—</strong><small id="admin-signup-period-label">Dans la période choisie</small><i aria-hidden="true">↗</i></article><article class="admin-stat-card admin-stat-visitors"><span>VISITES ANONYMES · PÉRIODE</span><strong id="admin-total-visitors">—</strong><small>Sessions sans compte, période filtrée</small><i aria-hidden="true">◉</i></article><article class="admin-stat-card admin-stat-generations"><span>GÉNÉRATIONS · PÉRIODE</span><strong id="admin-total-generations">—</strong><small id="admin-generation-detail">Historique récent synchronisé</small><i aria-hidden="true">♫</i></article></section><section class="admin-chart-grid"><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>CROISSANCE</p><h2>Inscriptions</h2></div><span class="admin-chart-total" id="admin-signup-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-signup-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des inscriptions par période"></svg></div><div class="admin-chart-legend"><i class="signup-legend-dot"></i> Nouveaux comptes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>FRÉQUENTATION</p><h2>Visites anonymes</h2></div><span class="admin-chart-total" id="admin-visitor-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-visitor-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des visiteurs anonymes par période"></svg></div><div class="admin-chart-legend"><i class="visitor-legend-dot"></i> Sessions anonymes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>PRODUCTION MUSICALE</p><h2>Générations</h2></div><span class="admin-chart-total" id="admin-generation-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-generation-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des générations musicales par période"></svg></div><div class="admin-chart-legend"><i class="generation-legend-dot"></i> Créations enregistrées · échantillon récent</div></article></section><section class="admin-panel admin-country-panel"><div class="admin-panel-heading"><div><p>COMMUNAUTÉ MONDIALE</p><h2>Inscriptions par pays</h2></div><span class="admin-country-count" id="admin-country-total">—</span></div><p class="admin-panel-status">Chaque drapeau correspond au pays choisi par les membres.</p><div class="admin-country-list" id="admin-country-list"></div></section><div class="admin-dashboard-grid"><section class="admin-panel"><div class="admin-panel-heading"><div><p>BOÎTE À IDÉES</p><h2>Suggestions de modèles</h2></div><button class="admin-refresh-button" id="admin-refresh-suggestions" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-suggestions-status" role="status">Chargement des suggestions…</p><div class="admin-suggestion-list" id="admin-suggestion-list"></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>ANNONCES</p><h2>Envoyer une notification</h2></div></div><form class="admin-notification-form" id="admin-notification-form"><label for="admin-notification-title">Titre</label><input id="admin-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Nouveau modèle disponible" required /><label for="admin-notification-message">Message</label><textarea id="admin-notification-message" name="message" minlength="2" maxlength="600" rows="5" placeholder="Écris le message que les utilisateurs verront…" required></textarea><button class="admin-publish-button" type="submit">Publier à tous les utilisateurs <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-notification-status" role="status"></p></form></section></div>'
 workspaceLayout.append(adminWorkspacePage)
 let verifiedAdminUid = null
 const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestions-status')
@@ -617,11 +664,13 @@ let activeWorkspaceProfile = null
 function renderWorkspaceFreeCredit() {
   const profile = activeWorkspaceProfile
   const profileCampaignId = profile?.freeCreditCampaignId || (!profile?.freeCreditPolicyAssigned ? DEFAULT_FREE_CREDIT_CAMPAIGN_ID : null)
-  const canUseWelcomeCredit = Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && profileCampaignId === freeCreditPolicy.activeCampaignId)
-  workspaceFreeCreditCount.textContent = canUseWelcomeCredit ? '1' : '0'
-  workspaceFreeCreditCaption.textContent = canUseWelcomeCredit ? 'À utiliser pour une création' : freeCreditPolicy.enabled ? 'Aucun crédit gratuit disponible' : 'Offre désactivée'
-  workspaceMobileCreditCount.textContent = canUseWelcomeCredit ? '1 crédit gratuit' : '0 crédit gratuit'
-  workspaceMobileCreditCaption.textContent = workspaceFreeCreditCaption.textContent
+  const freeCredits = Number(Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && profileCampaignId === freeCreditPolicy.activeCampaignId))
+  const paidCredits = Math.max(0, Math.floor(Number(profile?.paidCredits || 0)))
+  const totalCredits = freeCredits + paidCredits
+  workspaceFreeCreditCount.textContent = String(totalCredits)
+  workspaceFreeCreditCaption.textContent = freeCredits + ' gratuit · ' + paidCredits + ' payant(s)'
+  workspaceMobileCreditCount.textContent = totalCredits + (totalCredits > 1 ? ' crédits disponibles' : ' crédit disponible')
+  workspaceMobileCreditCaption.textContent = freeCredits + ' gratuit(s) · ' + paidCredits + ' payant(s)'
 }
 function renderAdminCreditPolicy() {
   adminCreditState.textContent = freeCreditPolicy.enabled ? 'ACTIVE' : 'DÉSACTIVÉE'
@@ -634,9 +683,16 @@ function renderAdminCreditPolicy() {
     : 'La réactivation crée une nouvelle offre; les anciens crédits ne reviennent pas.'
   renderWorkspaceFreeCredit()
 }
+let stopWorkspaceProfileCreditListener = null
 function listenToFreeCreditPolicy(profile) {
   stopFreeCreditPolicyListener?.()
+  stopWorkspaceProfileCreditListener?.()
   activeWorkspaceProfile = profile
+  stopWorkspaceProfileCreditListener = onSnapshot(doc(db, 'users', profile.uid), (snapshot) => {
+    if (auth.currentUser?.uid !== profile.uid || !snapshot.exists()) return
+    activeWorkspaceProfile = { ...snapshot.data(), uid: profile.uid }
+    renderWorkspaceFreeCredit()
+  }, (error) => console.error('[Audinoo credits] Could not sync account credits', error))
   stopFreeCreditPolicyListener = onSnapshot(doc(db, 'settings', 'credits'), (snapshot) => {
     if (auth.currentUser?.uid !== profile.uid) return
     freeCreditPolicy = snapshot.exists()
@@ -682,6 +738,7 @@ const adminPeriodFilter = adminWorkspacePage.querySelector('#admin-period-filter
 const adminCountryFilter = adminWorkspacePage.querySelector('#admin-country-filter')
 let latestAdminUsers = []
 let latestAdminVisitors = []
+let latestAdminGenerations = []
 const adminPeriods = {
   day: { count: 30, unit: 'day', label: '30 derniers jours' },
   week: { count: 12, unit: 'week', label: '12 dernières semaines' },
@@ -786,9 +843,12 @@ function drawAdminChart(svg, series, color) {
   })
 }
 let stopAdminStatsListeners = null
-function renderAdminStats(userSnapshots, visitorSnapshots) {
-  latestAdminUsers = userSnapshots.docs.map((snapshot) => snapshot.data())
-  latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => snapshot.data())
+function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
+  latestAdminUsers = userSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
+  latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
+  latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
+  renderAdminUsersTable()
+  renderAdminGenerationsTable()
   adminReportDataReady = true
   excelReportButton.disabled = false
   pdfReportButton.disabled = false
@@ -800,17 +860,25 @@ function renderAdminDashboard() {
   const filteredUsers = latestAdminUsers.filter((user) => selectedCountry === 'all' || user.countryCode === selectedCountry)
   const signupSeries = makeSeries(filteredUsers, period.unit, period.count)
   const visitorSeries = makeSeries(latestAdminVisitors, period.unit, period.count)
+  const generationSeries = makeSeries(latestAdminGenerations, period.unit, period.count)
+  const generationTotal = generationSeries.reduce((sum, bin) => sum + bin.value, 0)
+  const generationSuccess = latestAdminGenerations.filter((item) => ['SUCCESS', 'COMPLETE', 'COMPLETED'].includes(String(item.state || '').toUpperCase())).length
+  const generationFailed = latestAdminGenerations.filter((item) => ['CREATE_TASK_FAILED', 'GENERATE_AUDIO_FAILED', 'CALLBACK_EXCEPTION', 'SENSITIVE_WORD_ERROR'].includes(String(item.state || '').toUpperCase())).length
   const signupTotal = signupSeries.reduce((sum, bin) => sum + bin.value, 0)
   const visitorTotal = visitorSeries.reduce((sum, bin) => sum + bin.value, 0)
   adminWorkspacePage.querySelector('#admin-total-users').textContent = adminNumber(latestAdminUsers.length)
   adminWorkspacePage.querySelector('#admin-week-users').textContent = adminNumber(signupTotal)
   adminWorkspacePage.querySelector('#admin-total-visitors').textContent = adminNumber(visitorTotal)
+  adminWorkspacePage.querySelector('#admin-total-generations').textContent = adminNumber(generationTotal)
+  adminWorkspacePage.querySelector('#admin-generation-detail').textContent = `${adminNumber(generationSuccess)} réussies · ${adminNumber(generationFailed)} en échec · ${adminNumber(latestAdminGenerations.length)} dernières créations suivies`
   const selectedCountryName = latestAdminUsers.find((user) => user.countryCode === selectedCountry)?.country || selectedCountry
   adminWorkspacePage.querySelector('#admin-signup-period-label').textContent = `${period.label}${selectedCountry === 'all' ? '' : ` · ${countryFlag(selectedCountry)} ${selectedCountryName}`}`
   adminWorkspacePage.querySelector('#admin-signup-chart-total').textContent = adminNumber(signupTotal)
   adminWorkspacePage.querySelector('#admin-visitor-chart-total').textContent = adminNumber(visitorTotal)
   drawAdminChart(adminWorkspacePage.querySelector('#admin-signup-chart'), signupSeries, '#cf7bff')
   drawAdminChart(adminWorkspacePage.querySelector('#admin-visitor-chart'), visitorSeries, '#67dcca')
+  adminWorkspacePage.querySelector('#admin-generation-chart-total').textContent = adminNumber(generationTotal)
+  drawAdminChart(adminWorkspacePage.querySelector('#admin-generation-chart'), generationSeries, '#f2b96f')
   const countries = new Map()
   latestAdminUsers.forEach((user) => {
     const country = typeof user.country === 'string' && user.country.trim() ? user.country.trim() : 'Pays non renseigné'
@@ -842,7 +910,7 @@ function renderAdminDashboard() {
     countryList.append(row)
   })
   if (!countries.size) countryList.textContent = 'Aucun compte enregistré pour le moment.'
-  adminStatsStatus.textContent = `Connecté à Firebase · ${adminNumber(latestAdminUsers.length)} profils · ${adminNumber(latestAdminVisitors.length)} sessions anonymes · mise à jour automatique.`
+  adminStatsStatus.textContent = `Connecté à Firebase · ${adminNumber(latestAdminUsers.length)} profils · ${adminNumber(latestAdminVisitors.length)} sessions anonymes · ${adminNumber(latestAdminGenerations.length)} générations récentes observées · mise à jour automatique.`
 }
 adminPeriodFilter.addEventListener('change', renderAdminDashboard)
 adminCountryFilter.addEventListener('change', renderAdminDashboard)
@@ -860,6 +928,260 @@ reportExportStatus.className = 'admin-export-status'
 reportExportStatus.setAttribute('role', 'status')
 reportExportStatus.setAttribute('aria-live', 'polite')
 pdfReportButton.after(reportExportStatus)
+
+// Navigation interne du centre de pilotage : les outils existants sont conservés et regroupés.
+const adminHero = adminWorkspacePage.querySelector('.admin-hero')
+const adminToolbar = adminWorkspacePage.querySelector('.admin-toolbar')
+const adminLiveStatus = adminWorkspacePage.querySelector('#admin-stats-status')
+const adminStatsGrid = adminWorkspacePage.querySelector('.admin-stats-grid')
+const adminCharts = adminWorkspacePage.querySelector('.admin-chart-grid')
+const adminCountryPanel = adminWorkspacePage.querySelector('.admin-country-panel')
+const adminDashboardGrid = adminWorkspacePage.querySelector('.admin-dashboard-grid')
+const adminExportGroup = document.createElement('section')
+adminExportGroup.className = 'admin-panel admin-export-panel'
+adminExportGroup.innerHTML = '<div class="admin-panel-heading"><div><p>DOCUMENTS DE GESTION</p><h2>Exporter les rapports</h2></div><span class="admin-export-icon" aria-hidden="true">⇩</span></div><p class="admin-panel-status">Génère un rapport à partir des données actuellement chargées depuis Firebase. Les chiffres absents de la base ne sont pas inventés.</p><div class="admin-export-actions"></div>'
+adminExportGroup.querySelector('.admin-export-actions').append(excelReportButton, pdfReportButton, reportExportStatus)
+const adminNavigation = document.createElement('nav')
+adminNavigation.className = 'admin-section-nav'
+adminNavigation.setAttribute('aria-label', 'Rubriques de l’administration')
+adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="users"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11a4 4 0 1 0-1-7.9M17 14.5a4 4 0 0 1 4 4V20"/></svg></span>Utilisateurs</button><button type="button" class="admin-section-link" data-admin-section="generations"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>Générations</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button>'
+const adminContent = document.createElement('div')
+adminContent.className = 'admin-section-content'
+const adminShell = document.createElement('div')
+adminShell.className = 'admin-workspace-shell'
+adminWorkspacePage.append(adminShell)
+const adminMenuToggle = document.createElement('button')
+adminMenuToggle.type = 'button'
+adminMenuToggle.className = 'admin-mobile-menu-toggle'
+adminMenuToggle.setAttribute('aria-expanded', 'false')
+adminMenuToggle.setAttribute('aria-controls', 'admin-section-navigation')
+adminMenuToggle.innerHTML = '<span aria-hidden="true">☰</span> Rubriques de l’administration'
+adminNavigation.id = 'admin-section-navigation'
+adminShell.append(adminMenuToggle, adminNavigation, adminContent)
+adminMenuToggle.addEventListener('click', () => {
+  const open = adminShell.classList.toggle('is-mobile-nav-open')
+  adminMenuToggle.setAttribute('aria-expanded', String(open))
+})
+adminNavigation.addEventListener('click', (event) => {
+  if (event.target.closest('[data-admin-section]') && window.matchMedia('(max-width: 760px)').matches) {
+    adminShell.classList.remove('is-mobile-nav-open')
+    adminMenuToggle.setAttribute('aria-expanded', 'false')
+  }
+})
+document.addEventListener('click', (event) => {
+  if (!adminShell.classList.contains('is-mobile-nav-open') || adminShell.contains(event.target)) return
+  adminShell.classList.remove('is-mobile-nav-open')
+  adminMenuToggle.setAttribute('aria-expanded', 'false')
+})
+function createAdminSection(id, title, description) {
+  const section = document.createElement('section')
+  section.className = 'admin-section-view'
+  section.dataset.adminPanel = id
+  section.innerHTML = '<div class="admin-section-heading"><h2></h2><p></p></div>'
+  section.querySelector('h2').textContent = title
+  section.querySelector('p').textContent = description
+  adminContent.append(section)
+  return section
+}
+const adminOverviewSection = createAdminSection('overview', 'Vue d’ensemble', 'Les indicateurs de croissance et d’activité de la communauté Audinoo.')
+const adminUsersSection = createAdminSection('users', 'Utilisateurs', 'Recherche et consultation des profils enregistrés dans Firebase.')
+const adminGenerationsSection = createAdminSection('generations', 'Générations musicales', 'Historique des créations enregistrées. La liste est limitée aux 1 000 dernières entrées synchronisées.')
+const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
+const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
+const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
+;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
+
+adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Les fichiers archivés dans R2 peuvent être écoutés et publiés depuis cette rubrique. Les créations restent privées tant qu’elles ne sont pas publiées.</p>'
+adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
+const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
+const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
+function adminDateLabel(value) {
+  const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
+  return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
+}
+function renderAdminUsersTable() {
+  const term = adminUserSearch.value.trim().toLocaleLowerCase('fr')
+  const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid,user.country,user.countryCode].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const body = adminUsersSection.querySelector('#admin-user-rows')
+  replaceNodeChildren(body)
+  adminUsersSection.querySelector('#admin-user-count').textContent = term ? `${adminNumber(users.length)} résultat(s) sur ${adminNumber(latestAdminUsers.length)}` : `${adminNumber(users.length)} profil(s)`
+  if (!users.length) { const row=document.createElement('tr'); const cell=document.createElement('td'); cell.colSpan=4; cell.textContent='Aucun utilisateur correspondant.'; row.append(cell); body.append(row); return }
+  users.slice(0,250).forEach(user => {
+    const row=document.createElement('tr')
+    const identity=document.createElement('td')
+    const name=document.createElement('strong'); name.textContent=user.displayName || user.username || 'Utilisateur'
+    const email=document.createElement('small'); email.textContent=user.email || user.username || 'Adresse non renseignée'
+    identity.append(name,email)
+    const created=document.createElement('td'); created.textContent=adminDateLabel(user.createdAt)
+    const country=document.createElement('td')
+    const countryCode=String(user.countryCode || '').trim().toUpperCase()
+    const flag=countryCode.length===2 ? String.fromCodePoint(...[...countryCode].map(char=>127397+char.charCodeAt(0))) : ''
+    country.textContent=(flag ? flag + ' ' : '') + (user.country || countryCode || '—')
+    const uid=document.createElement('td'); uid.textContent=user.uid || '—'; uid.className='admin-id-cell'
+    row.append(identity,created,country,uid); body.append(row)
+  })
+  if(users.length>250){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Affichage limité aux 250 premiers résultats. Affine ta recherche.';row.append(cell);body.append(row)}
+}
+let adminGenerationRecords = []
+let adminGenerationsRequestRunning = false
+async function loadAdminGenerations(silent = false) {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsRequestRunning) return
+  const target = adminGenerationsSection.querySelector('#admin-generation-cards')
+  adminGenerationsRequestRunning = true
+  if (!silent && !adminGenerationRecords.length) target.textContent = 'Chargement des générations…'
+  try {
+    const result = await callAudinooApi('/api/admin/generations')
+    adminGenerationRecords = result.generations || []
+    renderAdminGenerationsTable()
+  } catch (error) {
+    if (!adminGenerationRecords.length) target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
+    else console.warn('[Audinoo admin] Actualisation des générations impossible', error)
+  } finally {
+    adminGenerationsRequestRunning = false
+  }
+}
+function renderAdminGenerationsTable() {
+  const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
+  const usersById = new Map(latestAdminUsers.map(user => [user.uid,user]))
+  const records = adminGenerationRecords.filter(item => [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const body = adminGenerationsSection.querySelector('#admin-generation-cards')
+  replaceNodeChildren(body)
+  adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + ' création(s)'
+  if (!records.length) { body.textContent = 'Aucune génération disponible.'; return }
+  records.forEach(item => {
+    const card = document.createElement('article'); card.className = 'admin-generation-card'
+    const heading = document.createElement('div'); heading.className = 'admin-generation-card-heading'
+    const title = document.createElement('h3'); title.textContent = item.title || 'Création sans titre'
+    const status = document.createElement('span'); status.className = 'admin-state-pill'; status.textContent = item.status || 'État inconnu'
+    heading.append(title,status)
+    const meta = document.createElement('p'); meta.textContent = 'Utilisateur : ' + (usersById.get(item.uid)?.email || item.uid) + ' · ID : ' + item.taskId + ' · Créée le : ' + adminDateLabel(item.createdAt)
+    card.append(heading,meta)
+    ;(item.tracks || []).forEach(track => {
+      const line = document.createElement('div'); line.className = 'admin-generation-track'
+      const label = document.createElement('strong'); label.textContent = track.title || ('Variante ' + (track.trackIndex + 1)); line.append(label)
+      if (track.audioUrl) {
+        const player = document.createElement('audio'); player.controls = true; player.preload = 'none'
+        player.addEventListener('play', async () => {
+          if (player.dataset.loaded === 'true') return
+          player.pause()
+          try {
+            const token = await auth.currentUser?.getIdToken()
+            const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+            if (!audioResponse.ok) throw new Error('audio-unavailable')
+            player.src = URL.createObjectURL(await audioResponse.blob())
+            player.dataset.loaded = 'true'
+            await player.play()
+          } catch (error) { console.warn('[Audinoo admin audio]', error) }
+        }, { once: true })
+        line.append(player)
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'admin-publish-button'; button.textContent = 'Publier sur l’accueil'
+        button.addEventListener('click', async () => {
+          button.disabled = true
+          try { await callAudinooApi('/api/admin/publish',{method:'POST',body:JSON.stringify({uid:item.uid,taskId:item.taskId,trackIndex:track.trackIndex})}); button.textContent='Publié' }
+          catch (error) { button.disabled=false; button.textContent='Échec · Réessayer'; console.error('[Audinoo publication]',error) }
+        })
+        line.append(button)
+      } else { const note=document.createElement('small');note.textContent='Audio non archivé dans R2 — publication indisponible';line.append(note) }
+      card.append(line)
+    })
+    body.append(card)
+  })
+}
+
+
+adminUserSearch.addEventListener('input',renderAdminUsersTable)
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
+adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
+
+adminCreditsSection.append(workspaceCreditPanel)
+
+const adminGrantCreditsPanel = document.createElement('section')
+adminGrantCreditsPanel.className = 'admin-panel admin-credit-control'
+adminGrantCreditsPanel.innerHTML = '<div class="admin-panel-heading"><div><p>GESTE COMMERCIAL</p><h2>Offrir des crédits à un compte</h2></div><span class="admin-credit-state">ADMIN</span></div><p class="admin-panel-status">Recherche un compte par son adresse e-mail ou son identifiant, puis ajoute des crédits utilisables pour créer des chansons. Ces crédits sont ajoutés au solde payant et ne remplacent pas les crédits gratuits.</p><form id="admin-grant-credits-form" class="admin-notification-form"><label for="admin-grant-credits-account">Choisir un utilisateur</label><select id="admin-grant-credits-account" name="account" required><option value="bokoetienne15@gmail.com">bokoetienne15@gmail.com · compte par défaut</option></select><label for="admin-grant-credits-amount">Nombre de crédits à ajouter</label><input id="admin-grant-credits-amount" name="amount" type="number" min="1" max="1000" step="1" value="1" required /><button class="admin-publish-button" type="submit">Ajouter les crédits <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-grant-credits-status" role="status" aria-live="polite"></p></form>'
+adminCreditsSection.append(adminGrantCreditsPanel)
+const adminGrantCreditsForm = adminGrantCreditsPanel.querySelector('#admin-grant-credits-form')
+const adminGrantCreditsInput = adminGrantCreditsForm.elements.account
+const adminGrantCreditsAmount = adminGrantCreditsForm.elements.amount
+const adminGrantCreditsStatus = adminGrantCreditsPanel.querySelector('#admin-grant-credits-status')
+function refreshAdminGrantCreditOptions() {
+  const preferredEmail = 'bokoetienne15@gmail.com'
+  const sortedUsers = [...latestAdminUsers].sort((a, b) => {
+    const first = String(a.email || '').toLowerCase() === preferredEmail ? 0 : 1
+    const second = String(b.email || '').toLowerCase() === preferredEmail ? 0 : 1
+    return first - second || String(a.email || a.username || '').localeCompare(String(b.email || b.username || ''), 'fr')
+  })
+  const options = sortedUsers.map((profile) => {
+    const option = document.createElement('option')
+    option.value = profile.email || profile.username || profile.uid
+    option.textContent = [profile.email || profile.username || profile.uid, profile.displayName || profile.username].filter(Boolean).join(' · ')
+    return option
+  })
+  replaceNodeChildren(adminGrantCreditsInput, ...options)
+  adminGrantCreditsInput.value = sortedUsers.find((profile) => String(profile.email || '').toLowerCase() === preferredEmail)?.email || sortedUsers[0]?.email || sortedUsers[0]?.username || sortedUsers[0]?.uid || ''
+}
+
+adminGrantCreditsForm.addEventListener('submit', async (event) => {
+  event.preventDefault()
+  const user = auth.currentUser
+  if (!user || verifiedAdminUid !== user.uid) {
+    adminGrantCreditsStatus.textContent = 'Accès administrateur requis.'
+    return
+  }
+  const account = adminGrantCreditsInput.value.trim().toLocaleLowerCase('fr')
+  const target = latestAdminUsers.find((profile) =>
+    [profile.email, profile.username, profile.uid].some((value) => String(value || '').toLocaleLowerCase('fr') === account)
+  )
+  const amount = Number(adminGrantCreditsAmount.value)
+  if (!target) {
+    adminGrantCreditsStatus.textContent = 'Compte introuvable. Choisis un compte existant dans les suggestions.'
+    return
+  }
+  if (!Number.isInteger(amount) || amount < 1 || amount > 1000) {
+    adminGrantCreditsStatus.textContent = 'Entre un nombre entier compris entre 1 et 1 000.'
+    return
+  }
+  const submit = adminGrantCreditsForm.querySelector('button[type="submit"]')
+  if (!window.confirm('Ajouter ' + amount + ' crédit(s) au compte ' + (target.email || target.username || target.uid) + ' ?')) return
+  submit.disabled = true
+  adminGrantCreditsStatus.textContent = 'Ajout sécurisé des crédits…'
+  try {
+    const result = await callAudinooApi('/api/admin/credits/grant', {
+      method: 'POST',
+      body: JSON.stringify({ uid: target.uid, credits: amount })
+    })
+    adminGrantCreditsStatus.textContent = amount + ' crédit(s) ajouté(s) à ' + (target.email || target.username || target.uid) + '. Nouveau solde payant : ' + result.paidCredits + '.'
+    adminGrantCreditsForm.reset()
+    adminGrantCreditsAmount.value = '1'
+  } catch (error) {
+    console.error('[Audinoo admin] Could not grant credits', error)
+    adminGrantCreditsStatus.textContent = 'Ajout impossible : ' + generationErrorMessage(error.message) + ' (' + exactErrorDetails(error) + ')'
+  } finally {
+    submit.disabled = false
+  }
+})
+
+adminCommunicationSection.append(adminDashboardGrid)
+adminExportsSection.append(adminExportGroup)
+function activateAdminSection(sectionId) {
+  adminWorkspacePage.querySelectorAll('[data-admin-panel]').forEach((section) => { section.hidden = section.dataset.adminPanel !== sectionId })
+  adminNavigation.querySelectorAll('[data-admin-section]').forEach((button) => {
+    const active = button.dataset.adminSection === sectionId
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-current', active ? 'page' : 'false')
+  })
+}
+adminNavigation.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-admin-section]')
+  if (!button) return
+  activateAdminSection(button.dataset.adminSection)
+  if (button.dataset.adminSection === 'generations') {
+    void loadAdminGenerations()
+    void loadAdminAudioGenerations()
+  }
+})
+activateAdminSection('overview')
+
 let adminReportDataReady = false
 function makeAdminReportData() {
   const period = adminPeriods[adminPeriodFilter.value] || adminPeriods.day
@@ -923,18 +1245,38 @@ function startAdminStatsListeners(uid) {
   adminStatsStatus.textContent = 'Chargement des statistiques en direct…'
   let latestUsers = null
   let latestVisitors = null
+  let latestGenerations = null
+  const failedSources = new Set()
+  const sourceLabels = { users: 'utilisateurs', visitors: 'visites', generations: 'générations' }
   const renderWhenReady = () => {
-    if (auth.currentUser?.uid === uid && verifiedAdminUid === uid && latestUsers && latestVisitors) {
-      renderAdminStats(latestUsers, latestVisitors)
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    const ready = latestUsers && latestVisitors && latestGenerations
+    if (ready) {
+      renderAdminStats(latestUsers, latestVisitors, latestGenerations)
+      refreshAdminGrantCreditOptions()
+      adminStatsStatus.textContent = 'Données synchronisées en temps réel avec Firebase.'
+      adminStatsStatus.dataset.state = 'ready'
     }
   }
-  const onError = (error) => {
-    console.error('[Audinoo admin] Could not load live statistics', error)
-    adminStatsStatus.textContent = `Chargement refusé. Détail exact : ${exactErrorDetails(error)}`
+  const onError = (source) => (error) => {
+    console.error(`[Audinoo admin] Could not load ${source} live data`, error)
+    failedSources.add(source)
+    const reason = error.code === 'permission-denied'
+      ? 'Les règles Firestore actuellement publiées refusent cette lecture.'
+      : exactErrorDetails(error)
+    adminStatsStatus.textContent = `Accès refusé pour : ${[...failedSources].map((item) => sourceLabels[item]).join(', ')}. ${reason} Publie les règles Firestore de la branche test puis recharge l’administration.`
+    adminStatsStatus.dataset.state = 'error'
   }
-  const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => { latestUsers = snapshot; renderWhenReady() }, onError)
-  const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => { latestVisitors = snapshot; renderWhenReady() }, onError)
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors() }
+  const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+    latestUsers = snapshot; failedSources.delete('users'); renderWhenReady()
+  }, onError('users'))
+  const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => {
+    latestVisitors = snapshot; failedSources.delete('visitors'); renderWhenReady()
+  }, onError('visitors'))
+  const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
+    latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
+  }, onError('generations'))
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations() }
 }
 async function recordAnonymousVisit() {
   if (auth.currentUser) return
@@ -964,6 +1306,9 @@ async function refreshAdminAccess(uid) {
     verifiedAdminUid = uid
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
+    startAdminNotificationListener()
+    void loadAdminGenerations()
+    void loadAdminAudioGenerations()
     return true
   } catch (error) {
     console.warn('[Audinoo admin] Could not verify admin access', error)
@@ -995,6 +1340,53 @@ function renderAdminSuggestions(suggestions) {
     adminSuggestionList.append(card)
   })
 }
+
+let adminAudioRequestRunning = false
+async function loadAdminAudioGenerations(silent = false) {
+  const container = adminGenerationsSection.querySelector('#admin-audio-generations')
+  const status = adminGenerationsSection.querySelector('#admin-audio-status')
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminAudioRequestRunning) return
+  adminAudioRequestRunning = true
+  if (!silent && !container.childElementCount) status.textContent = 'Chargement des archives audio…'
+  try {
+    const result = await callAudinooApi('/api/admin/generations')
+    replaceNodeChildren(container)
+    let count = 0
+    for (const generation of result.generations || []) for (const track of generation.tracks || []) {
+      if (!track.archived || !track.audioUrl) continue
+      count++
+      const card = document.createElement('article')
+      card.className = 'admin-panel admin-audio-generation-card'
+      const title = document.createElement('strong'); title.textContent = track.title || generation.title || 'Création Audinoo'
+      const meta = document.createElement('small'); meta.textContent = 'UID : ' + generation.uid + ' · ID : ' + generation.taskId + ' · ' + adminDateLabel(generation.createdAt)
+      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = track.audioUrl
+      const publish = document.createElement('button'); publish.type = 'button'; publish.className = 'admin-publish-button'; publish.textContent = 'Publier sur l’accueil'
+      publish.addEventListener('click', async () => {
+        publish.disabled = true
+        try {
+          await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: generation.uid, taskId: generation.taskId, trackIndex: track.trackIndex }) })
+          publish.textContent = 'Publié sur l’accueil'; status.textContent = 'Création publiée sur l’accueil.'
+        } catch (error) { status.textContent = 'Publication impossible : ' + error.message; publish.disabled = false }
+      })
+      card.append(title, meta, audio, publish); container.append(card)
+    }
+    status.textContent = count ? count + ' variante(s) archivée(s).' : 'Aucune variante archivée pour le moment.'
+  } catch (error) {
+    if (!container.childElementCount) status.textContent = 'Chargement impossible : ' + error.message
+    else console.warn('[Audinoo admin] Actualisation des archives impossible', error)
+  } finally {
+    adminAudioRequestRunning = false
+  }
+}
+adminGenerationsSection.querySelector('#admin-refresh-audio-generations').addEventListener('click', () => {
+  void loadAdminGenerations()
+  void loadAdminAudioGenerations()
+})
+window.setInterval(() => {
+  if (document.visibilityState !== 'visible' || !auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsSection.hidden) return
+  void loadAdminGenerations(true)
+  void loadAdminAudioGenerations(true)
+}, 15000)
 async function loadAdminSuggestions() {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   adminSuggestionStatus.textContent = 'Chargement des suggestions…'
@@ -1008,6 +1400,71 @@ async function loadAdminSuggestions() {
   }
 }
 adminWorkspacePage.querySelector('#admin-refresh-suggestions').addEventListener('click', loadAdminSuggestions)
+
+const adminNotificationList = document.createElement('section')
+adminNotificationList.className = 'admin-panel admin-notification-manager'
+adminNotificationList.innerHTML = '<div class="admin-panel-heading"><div><p>GESTION DES ANNONCES</p><h2>Notifications publiées</h2></div><button type="button" class="admin-refresh-button" id="admin-refresh-notifications">Actualiser</button></div><p class="admin-panel-status" id="admin-notification-list-status" role="status">Chargement des notifications…</p><div class="admin-notification-list" id="admin-notification-list"></div>'
+adminCommunicationSection.append(adminNotificationList)
+const adminNotificationListStatus = adminNotificationList.querySelector('#admin-notification-list-status')
+const adminNotificationListBody = adminNotificationList.querySelector('#admin-notification-list')
+let adminNotificationSnapshot = null
+function renderAdminNotificationList(items) {
+  replaceNodeChildren(adminNotificationListBody)
+  const ordered = [...items].sort((a,b) => {
+    const date = value => value?.toDate ? value.toDate().getTime() : value?.seconds ? value.seconds * 1000 : 0
+    return date(b.createdAt) - date(a.createdAt)
+  })
+  adminNotificationListStatus.textContent = ordered.length ? ordered.length + ' notification(s) publiée(s).' : 'Aucune notification publiée.'
+  if (!ordered.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = 'Les notifications que tu publies apparaîtront ici.'
+    adminNotificationListBody.append(empty)
+    return
+  }
+  ordered.forEach(item => {
+    const card = document.createElement('article')
+    card.className = 'admin-notification-row'
+    const content = document.createElement('div')
+    const title = document.createElement('strong'); title.textContent = item.title || 'Notification Audinoo'
+    const message = document.createElement('p'); message.textContent = item.message || ''
+    const date = document.createElement('small'); date.textContent = adminDateLabel(item.createdAt)
+    content.append(title,message,date)
+    const remove = document.createElement('button')
+    remove.type = 'button'; remove.className = 'admin-refresh-button is-danger'; remove.textContent = 'Supprimer'
+    remove.addEventListener('click', async () => {
+      if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) { adminNotificationListStatus.textContent = 'Accès administrateur requis.'; return }
+      if (!window.confirm('Supprimer définitivement cette notification pour tous les utilisateurs ?')) return
+      remove.disabled = true
+      try {
+        await deleteDoc(doc(db,'notifications',item.id))
+        adminNotificationListStatus.textContent = 'Notification supprimée.'
+      } catch(error) {
+        console.error('[Audinoo admin] Could not delete notification',error)
+        adminNotificationListStatus.textContent = 'Suppression impossible : ' + exactErrorDetails(error)
+        remove.disabled = false
+      }
+    })
+    card.append(content,remove)
+    adminNotificationListBody.append(card)
+  })
+}
+let stopAdminNotificationListener = null
+function startAdminNotificationListener() {
+  stopAdminNotificationListener?.()
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  stopAdminNotificationListener = onSnapshot(query(collection(db,'notifications'),where('audience','==','all')), snapshot => {
+    adminNotificationSnapshot = snapshot.docs.map(item => ({ id:item.id, ...item.data() }))
+    renderAdminNotificationList(adminNotificationSnapshot)
+  }, error => {
+    console.error('[Audinoo admin] Could not load notifications',error)
+    adminNotificationListStatus.textContent = 'Chargement impossible : ' + exactErrorDetails(error)
+  })
+}
+adminNotificationList.querySelector('#admin-refresh-notifications').addEventListener('click', () => {
+  adminNotificationListStatus.textContent = 'Actualisation…'
+  startAdminNotificationListener()
+})
 adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   const user = auth.currentUser
@@ -1106,47 +1563,139 @@ function createGenerationCard(generation) {
   status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
   heading.append(title, status)
   card.append(heading)
-  if (generation.prompt) {
-    const prompt = document.createElement('p')
-    prompt.className = 'generation-prompt'
-    prompt.textContent = generation.prompt
-    card.append(prompt)
-  }
+  const progress = document.createElement('div')
+  progress.className = 'generation-progress'
+  progress.innerHTML = '<div class="generation-progress-copy"><span class="generation-progress-message">Nous composons la production…</span><strong class="generation-progress-percent">10%</strong></div><div class="generation-progress-track"><span></span></div>'
+  card.append(progress)
   const tracks = document.createElement('div')
   tracks.className = 'generation-tracks'
   card.append(tracks)
   renderGenerationTracks(tracks, generation.tracks || [])
+  if (['SUCCESS','COMPLETE','COMPLETED'].includes(String(generation.status || '').toUpperCase()) || generation.failed) progress.hidden = true
   return card
 }
 
 function renderGenerationTracks(container, tracks) {
   replaceNodeChildren(container)
   tracks.forEach((track, index) => {
-    if (!track?.audioUrl || !/^https:\/\//i.test(track.audioUrl)) return
+    if (!track?.audioUrl || (!/^https:\/\//i.test(track.audioUrl) && !track.audioUrl.startsWith('/api/'))) return
     const item = document.createElement('article')
     item.className = 'generation-track'
-    if (track.imageUrl && /^https:\/\//i.test(track.imageUrl)) {
-      const cover = document.createElement('img')
-      cover.src = track.imageUrl
-      cover.alt = ''
-      cover.loading = 'lazy'
-      item.append(cover)
-    }
-    const content = document.createElement('div')
-    content.className = 'generation-track-content'
-    const name = document.createElement('strong')
-    name.textContent = track.title || `Variante ${index + 1}`
-    const player = document.createElement('audio')
-    player.controls = true
-    player.preload = 'none'
-    player.src = track.audioUrl
-    player.setAttribute('aria-label', `Écouter ${name.textContent}`)
-    content.append(name, player)
-    item.append(content)
-    container.append(item)
+    const cover = document.createElement('div')
+    cover.className = 'generation-track-cover'
+    const imageSource = track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+    if (imageSource && (/^https?:\/\//i.test(imageSource) || imageSource.startsWith('/api/'))) {
+      const image = document.createElement('img')
+      image.alt = 'Pochette de ' + (track.title || 'la chanson')
+      image.loading = 'eager'
+      image.decoding = 'async'
+      image.referrerPolicy = 'no-referrer'
+      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable'); cover.textContent = '♫' }, { once: true })
+      image.addEventListener('load', () => cover.classList.add('cover-loaded'), { once: true })
+      cover.append(image)
+      if (imageSource.startsWith('/api/')) {
+        // The private cover endpoint requires a Firebase Bearer token.
+        // An <img src> cannot attach Authorization, so fetch it and display a blob URL.
+        void (async () => {
+          try {
+            const token = await auth.currentUser?.getIdToken()
+            if (!token) throw new Error('authentication-required')
+            const coverResponse = await fetch(imageSource, { headers: { authorization: 'Bearer ' + token } })
+            if (!coverResponse.ok) throw new Error('cover-unavailable-' + coverResponse.status)
+            const blob = await coverResponse.blob()
+            if (!blob.type.startsWith('image/')) throw new Error('invalid-cover-content-type')
+            image.src = URL.createObjectURL(blob)
+          } catch (error) {
+            console.warn('[Audinoo cover]', error)
+            image.remove()
+            cover.classList.add('cover-unavailable')
+            cover.textContent = '♫'
+          }
+        })()
+      } else image.src = imageSource
+    } else cover.textContent = '♫'
+    const content = document.createElement('div'); content.className = 'generation-track-content'
+    const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
+    const actions = document.createElement('div'); actions.className = 'generation-track-actions'
+    const player = document.createElement('audio'); player.preload = 'none'; player.setAttribute('aria-label', 'Écouter ' + name.textContent)
+    const play = document.createElement('button'); play.type = 'button'; play.className = 'generation-action generation-play'; play.setAttribute('aria-label','Lire la chanson'); play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'
+    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'generation-action generation-favorite'; favorite.setAttribute('aria-label','Ajouter aux favoris'); favorite.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.8c0 5.2-8.8 10-8.8 10s-8.8-4.8-8.8-10a4.7 4.7 0 0 1 8.8-2.3 4.7 4.7 0 0 1 8.8 2.3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+    const favoriteKey = 'audinoo-favorites-' + (auth.currentUser?.uid || 'guest')
+    const favoriteId = String(track.audioUrl)
+    const readFavorites = () => { try { return new Set(JSON.parse(readBrowserStorage('localStorage', favoriteKey) || '[]')) } catch { return new Set() } }
+    favorite.classList.toggle('is-favorite', readFavorites().has(favoriteId))
+    favorite.addEventListener('click', () => {
+      const current = readFavorites()
+      if (current.has(favoriteId)) current.delete(favoriteId); else current.add(favoriteId)
+      writeBrowserStorage('localStorage', favoriteKey, JSON.stringify([...current]))
+      favorite.classList.toggle('is-favorite', current.has(favoriteId))
+    })
+    if (track.audioUrl.startsWith('/api/')) {
+      player.addEventListener('play', async () => {
+        if (player.dataset.loaded === 'true') return
+        player.pause()
+        try {
+          const token = await auth.currentUser?.getIdToken()
+          const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+          if (!audioResponse.ok) throw new Error('audio-unavailable')
+          player.src = URL.createObjectURL(await audioResponse.blob())
+          player.dataset.loaded = 'true'
+          await player.play()
+        } catch (error) { name.textContent = 'Audio temporairement indisponible'; console.warn('[Audinoo audio]', error) }
+      }, { once: true })
+    } else player.src = track.audioUrl
+    player.addEventListener('play', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; play.setAttribute('aria-label','Mettre en pause') })
+    player.addEventListener('pause', () => { play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>'; play.setAttribute('aria-label','Lire la chanson') })
+    play.addEventListener('click', async () => { if (player.paused) { try { await player.play() } catch (error) { console.warn('[Audinoo player]', error) } } else player.pause() })
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'generation-action generation-share'; share.setAttribute('aria-label','Partager'); share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    share.addEventListener('click', async () => {
+      const data = { title: name.textContent, text: 'Découvre ma création musicale sur Audinoo : ' + name.textContent, url: window.location.origin + '/#studio' }
+      if (navigator.share) { try { await navigator.share(data); return } catch (error) { if (error.name === 'AbortError') return } }
+      window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank', 'noopener,noreferrer')
+    })
+    actions.append(favorite, play, share)
+    content.append(name, actions, player); item.append(cover, content); container.append(item)
   })
 }
 
+function renderLibraryGeneration(generation) {
+  const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
+  if (!generation.tracks?.length) {
+    let pending = existing.find(node => node.classList.contains('library-pending-generation'))
+    existing.filter(node => node !== pending).forEach(node => node.remove())
+    if (!pending) {
+      pending = createGenerationCard(generation)
+      pending.dataset.libraryTask = generation.taskId
+      pending.classList.add('library-pending-generation')
+      libraryGenerationList.prepend(pending)
+    } else {
+      const status = pending.querySelector('.generation-status')
+      if (status) status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+    }
+    return
+  }
+  existing.forEach(node => node.remove())
+  generation.tracks.forEach((track, index) => {
+    if (!track?.audioUrl) return
+    const row = document.createElement('div')
+    row.className = 'library-song-row'
+    row.dataset.libraryTask = generation.taskId
+    const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+    const displayTrack = { ...track, imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
+    const wrapper = document.createElement('div')
+    wrapper.className = 'library-song-player'
+    renderGenerationTracks(wrapper, [displayTrack])
+    const song = wrapper.firstElementChild
+    if (!song) return
+    song.classList.add('library-song-item')
+    const meta = document.createElement('span')
+    meta.className = 'library-song-variant'
+    meta.textContent = generation.title || track.title || 'Création Audinoo'
+    song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
+    row.append(song)
+    libraryGenerationList.append(row)
+  })
+}
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
   if (!card) {
@@ -1156,6 +1705,8 @@ function upsertGenerationCard(container, generation) {
   }
   const status = card.querySelector('.generation-status')
   status.textContent = generationStatusLabels[generation.status] || generation.status || generationStatusLabels.PENDING
+  const progress = card.querySelector('.generation-progress')
+  if (progress) progress.hidden = !!generation.failed || ['SUCCESS','COMPLETE','COMPLETED'].includes(String(generation.status || '').toUpperCase())
   const tracks = card.querySelector('.generation-tracks')
   if (generation.tracks?.length) renderGenerationTracks(tracks, generation.tracks)
   return card
@@ -1163,10 +1714,19 @@ function upsertGenerationCard(container, generation) {
 
 function generationErrorMessage(errorCode) {
   const messages = {
-    'no-free-credit': 'Ton crédit gratuit a déjà été utilisé ou l’offre est désactivée. Le paiement n’est pas encore disponible.',
+    'no-free-credit': 'Tu n’as plus de crédit disponible. Choisis un crédit supplémentaire pour continuer.',
+    'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur Cloudflare. Contacte le support Audinoo.',
+    'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
+    'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
+    'fedapay-checkout-unavailable': 'Le lien de paiement FedaPay est momentanément indisponible.',
+    'customer-email-required': 'Ajoute une adresse e-mail à ton compte pour effectuer le paiement.',
+    'payment-order-not-found': 'Cette commande de paiement est introuvable.',
+    'payment-confirmation-failed': 'Le paiement n’a pas pu être vérifié. Ton crédit ne sera ajouté qu’après confirmation.',
+    'payment-amount-mismatch': 'Le montant de cette transaction ne correspond pas à la commande Audinoo.',
+    'payment-processing-failed': 'Une erreur est survenue pendant le traitement du paiement. Aucun crédit ne sera ajouté sans confirmation FedaPay.',
     'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
-    'music-provider-not-configured': 'Le service musical n’est pas encore configuré dans Netlify.',
-    'backend-not-configured': 'Le backend Firebase n’est pas encore configuré dans Netlify.',
+    'music-provider-not-configured': 'Le service musical n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret SUNOAPI_KEY dans les paramètres du Worker audinoo-test.',
+    'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
     'advanced-fields-required': 'Ajoute un titre et une direction musicale en mode avancé.',
@@ -1197,25 +1757,59 @@ async function callAudinooApi(path, options = {}) {
 function addGenerationToLibrary(generation) {
   const empty = libraryWorkspacePage.querySelector('.workspace-library-empty')
   empty.hidden = true
-  upsertGenerationCard(libraryGenerationList, generation)
+  renderLibraryGeneration(generation)
 }
 
 async function pollGeneration(taskId, card) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    await new Promise((resolve) => window.setTimeout(resolve, 10000))
-    if (!auth.currentUser) return
-    try {
-      const result = await callAudinooApi(`/api/generation-status?taskId=${encodeURIComponent(taskId)}`)
-      const generation = { taskId, status: result.status, tracks: result.tracks || [] }
+  let percent = 10, messageIndex = 0
+  const messages = ['Nous composons la production…','Nous créons la mélodie…','Les instruments prennent leur place…','Nous travaillons le mixage…','Nous peaufinons les voix…','Nous préparons les variantes…']
+  const percentNode = card.querySelector('.generation-progress-percent')
+  const bar = card.querySelector('.generation-progress-track span')
+  const message = card.querySelector('.generation-progress-message')
+  const timer = window.setInterval(() => {
+    percent = Math.min(92, percent + (percent < 65 ? 3 : 1))
+    if (percentNode) percentNode.textContent = percent + '%'
+    if (bar) bar.style.width = percent + '%'
+    if (message) message.textContent = messages[messageIndex++ % messages.length]
+  }, 6500)
+  try {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 10000))
+      if (!auth.currentUser) return
+      const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
+      const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
-      upsertGenerationCard(libraryGenerationList, generation)
-      if (result.completed || result.failed) return
-    } catch (error) {
-      card.querySelector('.generation-status').textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
-      return
+      renderLibraryGeneration(generation)
+      if (result.completed || result.failed) {
+        if (percentNode) percentNode.textContent = result.completed ? '100%' : '—'
+        if (bar) bar.style.width = result.completed ? '100%' : '0%'
+        if (message) message.textContent = result.completed ? 'Tes chansons sont prêtes.' : 'La génération n’a pas abouti.'
+        return
+      }
     }
+    if (message) message.textContent = 'La création continue sur nos serveurs…'
+  } catch (error) {
+    card.querySelector('.generation-status').textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+  } finally { window.clearInterval(timer) }
+}
+
+const paymentReturnParams = new URLSearchParams(window.location.search)
+const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
+if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+  if (returnedPaymentId) {
+    void callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+      .then((result) => {
+        toast.textContent = result.credited ? 'Paiement confirmé : ton crédit est disponible.' : 'Paiement en attente de confirmation. Ton crédit sera ajouté après validation.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
+      .catch((error) => {
+        toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 6000)
+      })
   }
-  card.querySelector('.generation-status').textContent = 'La génération continue côté serveur. Retrouve son état dans Ma bibliothèque dans quelques instants.'
 }
 
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
@@ -1242,14 +1836,18 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
       method: 'POST',
       body: JSON.stringify({ prompt: cleanPrompt, style, title: title || 'Création Audinoo', customMode })
     })
-    activeWorkspaceProfile = { ...activeWorkspaceProfile, freeCreditUsed: true }
-    renderWorkspaceFreeCredit()
     const generation = { taskId: result.taskId, title: title || 'Ta création Audinoo', prompt: cleanPrompt, status: result.status, tracks: [] }
     const card = upsertGenerationCard(generationPanel, generation)
     addGenerationToLibrary(generation)
-    toast.textContent = 'Ta chanson est en cours de création. Les variantes apparaîtront ici dès qu’elles seront prêtes.'
+    studioPrompt.value = ''; advancedPrompt.value = ''; advancedStyle.value = ''; advancedTitle.value = ''
+    homeWorkspacePage.hidden = true; studioWorkspacePage.hidden = true; modelWorkspacePage.hidden = true; adminWorkspacePage.hidden = true; libraryWorkspacePage.hidden = false
+    workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#library'))
+    workspaceModelChoice.classList.remove('is-active')
+    window.history.replaceState(null, '', '#library')
+    setWorkspaceSidebarOpen(false)
+    toast.textContent = 'Ta création est lancée. Nous préparons tes variantes…'
     toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 4500)
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
     void pollGeneration(result.taskId, card)
   } catch (error) {
     const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage
@@ -1258,6 +1856,9 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
     toast.textContent = `${generationErrorMessage(error.message)}${providerDetail} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 4500)
+    if (error.message === 'no-free-credit') {
+      windowPricingOpen()
+    }
   } finally {
     submitButton.disabled = false
     submitButton.textContent = originalText
@@ -1270,10 +1871,10 @@ async function loadUserLibrary() {
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
     result.generations.forEach((generation) => {
-      const card = createGenerationCard(generation)
-      libraryGenerationList.append(card)
+      renderLibraryGeneration(generation)
       if (generation.status === 'PENDING' || generation.status === 'TEXT_SUCCESS' || generation.status === 'FIRST_SUCCESS') {
-        void pollGeneration(generation.taskId, card)
+        const card = [...libraryGenerationList.querySelectorAll('.library-pending-generation')].find(item => item.dataset.libraryTask === generation.taskId)
+        if (card) void pollGeneration(generation.taskId, card)
       }
     })
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
@@ -1290,6 +1891,7 @@ const authFeedback = document.querySelector('#auth-feedback')
 const authSubmit = document.querySelector('#auth-submit')
 const authSwitch = document.querySelector('#auth-switch')
 const authForm = document.querySelector('#auth-form')
+const passwordResetButton = document.querySelector('#password-reset')
 const authUsername = document.querySelector('#auth-username')
 const signupOnlyFields = document.querySelectorAll('.signup-only')
 const usernameFeedback = document.querySelector('#username-feedback')
@@ -1523,6 +2125,7 @@ const openAuth = (mode) => {
   signupOnlyFields.forEach((field) => { field.hidden = !isSignup })
   authUsername.required = isSignup
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
+  passwordResetButton.hidden = isSignup
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
   replaceNodeChildren(usernameSuggestions)
@@ -1811,6 +2414,36 @@ function closeCountrySelection() {
   pendingCountryProfile = null
 }
 
+function renderProfileAvatar(element, profile) {
+  const displayName = profile.displayName || profile.username || 'Audinoo'
+  const photoURL = typeof profile.photoURL === 'string' && /^https:\/\//i.test(profile.photoURL) ? profile.photoURL : ''
+  element.replaceChildren()
+  if (photoURL) {
+    const image = document.createElement('img')
+    image.src = photoURL
+    image.alt = `Photo de profil de ${displayName}`
+    image.referrerPolicy = 'no-referrer'
+    image.loading = 'lazy'
+    image.addEventListener('error', () => {
+      element.replaceChildren(document.createTextNode(displayName.charAt(0).toUpperCase() || 'A'))
+      element.classList.remove('has-profile-photo')
+    }, { once: true })
+    element.classList.add('has-profile-photo')
+    element.append(image)
+  } else {
+    element.classList.remove('has-profile-photo')
+    element.textContent = displayName.charAt(0).toUpperCase() || 'A'
+  }
+}
+
+async function syncGoogleProfilePhoto(user, profile) {
+  const isGoogleAccount = user?.providerData?.some((provider) => provider.providerId === 'google.com')
+  const googlePhotoURL = isGoogleAccount && typeof user.photoURL === 'string' && /^https:\/\//i.test(user.photoURL) ? user.photoURL : ''
+  if (!googlePhotoURL || profile.photoURL === googlePhotoURL) return profile
+  await updateDoc(doc(db, 'users', user.uid), { photoURL: googlePhotoURL, updatedAt: serverTimestamp() })
+  return { ...profile, photoURL: googlePhotoURL }
+}
+
 function openProfile(profile, { requireCountry = false } = {}) {
   hasAudinooProfile = true
   profileUid = profile.uid
@@ -1841,8 +2474,8 @@ function openWorkspace(profile) {
   const displayName = profile.displayName || username.slice(1).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   workspaceUsername.textContent = username
   workspaceGreeting.textContent = displayName.split(' ')[0]
-  workspaceAvatar.textContent = displayName.charAt(0).toUpperCase() || 'A'
-  headerAvatar.textContent = workspaceAvatar.textContent
+  renderProfileAvatar(workspaceAvatar, profile)
+  renderProfileAvatar(headerAvatar, profile)
   landingPage.hidden = true
   workspace.hidden = false
   document.body.classList.add('in-workspace')
@@ -1944,9 +2577,10 @@ googleButton.addEventListener('click', async () => {
       throw new Error('account-not-found')
     }
 
-    const profile = profileSnapshot.exists()
+    let profile = profileSnapshot.exists()
       ? { ...profileSnapshot.data(), created: false }
       : await createGoogleProfile(result.user)
+    profile = await syncGoogleProfilePhoto(result.user, profile)
     hasAudinooProfile = true
     closeAuth()
     const savedProfile = { ...profile, uid: result.user.uid, displayName: result.user.displayName || profile.displayName || '' }
@@ -1964,6 +2598,39 @@ googleButton.addEventListener('click', async () => {
     label.textContent = defaultLabel
   }
 })
+passwordResetButton.addEventListener('click', async () => {
+  const email = authEmail.value.trim().toLowerCase()
+  if (!email) {
+    authFeedback.textContent = 'Saisis ton adresse e-mail dans le champ prévu, puis réessaie.'
+    authFeedback.hidden = false
+    authEmail.focus()
+    return
+  }
+
+  passwordResetButton.disabled = true
+  passwordResetButton.textContent = 'Envoi en cours…'
+  try {
+    await authPersistenceReady
+    await sendPasswordResetEmail(auth, email)
+    authFeedback.textContent = 'Si un compte Audinoo est associé à cette adresse, un e-mail de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.'
+    authFeedback.hidden = false
+  } catch (error) {
+    const messages = {
+      'auth/invalid-email': 'Cette adresse e-mail n’est pas valide.',
+      'auth/user-disabled': 'Ce compte est désactivé. Contacte le support Audinoo.',
+      'auth/too-many-requests': 'Trop de demandes. Attends quelques minutes avant de réessayer.',
+      'auth/network-request-failed': 'Connexion réseau impossible. Vérifie Internet puis réessaie.',
+      'auth/operation-not-allowed': 'La réinitialisation par e-mail n’est pas activée dans Firebase.'
+    }
+    authFeedback.textContent = messages[error.code] || 'Impossible d’envoyer l’e-mail de récupération. Réessaie plus tard.'
+    authFeedback.hidden = false
+    console.error('[Audinoo password reset] failed', error)
+  } finally {
+    passwordResetButton.disabled = false
+    passwordResetButton.textContent = 'Mot de passe oublié ?'
+  }
+})
+
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const submittingMode = authMode
@@ -2056,6 +2723,8 @@ onAuthStateChanged(auth, async (user) => {
     startNotificationListeners(null)
     stopFreeCreditPolicyListener?.()
     stopFreeCreditPolicyListener = null
+    stopWorkspaceProfileCreditListener?.()
+    stopWorkspaceProfileCreditListener = null
     activeWorkspaceProfile = null
     freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
     renderWorkspaceFreeCredit()
@@ -2084,7 +2753,10 @@ onAuthStateChanged(auth, async (user) => {
       return
     }
     hasAudinooProfile = true
-    const savedProfile = { ...profile.data(), uid: user.uid }
+    let savedProfile = { ...profile.data(), uid: user.uid }
+    if (user.providerData?.some((provider) => provider.providerId === 'google.com')) {
+      savedProfile = await syncGoogleProfilePhoto(user, savedProfile)
+    }
     openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
   } catch {
     if (auth.currentUser?.uid === user.uid && profileUid !== user.uid) {
@@ -2099,32 +2771,50 @@ workspaceLogout.addEventListener('click', () => {
   logoutDialog.showModal()
 })
 
+function setWorkspaceSidebarOpen(open) {
+  workspaceLayout.classList.toggle('is-mobile-open', open)
+  workspaceLayout.classList.toggle('is-mobile-closed', !open)
+  document.body.classList.toggle('workspace-menu-locked', open)
+  sidebarToggle.setAttribute('aria-expanded', String(open))
+  sidebarToggle.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu')
+}
+
 sidebarToggle.addEventListener('click', () => {
-  const isOpen = workspaceLayout.classList.contains('is-mobile-open')
-  workspaceLayout.classList.toggle('is-mobile-open', !isOpen)
-  workspaceLayout.classList.toggle('is-mobile-closed', isOpen)
-  sidebarToggle.setAttribute('aria-expanded', String(!isOpen))
-  sidebarToggle.setAttribute('aria-label', isOpen ? 'Ouvrir le menu' : 'Fermer le menu')
+  setWorkspaceSidebarOpen(!workspaceLayout.classList.contains('is-mobile-open'))
 })
+
+// Empêche le geste de balayage de faire défiler le studio derrière le menu.
+// Le menu latéral garde son propre défilement si son contenu dépasse l'écran.
+document.addEventListener('touchmove', (event) => {
+  if (!workspaceLayout.classList.contains('is-mobile-open')) return
+  if (workspaceSidebar.contains(event.target)) return
+  event.preventDefault()
+}, { passive: false })
 
 document.addEventListener('click', (event) => {
   if (!workspaceLayout.classList.contains('is-mobile-open')) return
   if (workspaceSidebar.contains(event.target) || sidebarToggle.contains(event.target)) return
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  setWorkspaceSidebarOpen(false)
 })
 
 document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', (event) => {
   const destination = link.getAttribute('href')
-  if (destination === '#studio') {
+  if (destination === '#home') {
+    studioWorkspacePage.hidden = true
+    libraryWorkspacePage.hidden = true
+    modelWorkspacePage.hidden = true
+    adminWorkspacePage.hidden = true
+    homeWorkspacePage.hidden = false
+    workspaceModelChoice.classList.remove('is-active')
+  } else if (destination === '#studio') {
+    homeWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
     studioWorkspacePage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
   } else if (destination === '#library') {
+    homeWorkspacePage.hidden = true
     studioWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
@@ -2139,6 +2829,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
       window.setTimeout(() => toast.classList.remove('show'), 3000)
       return
     }
+    homeWorkspacePage.hidden = true
     studioWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
@@ -2147,11 +2838,8 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     void loadAdminSuggestions()
   }
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((navLink) => navLink.classList.toggle('is-active', navLink === link))
-  if (destination === '#studio' || destination === '#library' || destination === '#admin') window.history.replaceState(null, '', destination)
-  workspaceLayout.classList.remove('is-mobile-open')
-  workspaceLayout.classList.add('is-mobile-closed')
-  sidebarToggle.setAttribute('aria-expanded', 'false')
-  sidebarToggle.setAttribute('aria-label', 'Ouvrir le menu')
+  if (destination === '#home' || destination === '#studio' || destination === '#library' || destination === '#admin') window.history.replaceState(null, '', destination)
+  setWorkspaceSidebarOpen(false)
 }))
 
 libraryWorkspacePage.querySelector('.workspace-library-create').addEventListener('click', () => {
