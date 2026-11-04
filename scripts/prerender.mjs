@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path'
 const root = process.cwd()
 const dist = resolve(root, 'dist')
 const isTest = process.env.BRANCH === 'test'
-const site = isTest ? 'https://test--audinoo.netlify.app' : 'https://audinoo.netlify.app'
+const site = isTest ? 'https://audinoo.com' : 'https://audinoo.com'
 
 const pages = [
   {
@@ -34,7 +34,7 @@ function assert(condition, message) {
 for (const page of pages) {
   const file = resolve(dist, page.path)
   let html = await readFile(file, 'utf8')
-  html = html.replaceAll('https://test--audinoo.netlify.app', site).replaceAll('https://audinoo.netlify.app', site)
+  html = html.replaceAll('https://audinoo.com', site).replaceAll('https://audinoo.com', site)
   html = html.replace(/<meta name="robots" content="[^"]*">?/i, '')
   html = html.replace('</head>', '<meta name="robots" content="' + (isTest ? 'noindex, nofollow' : 'index, follow, max-image-preview:large') + '">\n</head>')
   await writeFile(file, html, 'utf8')
