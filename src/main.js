@@ -2069,14 +2069,7 @@ function openLibraryForGenerationPreview(preview) {
   const card = document.createElement('article')
   card.className = 'library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
-  card.setAttribute('role', 'status')
-  card.setAttribute('aria-live', 'polite')
-  card.innerHTML = `
-    <div class="generation-preview-success" hidden>
-      <span class="generation-preview-check" aria-hidden="true">✓</span>
-      <span class="generation-preview-success-label">Votre chanson est prête !</span>
-      <span class="generation-preview-success-bar" aria-hidden="true"></span>
-    </div>`
+  card.setAttribute('aria-label', 'Préparation de votre chanson')
   libraryGenerationList.prepend(card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
@@ -2087,7 +2080,9 @@ function openLibraryForGenerationPreview(preview) {
     if (pendingGenerationPreview !== preview || !card.isConnected) return
     card.classList.remove('is-preparing')
     card.classList.add('is-ready')
-    card.querySelector('.generation-preview-success').hidden = false
+    toast.textContent = 'Votre chanson est prête !'
+    toast.classList.add('show', 'is-success')
+    window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
     pendingGenerationPreview = null
   }, 10000)
 }
