@@ -1,0 +1,22 @@
+name: Validate Netlify FedaPay flow
+on:
+  push:
+    branches: [fix/netlify-fedapay-production-flow]
+  pull_request:
+    branches: [main]
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node --check netlify/functions/lib/fedapay.mjs
+      - run: node --check netlify/functions/credits-purchase.mjs
+      - run: node --check netlify/functions/credits-confirm.mjs
+      - run: node --check netlify/functions/fedapay-webhook.mjs
+      - run: node --check netlify/functions/generate.mjs
