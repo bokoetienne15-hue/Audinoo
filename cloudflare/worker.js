@@ -17,7 +17,18 @@ async function archiveTracks(env, db, path, tracks, uid, taskId) {
       if (!source.ok || !source.body) { saved.push(track); continue }
       const key = 'private/' + uid + '/' + taskId + '/' + i + '.audio'
       await env.AUDIO_BUCKET.put(key, source.body, { httpMetadata: { contentType: source.headers.get('content-type') || 'audio/mpeg', cacheControl: 'private, no-store' }, customMetadata: { uid, taskId } })
-      saved.push({ ...track, r2Key: key, archivedAt: new Date().toISOString() })
+      let coverKey = track.coverKey || ''
+      if (!coverKey && /^https?:\/\//i.test(track.imageUrl || '')) {
+        try {
+          const coverResponse = await fetch(track.imageUrl, { signal: AbortSignal.timeout(20000), headers: { accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' } })
+          const contentType = coverResponse.headers.get('content-type') || ''
+          if (coverResponse.ok && coverResponse.body && contentType.startsWith('image/')) {
+            coverKey = 'private/' + uid + '/' + taskId + '/' + i + '.cover'
+            await env.AUDIO_BUCKET.put(coverKey, coverResponse.body, { httpMetadata: { contentType, cacheControl: 'private, max-age=86400' }, customMetadata: { uid, taskId } })
+          }
+        } catch (coverError) { console.warn('[Audinoo cover archive]', coverError) }
+      }
+      saved.push({ ...track, ...(coverKey ? { coverKey } : {}), r2Key: key, archivedAt: new Date().toISOString() })
     } catch (error) {
       console.error('[Audinoo R2 archive]', error)
       saved.push(track)
@@ -33,12 +44,13 @@ async function userFrom(request, env) {
   return token ? verifyFirebaseToken(token, env) : null
 }
 function tracksIn(value, output = [], depth = 0) {
-  if (depth > 8 || value == null) return output
+  if (depth > 10 || value == null) return output
   if (Array.isArray(value)) { for (const x of value) tracksIn(x, output, depth + 1); return output }
   if (typeof value !== 'object') return output
-  if (typeof value.audio_url === 'string' && /^https:\/\//i.test(value.audio_url)) {
-    const imageCandidate = [value.image_url, value.imageUrl, value.image, value.cover_url, value.coverUrl, value.source_image_url, value.sourceImageUrl, value.thumbnail_url, value.thumbnailUrl].find(candidate => typeof candidate === 'string' && /^https:\/\//i.test(candidate))
-    output.push({ id: typeof value.id === 'string' ? value.id : '', title: typeof value.title === 'string' ? value.title : 'Ta création Audinoo', audioUrl: value.audio_url, imageUrl: imageCandidate || '', duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : null })
+  const audioCandidate = [value.audio_url, value.audioUrl, value.source_audio_url, value.sourceAudioUrl, value.stream_audio_url, value.streamAudioUrl].find(candidate => typeof candidate === 'string' && /^https:\/\//i.test(candidate))
+  if (audioCandidate) {
+    const imageCandidate = [value.image_url, value.imageUrl, value.cover_url, value.coverUrl, value.source_image_url, value.sourceImageUrl, value.thumbnail_url, value.thumbnailUrl, value.image, value.cover].find(candidate => typeof candidate === 'string' && /^https?:\/\//i.test(candidate))
+    output.push({ id: String(value.id || value.song_id || value.songId || ''), title: String(value.title || value.song_title || value.songTitle || 'Ta création Audinoo'), audioUrl: audioCandidate, imageUrl: imageCandidate || '', duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : null })
     return output
   }
   Object.values(value).forEach(x => tracksIn(x, output, depth + 1))
@@ -214,16 +226,24 @@ async function adminAllowed(db, uid) {
   const admin = await db.get('admins/' + uid)
   return admin.exists && admin.data?.enabled === true
 }
-async function privateAudio(request, env, db, user, admin = false) {
+async function privateMedia(request, env, db, user, kind = 'audio', admin = false) {
   const url = new URL(request.url), uid = admin ? url.searchParams.get('uid') : user.uid, taskId = url.searchParams.get('taskId'), index = Number(url.searchParams.get('track') || 0)
   if (admin && !(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
-  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId || '') || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-audio-request' })
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId || '') || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-media-request' })
   const snap = await db.get('users/' + uid + '/generations/' + taskId)
   const track = snap.data?.tracks?.[index]
-  if (!snap.exists || (!admin && snap.data.uid !== user.uid) || !track?.r2Key) return response(404, { error: 'audio-not-found' })
-  const object = await env.AUDIO_BUCKET?.get(track.r2Key)
-  if (!object) return response(404, { error: 'audio-not-found' })
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
+  if (!snap.exists || (!admin && snap.data.uid !== user.uid)) return response(404, { error: 'media-not-found' })
+  const key = kind === 'cover' ? track?.coverKey : track?.r2Key
+  if (key) {
+    const object = await env.AUDIO_BUCKET?.get(key)
+    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, max-age=86400', ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
+  }
+  if (kind === 'cover' && /^https?:\/\//i.test(track?.imageUrl || '')) {
+    const remote = await fetch(track.imageUrl, { signal: AbortSignal.timeout(15000), headers: { accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' } })
+    const type = remote.headers.get('content-type') || ''
+    if (remote.ok && remote.body && type.startsWith('image/')) return new Response(remote.body, { headers: { 'content-type': type, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' } })
+  }
+  return response(404, { error: 'media-not-found' })
 }
 
 async function grantAdminCredits(request, db, user) {
@@ -347,8 +367,9 @@ export default {
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,db,user)
-      if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)
-      if (url.pathname === '/api/admin-audio') return await privateAudio(request,env,db,user,true)
+      if (url.pathname === '/api/my-audio') return await privateMedia(request,env,db,user,'audio')
+      if (url.pathname === '/api/my-cover') return await privateMedia(request,env,db,user,'cover')
+      if (url.pathname === '/api/admin-audio') return await privateMedia(request,env,db,user,'audio',true)
       if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
