@@ -224,6 +224,35 @@ async function privateAudio(request, env, db, user, admin = false) {
   if (!object) return response(404, { error: 'audio-not-found' })
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
 }
+
+async function grantAdminCredits(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const uid = typeof body.uid === 'string' ? body.uid.trim() : ''
+  const credits = Number(body.credits)
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid) || !Number.isInteger(credits) || credits < 1 || credits > 1000) {
+    return response(400, { error: 'invalid-credit-grant' })
+  }
+  const profileRef = db.doc('users/' + uid)
+  let paidCredits = 0
+  try {
+    await db.runTransaction(async tx => {
+      const profile = await tx.get(profileRef)
+      if (!profile.exists) throw new Error('credit-recipient-not-found')
+      const current = Math.max(0, Math.floor(Number(profile.data().paidCredits || 0)))
+      paidCredits = current + credits
+      tx.update(profileRef, { paidCredits, updatedAt: SERVER_TIMESTAMP })
+      tx.create(db.doc('adminCreditGrants/' + crypto.randomUUID()), {
+        uid, credits, balanceAfter: paidCredits, grantedBy: user.uid, createdAt: SERVER_TIMESTAMP
+      })
+    })
+  } catch (error) {
+    if (error.message === 'credit-recipient-not-found') return response(404, { error: 'credit-recipient-not-found' })
+    throw error
+  }
+  return response(200, { granted: credits, paidCredits })
+}
 async function adminGenerations(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
@@ -319,6 +348,7 @@ export default {
       if (url.pathname === '/api/my-library') return await library(request,db,user)
       if (url.pathname === '/api/my-audio') return await privateAudio(request,env,db,user)
       if (url.pathname === '/api/admin-audio') return await privateAudio(request,env,db,user,true)
+      if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       return response(404,{error:'not-found'})
