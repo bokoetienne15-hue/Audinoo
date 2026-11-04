@@ -1505,6 +1505,7 @@ function generationErrorMessage(errorCode) {
     'payment-order-not-found': 'Cette commande de paiement est introuvable.',
     'payment-confirmation-failed': 'Le paiement n’a pas pu être vérifié. Ton crédit ne sera ajouté qu’après confirmation.',
     'payment-amount-mismatch': 'Le montant de cette transaction ne correspond pas à la commande Audinoo.',
+    'payment-processing-failed': 'Une erreur est survenue pendant le traitement du paiement. Aucun crédit ne sera ajouté sans confirmation FedaPay.',
     'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
     'music-provider-not-configured': 'Le service musical n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret SUNOAPI_KEY dans les paramètres du Worker audinoo-test.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
