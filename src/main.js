@@ -2066,11 +2066,26 @@ function openLibraryForGenerationPreview(preview) {
   window.history.replaceState(null, '', '#library')
   setWorkspaceSidebarOpen(false)
 
+  // La simulation est un élément supplémentaire du groupe d'aujourd'hui,
+  // pas une nouvelle section séparée de la bibliothèque.
+  let todayGroup = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .find(group => group.querySelector('.library-generation-date')?.textContent === "Aujourd'hui")
+  if (!todayGroup) {
+    todayGroup = document.createElement('section')
+    todayGroup.className = 'library-generation-group'
+    const dateLabel = document.createElement('div')
+    dateLabel.className = 'library-generation-date'
+    dateLabel.textContent = "Aujourd'hui"
+    todayGroup.append(dateLabel)
+    libraryGenerationList.prepend(todayGroup)
+  }
+
   const card = document.createElement('article')
-  card.className = 'library-generation-preview is-preparing'
+  card.className = 'library-song-item library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
-  card.setAttribute('aria-label', 'Préparation de votre chanson')
-  libraryGenerationList.prepend(card)
+  card.setAttribute('aria-label', 'Nouvelle chanson en préparation')
+  // Insérée juste après l'en-tête Aujourd'hui, avant les chansons déjà créées ce jour.
+  todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
