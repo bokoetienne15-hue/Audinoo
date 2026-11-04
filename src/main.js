@@ -1538,14 +1538,20 @@ studioWorkspacePage.querySelector('.workspace-empty').before(generationPanel)
 const libraryGenerationList = document.createElement('div')
 libraryGenerationList.className = 'generation-list library-generation-list'
 libraryWorkspacePage.querySelector('.workspace-library-empty').after(libraryGenerationList)
+const libraryLoading = document.createElement('div')
+libraryLoading.className = 'library-loading'
+libraryLoading.setAttribute('role', 'status')
+libraryLoading.setAttribute('aria-live', 'polite')
+libraryLoading.innerHTML = '<span class="library-loading-spinner" aria-hidden="true"></span><span>Chargement de ta bibliothèque…</span>'
+libraryGenerationList.before(libraryLoading)
+libraryLoading.hidden = true
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
-libraryMiniPlayer.innerHTML = '<div class="library-mini-art" aria-hidden="true"><span>♫</span></div><div class="library-mini-main"><div class="library-mini-topline"><span class="library-mini-label">EN LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-controls"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><span class="library-mini-play-icon">▶</span></button><button class="library-mini-next" type="button" aria-label="Passer à la chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7L5 5Z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="library-mini-progress"><div class="library-mini-progress-row"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div></div></div></div>'
+libraryMiniPlayer.innerHTML = '<button class="library-mini-play" type="button" aria-label="Lire la chanson"><span class="library-mini-play-icon">▶</span></button><button class="library-mini-next" type="button" aria-label="Passer à la chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7L5 5Z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="library-mini-details"><strong class="library-mini-title">Sans titre</strong><div class="library-mini-progress-row"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
 const libraryMiniNext = libraryMiniPlayer.querySelector('.library-mini-next')
-const libraryMiniArt = libraryMiniPlayer.querySelector('.library-mini-art')
 const libraryMiniTitle = libraryMiniPlayer.querySelector('.library-mini-title')
 const libraryMiniSeek = libraryMiniPlayer.querySelector('.library-mini-seek')
 const libraryMiniCurrent = libraryMiniPlayer.querySelector('.library-mini-current')
@@ -1569,8 +1575,6 @@ function syncLibraryMiniPlayer() {
 function activateLibraryMiniPlayer(player, title) {
   activeLibraryAudio = player
   libraryMiniTitle.textContent = title || 'Sans titre'
-  const songIndex = [...libraryGenerationList.querySelectorAll('.library-song-item')].findIndex(node => node.querySelector('audio') === player)
-  libraryMiniArt.dataset.palette = String(Math.max(0, songIndex) % 6)
   libraryMiniPlayer.hidden = false
   syncLibraryMiniPlayer()
 }
@@ -1621,6 +1625,8 @@ function renderGenerationTracks(container, tracks) {
     item.className = 'generation-track'
     const cover = document.createElement('div')
     cover.className = 'generation-track-cover'
+    const coverPalette = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
+    cover.dataset.palette = coverPalette[(index + (String(track.id || track.audioUrl).length % coverPalette.length)) % coverPalette.length]
     const imageSource = track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
     if (imageSource && (/^https?:\/\//i.test(imageSource) || imageSource.startsWith('/api/'))) {
       const image = document.createElement('img')
@@ -1628,7 +1634,7 @@ function renderGenerationTracks(container, tracks) {
       image.loading = 'eager'
       image.decoding = 'async'
       image.referrerPolicy = 'no-referrer'
-      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable'); cover.textContent = '♫' }, { once: true })
+      image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable', 'cover-fallback'); cover.textContent = '♫' }, { once: true })
       image.addEventListener('load', () => cover.classList.add('cover-loaded'), { once: true })
       cover.append(image)
       if (imageSource.startsWith('/api/')) {
@@ -1646,12 +1652,12 @@ function renderGenerationTracks(container, tracks) {
           } catch (error) {
             console.warn('[Audinoo cover]', error)
             image.remove()
-            cover.classList.add('cover-unavailable')
+            cover.classList.add('cover-unavailable', 'cover-fallback')
             cover.textContent = '♫'
           }
         })()
       } else image.src = imageSource
-    } else cover.textContent = '♫'
+    } else { cover.classList.add('cover-fallback'); cover.textContent = '♫' }
     const content = document.createElement('div'); content.className = 'generation-track-content'
     const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
     const actions = document.createElement('div'); actions.className = 'generation-track-actions'
@@ -1958,6 +1964,9 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
 
 async function loadUserLibrary() {
   if (!auth.currentUser) return
+  libraryLoading.hidden = false
+  libraryGenerationList.hidden = true
+  libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
   try {
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
@@ -1969,7 +1978,12 @@ async function loadUserLibrary() {
       }
     })
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
+    libraryGenerationList.hidden = false
+    libraryLoading.hidden = true
   } catch (error) {
+    libraryGenerationList.hidden = false
+    libraryLoading.hidden = true
+    libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
     toast.textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 3500)
