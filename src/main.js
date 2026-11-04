@@ -992,8 +992,7 @@ const adminExportsSection = createAdminSection('exports', 'Rapports et exportati
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
-adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher un titre, un utilisateur ou un état…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Filtrer par jour</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des générations…</p></div><p class="admin-table-footnote">Écoute les créations des utilisateurs, filtre-les par jour et publie celles que tu souhaites mettre en avant.</p>'
-adminGenerationsSection.insertAdjacentHTML('beforeend', '<section class="admin-panel admin-generation-audio-panel"><div class="admin-panel-heading"><div><p>ARCHIVES AUDIO</p><h2>Écouter et publier une création</h2></div><button class="admin-refresh-button" id="admin-refresh-audio-generations" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement…</p><div id="admin-audio-generations" class="admin-audio-generations"></div></section>')
+adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
 const adminGenerationDateFilter = adminGenerationsSection.querySelector('#admin-generation-date')
@@ -1036,75 +1035,204 @@ let adminGenerationsRequestRunning = false
 async function loadAdminGenerations(silent = false) {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsRequestRunning) return
   const target = adminGenerationsSection.querySelector('#admin-generation-cards')
+  const status = adminGenerationsSection.querySelector('#admin-audio-status')
   adminGenerationsRequestRunning = true
-  if (!silent && !adminGenerationRecords.length) target.textContent = 'Chargement des générations…'
+  if (!silent && !adminGenerationRecords.length) {
+    target.textContent = 'Chargement des créations…'
+    status.textContent = 'Récupération des chansons…'
+  }
   try {
     const result = await callAudinooApi('/api/admin/generations')
-    adminGenerationRecords = result.generations || []
+    adminGenerationRecords = Array.isArray(result.generations) ? result.generations : []
     renderAdminGenerationsTable()
   } catch (error) {
-    if (!adminGenerationRecords.length) target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
-    else console.warn('[Audinoo admin] Actualisation des générations impossible', error)
+    if (!adminGenerationRecords.length) {
+      target.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
+      status.textContent = 'Impossible de récupérer les créations.'
+    } else {
+      status.textContent = 'Actualisation impossible : ' + error.message
+      console.warn('[Audinoo admin] Actualisation des générations impossible', error)
+    }
   } finally {
     adminGenerationsRequestRunning = false
   }
 }
+function adminGenerationDateKey(value) {
+  const date = value ? new Date(value) : null
+  if (!date || !Number.isFinite(date.getTime())) return 'unknown'
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+}
+function adminGenerationDateHeading(key, sample) {
+  if (key === 'unknown') return 'Date inconnue'
+  const date = new Date(sample || key + 'T12:00:00')
+  const today = new Date()
+  const day = value => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime()
+  const difference = Math.round((day(today) - day(date)) / 86400000)
+  if (difference === 0) return "Aujourd'hui"
+  if (difference === 1) return 'Hier'
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+}
 function renderAdminGenerationsTable() {
   const term = adminGenerationSearch.value.trim().toLocaleLowerCase('fr')
-  const usersById = new Map(latestAdminUsers.map(user => [user.uid,user]))
-  const records = adminGenerationRecords.filter(item => adminGenerationMatchesDay(item) && [item.title,item.uid,item.taskId,item.status,usersById.get(item.uid)?.username,usersById.get(item.uid)?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
-  const body = adminGenerationsSection.querySelector('#admin-generation-cards')
-  replaceNodeChildren(body)
-  adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + ' création(s)'
-  if (!records.length) { body.textContent = 'Aucune génération disponible.'; return }
-  records.forEach(item => {
-    const card = document.createElement('article'); card.className = 'admin-generation-card'
-    const heading = document.createElement('div'); heading.className = 'admin-generation-card-heading'
-    const title = document.createElement('h3'); title.textContent = item.title || 'Création sans titre'
-    const status = document.createElement('span'); status.className = 'admin-state-pill'; status.textContent = item.status || 'État inconnu'
-    heading.append(title,status)
-    const meta = document.createElement('p'); meta.textContent = 'Utilisateur : ' + (usersById.get(item.uid)?.email || item.uid) + ' · ID : ' + item.taskId + ' · Créée le : ' + adminDateLabel(item.createdAt)
-    card.append(heading,meta)
-    ;(item.tracks || []).forEach(track => {
-      const line = document.createElement('div'); line.className = 'admin-generation-track'
-      const label = document.createElement('strong'); label.textContent = track.title || ('Variante ' + (track.trackIndex + 1)); line.append(label)
-      if (track.audioUrl) {
-        const player = document.createElement('audio'); player.controls = true; player.preload = 'none'
-        player.addEventListener('play', async () => {
-          if (player.dataset.loaded === 'true') return
-          player.pause()
-          try {
-            const token = await auth.currentUser?.getIdToken()
-            const audioResponse = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
-            if (!audioResponse.ok) throw new Error('audio-unavailable')
-            player.src = URL.createObjectURL(await audioResponse.blob())
-            player.dataset.loaded = 'true'
-            await player.play()
-          } catch (error) { console.warn('[Audinoo admin audio]', error) }
-        }, { once: true })
-        line.append(player)
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'admin-publish-button'; button.textContent = 'Publier sur l’accueil'
-        button.addEventListener('click', async () => {
-          button.disabled = true
-          try { await callAudinooApi('/api/admin/publish',{method:'POST',body:JSON.stringify({uid:item.uid,taskId:item.taskId,trackIndex:track.trackIndex})}); button.textContent='Publié' }
-          catch (error) { button.disabled=false; button.textContent='Échec · Réessayer'; console.error('[Audinoo publication]',error) }
-        })
-        line.append(button)
-      } else { const note=document.createElement('small');note.textContent='Audio non archivé dans R2 — publication indisponible';line.append(note) }
-      card.append(line)
-    })
-    body.append(card)
+  const usersById = new Map(latestAdminUsers.map(user => [user.uid, user]))
+  const records = adminGenerationRecords.filter(item => {
+    const owner = usersById.get(item.uid)
+    return adminGenerationMatchesDay(item) && [item.title, item.status, owner?.displayName, owner?.username, owner?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term))
   })
+  const body = adminGenerationsSection.querySelector('#admin-generation-cards')
+  const status = adminGenerationsSection.querySelector('#admin-audio-status')
+  replaceNodeChildren(body)
+  adminGenerationsSection.querySelector('#admin-generation-count').textContent = records.length + (records.length === 1 ? ' création' : ' créations')
+  if (!records.length) {
+    const empty = document.createElement('div')
+    empty.className = 'admin-generation-empty'
+    empty.textContent = term || adminGenerationDateFilter.value ? 'Aucune chanson ne correspond à cette recherche.' : 'Aucune chanson enregistrée pour le moment.'
+    body.append(empty)
+    status.textContent = 'Les créations apparaîtront ici dès qu’elles seront disponibles.'
+    return
+  }
+  const groups = new Map()
+  records.forEach(item => {
+    const key = adminGenerationDateKey(item.createdAt)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(item)
+  })
+  const orderedGroups = [...groups.entries()].sort((a,b) => (b[0] === 'unknown' ? 0 : Date.parse(b[0])) - (a[0] === 'unknown' ? 0 : Date.parse(a[0])))
+  let trackCount = 0
+  orderedGroups.forEach(([dateKey, items]) => {
+    const section = document.createElement('section')
+    section.className = 'admin-generation-day'
+    const heading = document.createElement('h3')
+    heading.textContent = adminGenerationDateHeading(dateKey, items[0]?.createdAt)
+    const total = document.createElement('span')
+    total.textContent = items.length + (items.length === 1 ? ' création' : ' créations')
+    heading.append(total)
+    section.append(heading)
+    items.forEach(item => {
+      const owner = usersById.get(item.uid)
+      const card = document.createElement('article')
+      card.className = 'admin-generation-card admin-generation-review-card'
+      const top = document.createElement('div')
+      top.className = 'admin-generation-review-heading'
+      const cover = document.createElement('div')
+      cover.className = 'admin-generation-review-cover'
+      const coverImage = item.tracks?.find(track => track.imageUrl)?.imageUrl
+      if (coverImage) {
+        const image = document.createElement('img')
+        image.src = coverImage
+        image.alt = ''
+        image.loading = 'lazy'
+        image.addEventListener('error', () => image.remove(), { once: true })
+        cover.append(image)
+      } else cover.textContent = '♫'
+      const titleBlock = document.createElement('div')
+      titleBlock.className = 'admin-generation-review-title'
+      const title = document.createElement('h4')
+      title.textContent = item.title || item.tracks?.[0]?.title || 'Création sans titre'
+      const meta = document.createElement('p')
+      meta.textContent = [owner?.displayName || owner?.username || owner?.email || 'Membre Audinoo', adminDateLabel(item.createdAt)].join(' · ')
+      const state = document.createElement('span')
+      state.className = 'admin-state-pill'
+      const stateValue = String(item.status || 'PENDING').toUpperCase()
+      state.textContent = ['SUCCESS','COMPLETE','COMPLETED'].includes(stateValue) ? 'Terminée' : stateValue === 'PENDING' || stateValue === 'PROCESSING' ? 'En cours' : stateValue === 'GENERATE_AUDIO_FAILED' || stateValue === 'CREATE_TASK_FAILED' ? 'Échec' : (item.status || 'En attente')
+      top.append(cover, titleBlock, state)
+      titleBlock.append(title, meta)
+      card.append(top)
+      const tracks = Array.isArray(item.tracks) ? item.tracks : []
+      if (!tracks.length) {
+        const pending = document.createElement('p')
+        pending.className = 'admin-generation-review-note'
+        pending.textContent = 'La chanson est encore en préparation. Actualise dans quelques instants.'
+        card.append(pending)
+      }
+      tracks.forEach(track => {
+        trackCount++
+        const row = document.createElement('div')
+        row.className = 'admin-generation-review-track'
+        const trackTitle = document.createElement('strong')
+        trackTitle.textContent = track.title || item.title || 'Variante musicale'
+        row.append(trackTitle)
+        if (track.audioUrl) {
+          const controls = document.createElement('div')
+          controls.className = 'admin-generation-review-controls'
+          const listen = document.createElement('button')
+          listen.type = 'button'
+          listen.className = 'admin-listen-button'
+          listen.textContent = '▶ Écouter'
+          const audio = document.createElement('audio')
+          audio.controls = true
+          audio.preload = 'none'
+          audio.hidden = true
+          let objectUrl = ''
+          listen.addEventListener('click', async () => {
+            if (audio.dataset.loaded === 'true') {
+              try { await audio.play() } catch (error) { status.textContent = 'Lecture impossible : ' + error.message }
+              return
+            }
+            listen.disabled = true
+            listen.textContent = 'Chargement…'
+            try {
+              const token = await auth.currentUser?.getIdToken()
+              if (!token) throw new Error('Session administrateur expirée. Reconnecte-toi.')
+              const response = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token }, cache: 'no-store' })
+              if (!response.ok) throw new Error(response.status === 404 ? 'Fichier audio introuvable.' : 'Erreur audio (' + response.status + ').')
+              const blob = await response.blob()
+              if (!blob.size || !blob.type.startsWith('audio/')) throw new Error('Le fichier reçu n’est pas un audio valide.')
+              objectUrl = URL.createObjectURL(blob)
+              audio.src = objectUrl
+              audio.dataset.loaded = 'true'
+              audio.hidden = false
+              listen.hidden = true
+              await audio.play()
+              status.textContent = 'Lecture prête. Tu peux écouter et publier cette chanson.'
+            } catch (error) {
+              status.textContent = 'Impossible de lire cette chanson : ' + error.message
+              listen.disabled = false
+              listen.textContent = '↻ Réessayer'
+              console.error('[Audinoo admin audio]', error)
+            }
+          })
+          audio.addEventListener('error', () => { status.textContent = 'Le navigateur ne parvient pas à décoder ce fichier audio.' })
+          audio.addEventListener('emptied', () => { if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = '' } })
+          const publish = document.createElement('button')
+          publish.type = 'button'
+          publish.className = 'admin-publish-button'
+          publish.textContent = 'Publier sur l’accueil'
+          publish.addEventListener('click', async () => {
+            publish.disabled = true
+            publish.textContent = 'Publication…'
+            try {
+              await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex }) })
+              publish.textContent = '✓ Publiée'
+              publish.classList.add('is-published')
+              status.textContent = 'La chanson est maintenant publiée sur l’accueil.'
+            } catch (error) {
+              publish.disabled = false
+              publish.textContent = 'Réessayer'
+              status.textContent = 'Publication impossible : ' + error.message
+              console.error('[Audinoo publication]', error)
+            }
+          })
+          controls.append(listen, audio, publish)
+          row.append(controls)
+        } else {
+          const unavailable = document.createElement('small')
+          unavailable.textContent = 'Audio en préparation'
+          row.append(unavailable)
+        }
+        card.append(row)
+      })
+      section.append(card)
+    })
+    body.append(section)
+  })
+  status.textContent = records.length + (records.length === 1 ? ' création' : ' créations') + ' · ' + trackCount + (trackCount === 1 ? ' piste audio' : ' pistes audio') + ' disponibles.'
 }
-
 
 adminUserSearch.addEventListener('input',renderAdminUsersTable)
 adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable)
-adminGenerationDateFilter.addEventListener('change', () => {
-  renderAdminGenerationsTable()
-  void loadAdminAudioGenerations()
-})
-adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
+adminGenerationDateFilter.addEventListener('change', renderAdminGenerationsTable)
+adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click', () => loadAdminGenerations())
 
 adminCreditsSection.append(workspaceCreditPanel)
 
@@ -1189,7 +1317,6 @@ adminNavigation.addEventListener('click', (event) => {
   activateAdminSection(button.dataset.adminSection)
   if (button.dataset.adminSection === 'generations') {
     void loadAdminGenerations()
-    void loadAdminAudioGenerations()
   }
 })
 activateAdminSection('overview')
@@ -1322,8 +1449,7 @@ async function refreshAdminAccess(uid) {
     startAdminStatsListeners(uid)
     startAdminNotificationListener()
     void loadAdminGenerations()
-    void loadAdminAudioGenerations()
-    return true
+      return true
   } catch (error) {
     console.warn('[Audinoo admin] Could not verify admin access', error)
     return false
@@ -1355,70 +1481,7 @@ function renderAdminSuggestions(suggestions) {
   })
 }
 
-let adminAudioRequestRunning = false
-async function loadAdminAudioGenerations(silent = false) {
-  const container = adminGenerationsSection.querySelector('#admin-audio-generations')
-  const status = adminGenerationsSection.querySelector('#admin-audio-status')
-  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminAudioRequestRunning) return
-  adminAudioRequestRunning = true
-  if (!silent && !container.childElementCount) status.textContent = 'Chargement des archives audio…'
-  try {
-    const result = await callAudinooApi('/api/admin/generations')
-    replaceNodeChildren(container)
-    let count = 0
-    for (const generation of (result.generations || []).filter(adminGenerationMatchesDay)) for (const track of generation.tracks || []) {
-      if (!track.audioUrl) continue
-      count++
-      const card = document.createElement('article')
-      card.className = 'admin-panel admin-audio-generation-card'
-      const title = document.createElement('strong'); title.textContent = track.title || generation.title || 'Création Audinoo'
-      const owner = latestAdminUsers.find(user => user.uid === generation.uid)
-      const meta = document.createElement('small'); meta.textContent = (owner?.displayName || owner?.username || owner?.email || generation.uid) + ' · ' + adminDateLabel(generation.createdAt) + ' · ' + (track.archived ? 'Archive R2' : 'Source audio')
-      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'
-      audio.addEventListener('play', async () => {
-        if (audio.dataset.loaded === 'true' || audio.dataset.loading === 'true') return
-        audio.dataset.loading = 'true'
-        audio.pause()
-        try {
-          const token = await auth.currentUser?.getIdToken()
-          if (!token) throw new Error('admin-session-required')
-          const response = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
-          if (!response.ok) throw new Error('audio-http-' + response.status)
-          audio.src = URL.createObjectURL(await response.blob())
-          audio.dataset.loaded = 'true'
-          await audio.play()
-        } catch (error) {
-          status.textContent = 'Lecture impossible : ' + error.message
-          console.error('[Audinoo admin audio]', error)
-        } finally { audio.dataset.loading = 'false' }
-      })
-      const publish = document.createElement('button'); publish.type = 'button'; publish.className = 'admin-publish-button'; publish.textContent = 'Publier sur l’accueil'
-      publish.addEventListener('click', async () => {
-        publish.disabled = true
-        try {
-          await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: generation.uid, taskId: generation.taskId, trackIndex: track.trackIndex }) })
-          publish.textContent = 'Publié sur l’accueil'; status.textContent = 'Création publiée sur l’accueil.'
-        } catch (error) { status.textContent = 'Publication impossible : ' + error.message; publish.disabled = false }
-      })
-      card.append(title, meta, audio, publish); container.append(card)
-    }
-    status.textContent = count ? count + ' variante(s) disponible(s) à écouter et examiner.' : 'Aucune création trouvée pour cette date.'
-  } catch (error) {
-    if (!container.childElementCount) status.textContent = 'Chargement impossible : ' + error.message
-    else console.warn('[Audinoo admin] Actualisation des archives impossible', error)
-  } finally {
-    adminAudioRequestRunning = false
-  }
-}
-adminGenerationsSection.querySelector('#admin-refresh-audio-generations').addEventListener('click', () => {
-  void loadAdminGenerations()
-  void loadAdminAudioGenerations()
-})
-window.setInterval(() => {
-  if (document.visibilityState !== 'visible' || !auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsSection.hidden) return
-  void loadAdminGenerations(true)
-  void loadAdminAudioGenerations(true)
-}, 15000)
+
 async function loadAdminSuggestions() {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   adminSuggestionStatus.textContent = 'Chargement des suggestions…'
@@ -1880,6 +1943,11 @@ fullSeek.addEventListener('input', () => {
 })
 
 
+function libraryGenerationDateKey(value) {
+  const date = value ? new Date(value) : null
+  if (!date || !Number.isFinite(date.getTime())) return 'unknown'
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+}
 function libraryGenerationDateLabel(value) {
   const date = value ? new Date(value) : null
   if (!date || !Number.isFinite(date.getTime())) return 'Date inconnue'
@@ -1893,48 +1961,69 @@ function libraryGenerationDateLabel(value) {
 }
 
 function renderLibraryGeneration(generation) {
-  const existing = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
-    .filter(node => node.dataset.libraryTask === generation.taskId)
-  existing.forEach(node => node.remove())
+  const taskId = String(generation.taskId || '')
+  if (!taskId) return
+  const previousEntry = [...libraryGenerationList.querySelectorAll('.library-generation-entry')]
+    .find(node => node.dataset.libraryTask === taskId)
+  const createdAt = generation.createdAt || previousEntry?.dataset.createdAt || new Date().toISOString()
+  const dateKey = libraryGenerationDateKey(createdAt)
+  previousEntry?.remove()
 
-  const group = document.createElement('section')
-  group.className = 'library-generation-group'
-  group.dataset.libraryTask = generation.taskId
-  const dateLabel = document.createElement('div')
-  dateLabel.className = 'library-generation-date'
-  dateLabel.textContent = libraryGenerationDateLabel(generation.createdAt)
-  group.append(dateLabel)
-
-  if (!generation.tracks?.length) {
-    const pending = createGenerationCard(generation)
-    pending.dataset.libraryTask = generation.taskId
-    pending.classList.add('library-pending-generation')
-    group.append(pending)
+  let group = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .find(node => node.dataset.libraryDate === dateKey)
+  if (!group) {
+    group = document.createElement('section')
+    group.className = 'library-generation-group'
+    group.dataset.libraryDate = dateKey
+    const dateLabel = document.createElement('div')
+    dateLabel.className = 'library-generation-date'
+    dateLabel.textContent = libraryGenerationDateLabel(createdAt)
+    group.append(dateLabel)
     libraryGenerationList.append(group)
-    return
   }
 
-  generation.tracks.forEach((track, index) => {
-    if (!track?.audioUrl) return
-    const row = document.createElement('div')
-    row.className = 'library-song-row'
-    row.dataset.libraryTask = generation.taskId
-    const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
-    const displayTrack = { ...track, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
-    const wrapper = document.createElement('div')
-    wrapper.className = 'library-song-player'
-    renderGenerationTracks(wrapper, [displayTrack])
-    const song = wrapper.firstElementChild
-    if (!song) return
-    song.classList.add('library-song-item')
-    const meta = document.createElement('span')
-    meta.className = 'library-song-variant'
-    meta.textContent = generation.title || track.title || 'Sans titre'
-    song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
-    row.append(song)
-    group.append(row)
+  const entry = document.createElement('div')
+  entry.className = 'library-generation-entry'
+  entry.dataset.libraryTask = taskId
+  entry.dataset.createdAt = createdAt
+  const tracks = Array.isArray(generation.tracks) ? generation.tracks : []
+  if (!tracks.length) {
+    const pending = createGenerationCard(generation)
+    pending.dataset.libraryTask = taskId
+    pending.classList.add('library-pending-generation')
+    entry.append(pending)
+  } else {
+    tracks.forEach((track, index) => {
+      if (!track?.audioUrl) return
+      const row = document.createElement('div')
+      row.className = 'library-song-row'
+      row.dataset.libraryTask = taskId
+      const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+      const displayTrack = { ...track, title: generation.title || track.title || 'Sans titre', imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(taskId) + '&track=' + index }
+      const wrapper = document.createElement('div')
+      wrapper.className = 'library-song-player'
+      renderGenerationTracks(wrapper, [displayTrack])
+      const song = wrapper.firstElementChild
+      if (!song) return
+      song.classList.add('library-song-item')
+      const meta = document.createElement('span')
+      meta.className = 'library-song-variant'
+      meta.textContent = generation.title || track.title || 'Sans titre'
+      song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
+      row.append(song)
+      entry.append(row)
+    })
+  }
+  group.append(entry)
+
+  const groups = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+  groups.sort((a, b) => {
+    const first = a.dataset.libraryDate === 'unknown' ? 0 : Date.parse(a.dataset.libraryDate + 'T00:00:00')
+    const second = b.dataset.libraryDate === 'unknown' ? 0 : Date.parse(b.dataset.libraryDate + 'T00:00:00')
+    return second - first
   })
-  libraryGenerationList.append(group)
+  groups.forEach(item => libraryGenerationList.append(item))
+  if (!group.querySelector('.library-generation-entry')) group.remove()
 }
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
