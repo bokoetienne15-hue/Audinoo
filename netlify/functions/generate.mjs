@@ -33,6 +33,7 @@ export const handler = async (event) => {
     const lockRef = db.collection('generationLocks').doc(user.uid)
     const requestId = randomUUID()
     let reservedCampaignId = null
+    let reservedCreditType = null
 
     try {
       await db.runTransaction(async (transaction) => {
@@ -48,20 +49,19 @@ export const handler = async (event) => {
         const policy = policySnapshot.exists
           ? policySnapshot.data()
           : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
-        // Keep the server-side entitlement check in sync with the workspace UI:
-        // older profiles without an explicit policy assignment belong to the
-        // default welcome-credit campaign.
         const campaignId = profile.freeCreditCampaignId
           || (!profile.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
-        if (!policy.enabled || !campaignId || campaignId !== policy.activeCampaignId || profile.freeCreditUsed === true) {
-          throw new Error('no-free-credit')
-        }
+        const hasFreeCredit = Boolean(policy.enabled && campaignId && campaignId === policy.activeCampaignId && profile.freeCreditUsed !== true)
+        const hasPaidCredit = Number(profile.paidCredits || 0) > 0
+        if (!hasFreeCredit && !hasPaidCredit) throw new Error('no-free-credit')
 
-        reservedCampaignId = campaignId
+        reservedCreditType = hasFreeCredit ? 'free' : 'paid'
+        reservedCampaignId = hasFreeCredit ? campaignId : null
         transaction.create(lockRef, {
           requestId,
           uid: user.uid,
-          campaignId,
+          creditType: reservedCreditType,
+          campaignId: reservedCampaignId,
           createdAt: FieldValue.serverTimestamp()
         })
       })
@@ -118,7 +118,13 @@ export const handler = async (event) => {
         if (!profileSnapshot.exists || !lockSnapshot.exists || lockSnapshot.data().requestId !== requestId) {
           throw new Error('generation-reservation-lost')
         }
-        transaction.update(profileRef, { freeCreditUsed: true, freeCreditUsedAt: FieldValue.serverTimestamp() })
+        if (lockSnapshot.data().creditType === 'paid') {
+          const remaining = Number(profileSnapshot.data().paidCredits || 0)
+          if (remaining < 1) throw new Error('no-free-credit')
+          transaction.update(profileRef, { paidCredits: remaining - 1, updatedAt: FieldValue.serverTimestamp() })
+        } else {
+          transaction.update(profileRef, { freeCreditUsed: true, freeCreditUsedAt: FieldValue.serverTimestamp() })
+        }
         transaction.delete(lockRef)
         transaction.create(profileRef.collection('generations').doc(taskId), {
           taskId,
