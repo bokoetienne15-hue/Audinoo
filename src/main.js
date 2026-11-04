@@ -293,7 +293,7 @@ const workspaceAccount = document.querySelector('.workspace-account')
 const workspaceHeader = workspace.querySelector('.workspace-header')
 const notificationControl = document.createElement('div')
 notificationControl.className = 'workspace-notifications'
-notificationControl.innerHTML = '<button class="workspace-notification-button" id="workspace-notification-button" type="button" aria-label="Ouvrir les notifications" aria-expanded="false" aria-controls="workspace-notification-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="workspace-notification-dot" aria-hidden="true" hidden></span></button><section class="workspace-notification-panel" id="workspace-notification-panel" role="dialog" aria-modal="true" aria-labelledby="workspace-notification-title" hidden><div class="workspace-notification-dialog"><div class="workspace-notification-heading"><div><p>TON ESPACE AUDINOO</p><strong id="workspace-notification-title">Notifications</strong></div></div><div class="workspace-notification-empty"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span><p>Tu es à jour.</p><small>Tes notifications apparaîtront ici.</small></div></div></section>'
+notificationControl.innerHTML = '<button class="workspace-notification-button" id="workspace-notification-button" type="button" aria-label="Ouvrir les notifications" aria-expanded="false" aria-controls="workspace-notification-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="workspace-notification-dot" aria-hidden="true" hidden></span></button><section class="workspace-notification-panel" id="workspace-notification-panel" role="dialog" aria-modal="true" aria-labelledby="workspace-notification-title" hidden><div class="workspace-notification-dialog"><div class="workspace-notification-heading"><div><p>TON ESPACE AUDINOO</p><strong id="workspace-notification-title">Notifications</strong></div></div></div></section>'
 workspaceHeader.insertBefore(notificationControl, workspaceAccount)
 const headerAvatar = document.createElement('span')
 headerAvatar.className = 'workspace-avatar workspace-header-avatar'
@@ -303,7 +303,6 @@ workspaceHeader.append(headerAvatar)
 workspaceHeader.insertBefore(headerAvatar, notificationControl)
 const workspaceNotificationButton = notificationControl.querySelector('#workspace-notification-button')
 const workspaceNotificationPanel = notificationControl.querySelector('#workspace-notification-panel')
-const workspaceNotificationEmpty = workspaceNotificationPanel.querySelector('.workspace-notification-empty')
 const workspaceNotificationList = document.createElement('div')
 workspaceNotificationList.className = 'workspace-notification-list'
 workspaceNotificationList.hidden = true
@@ -341,8 +340,6 @@ workspaceNotificationButton.addEventListener('click', () => {
   }
 })
 function renderUserNotifications() {
-  workspaceNotificationEmpty.querySelector('p').textContent = 'Tu es à jour.'
-  workspaceNotificationEmpty.querySelector('small').textContent = 'Tes notifications apparaîtront ici.'
   const user = auth.currentUser
   const unreadItems = liveNotificationItems.filter((item) => !liveNotificationReadIds.has(item.id))
   notificationDot.hidden = unreadItems.length === 0
@@ -356,7 +353,6 @@ function renderUserNotifications() {
   if (currentDot) currentDot.hidden = unreadItems.length === 0
   replaceNodeChildren(workspaceNotificationList)
   const hasNotifications = liveNotificationItems.length > 0
-  workspaceNotificationEmpty.hidden = hasNotifications
   workspaceNotificationList.hidden = !hasNotifications
   if (!hasNotifications) return
   liveNotificationItems.forEach((item) => {
@@ -417,9 +413,6 @@ function startNotificationListeners(user) {
     if (!workspaceNotificationPanel.hidden) void markVisibleNotificationsRead()
   }, (error) => {
     console.error('[Audinoo notifications] Live notification stream failed', error)
-    workspaceNotificationEmpty.hidden = false
-    workspaceNotificationEmpty.querySelector('p').textContent = 'Les notifications sont momentanément indisponibles.'
-    workspaceNotificationEmpty.querySelector('small').textContent = 'Réessaie dans un instant.'
   })
   const stopReads = onSnapshot(query(collection(db, 'notificationReads'), where('userId', '==', user.uid)), (snapshot) => {
     if (auth.currentUser?.uid !== user.uid) return
