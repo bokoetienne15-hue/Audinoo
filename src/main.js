@@ -2448,6 +2448,8 @@ onAuthStateChanged(auth, async (user) => {
     startNotificationListeners(null)
     stopFreeCreditPolicyListener?.()
     stopFreeCreditPolicyListener = null
+    stopWorkspaceProfileCreditListener?.()
+    stopWorkspaceProfileCreditListener = null
     activeWorkspaceProfile = null
     freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
     renderWorkspaceFreeCredit()
