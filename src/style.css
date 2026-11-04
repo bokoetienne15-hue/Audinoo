@@ -1090,3 +1090,16 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .workspace-library-page .workspace-library-empty{margin-top:18px}
 .workspace-library-page .workspace-library-empty[hidden]{display:none!important}
 @media(max-width:760px){.workspace-library-page{padding:12px 0 60px!important}.library-page-heading{margin-bottom:20px!important}.library-page-heading h1{font-size:40px!important}.library-song-item{grid-template-columns:64px minmax(0,1fr)!important}.library-song-item .generation-track-cover{width:64px!important;height:64px!important;min-width:64px}}
+
+
+/* Administration des notifications */
+.admin-notification-manager{margin-top:18px}
+.admin-notification-list{display:grid;gap:10px}
+.admin-notification-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:15px;border:1px solid rgba(197,172,222,.13);border-radius:12px;background:rgba(255,255,255,.025)}
+.admin-notification-row>div{min-width:0}
+.admin-notification-row strong{display:block;color:#f3eef9;font:600 13px 'Space Grotesk',sans-serif}
+.admin-notification-row p{margin:7px 0;color:#b9b1c4;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.admin-notification-row small{color:#898194;font-size:9px}
+.admin-notification-row .is-danger{flex:0 0 auto;border-color:rgba(255,117,143,.3);color:#ffc1cb;background:rgba(225,67,98,.1)}
+.admin-notification-row button:disabled{opacity:.55;cursor:wait}
+@media(max-width:600px){.admin-notification-row{gap:9px;padding:12px}.admin-notification-row .admin-refresh-button{padding:8px;font-size:9px}}
