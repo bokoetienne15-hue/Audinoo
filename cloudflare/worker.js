@@ -255,6 +255,12 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
     const object = await env.AUDIO_BUCKET?.get(key)
     if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, max-age=86400', ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
   }
+  // Legacy/unarchived tracks can still be listened to by an authenticated administrator.
+  // Publishing will archive this provider URL into R2 before making it public.
+  if (admin && kind === 'audio' && /^https?:\\/\\//i.test(track?.audioUrl || '')) {
+    const remote = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
+    if (remote.ok && remote.body) return new Response(remote.body, { headers: { 'content-type': remote.headers.get('content-type') || 'audio/mpeg', 'cache-control': 'private, no-store', 'accept-ranges': 'bytes' } })
+  }
   if (kind === 'cover' && /^https?:\/\//i.test(track?.imageUrl || '')) {
     try {
       const remote = await fetch(track.imageUrl, { signal: AbortSignal.timeout(20000), headers: { accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' } })
@@ -306,13 +312,28 @@ async function grantAdminCredits(request, db, user) {
 async function adminGenerations(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 200 })
-  const generations = (rows || []).filter(row => row.document).map(row => {
-    const d = fromFields(row.document.fields || {})
-    const parts = row.document.name.split('/documents/')[1].split('/')
-    const uid = parts[1]
-    return { uid, taskId: d.taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : null, tracks: (d.tracks || []).map((t, i) => ({ title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '', archived: !!t.r2Key, trackIndex: i, audioUrl: t.r2Key ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(d.taskId) + '&track=' + i : '' })) }
-  })
+  // Avoid an orderBy index dependency: retrieve the collection group, then sort in memory.
+  // This also includes older generation documents that may not have a createdAt field.
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  const generations = (rows || []).filter(row => row.document?.name?.includes('/documents/users/'))
+    .map(row => {
+      const d = fromFields(row.document.fields || {})
+      const parts = row.document.name.split('/documents/')[1].split('/')
+      if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return null
+      const uid = parts[1], taskId = d.taskId || parts[3]
+      const createdAt = d.createdAt instanceof Date ? d.createdAt.toISOString() : typeof d.createdAt === 'string' ? d.createdAt : null
+      return {
+        uid, taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt,
+        tracks: (Array.isArray(d.tracks) ? d.tracks : []).map((t, i) => ({
+          title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '',
+          archived: !!t.r2Key, trackIndex: i,
+          audioUrl: (t.r2Key || /^https?:\\/\\//i.test(t.audioUrl || ''))
+            ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(taskId) + '&track=' + i : ''
+        }))
+      }
+    }).filter(Boolean)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 1000)
   return response(200, { generations })
 }
 async function publishTrack(request, env, db, user) {
@@ -322,10 +343,19 @@ async function publishTrack(request, env, db, user) {
   const uid = String(body.uid || ''), taskId = String(body.taskId || ''), index = Number(body.trackIndex)
   if (!uid || uid.length > 128 || !/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-publish-request' })
   const path = 'users/' + uid + '/generations/' + taskId, snap = await db.get(path), track = snap.data?.tracks?.[index]
-  if (!snap.exists || !track?.r2Key) return response(409, { error: 'audio-not-archived-yet' })
+  if (!snap.exists || !track) return response(409, { error: 'audio-not-available' })
   const id = taskId + '-' + index
-  const source = await env.AUDIO_BUCKET.get(track.r2Key)
-  if (!source) return response(404, { error: 'audio-not-found' })
+  let source = track.r2Key ? await env.AUDIO_BUCKET?.get(track.r2Key) : null
+  if (!source && /^https?:\\/\\//i.test(track.audioUrl || '')) {
+    const remote = await fetch(track.audioUrl, { signal: AbortSignal.timeout(60000) })
+    if (remote.ok && remote.body && env.AUDIO_BUCKET) {
+      const privateKey = 'private/' + uid + '/' + taskId + '/' + index + '.audio'
+      await env.AUDIO_BUCKET.put(privateKey, remote.body, { httpMetadata: { contentType: remote.headers.get('content-type') || 'audio/mpeg', cacheControl: 'private, no-store' }, customMetadata: { uid, taskId } })
+      await db.set(path, { tracks: snap.data.tracks.map((item, i) => i === index ? { ...item, r2Key: privateKey } : item) }, true)
+      source = await env.AUDIO_BUCKET.get(privateKey)
+    }
+  }
+  if (!source) return response(404, { error: 'audio-not-found-or-not-archived' })
   const publicKey = 'public/' + id + '.audio'
   await env.AUDIO_BUCKET.put(publicKey, source.body, { httpMetadata: { contentType: source.httpMetadata?.contentType || 'audio/mpeg', cacheControl: 'public, max-age=3600' }, customMetadata: { publishedTrackId: id } })
   await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: publicKey, published: true, publishedAt: new Date() })
