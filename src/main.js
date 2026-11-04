@@ -125,7 +125,7 @@ app.innerHTML = `
       <div class="currency-toggle" id="currency-toggle" role="group" aria-label="Choisir la devise"><span class="currency-label">Devise</span><button class="currency-option is-active" type="button" data-currency="xof" aria-pressed="true">FCFA</button><button class="currency-option" type="button" data-currency="eur" aria-pressed="false">EUR</button></div>
       <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule adaptée à tes besoins et découvre les avantages inclus dans chaque offre.</p></div>
       <div class="pricing-grid">
-        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Une chanson</h3><p class="price-description">Débloque le téléchargement MP3 d’une chanson que tu as déjà créée, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / chanson</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Achat individuel pour une chanson créée</span><span>Téléchargement MP3 de cette chanson uniquement</span><span>Aucun abonnement requis</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
+        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Une chanson</h3><p class="price-description">Obtiens un crédit pour lancer une génération musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / crédit</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 crédit de génération musicale</span><span>2 variantes musicales à écouter</span><span>Paiement unique, sans abonnement</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
         <article class="price-card"><p class="price-label">Plan Découverte</p><h3>Formule mensuelle</h3><p class="price-description">Chante avec ta propre voix.</p><div class="price-value"><span data-price data-xof="1000" data-eur="1.52">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>3 générations musicales, soit 6 variantes</span><span>3 clips vidéo, un par création</span><span>Téléchargement au format MP3</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Créateur / Artiste</p><h3>Formule mensuelle</h3><p class="price-description">Libérez tout votre potentiel créatif.</p><div class="price-value"><span data-price data-xof="3000" data-eur="4.57">3 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>8 générations musicales, soit 16 variantes</span><span>3 clips vidéo au choix parmi vos créations</span><span>Accès au mode sauvage</span><span>Chansons d'une durée pouvant atteindre 8 minutes</span><span>Téléchargement MP3 et WAV</span><span>Téléchargement séparé de la voix et de l'instrumental</span><span>Licence commerciale pour l'exploitation de vos créations musicales</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Pro</p><h3>Formule avancée</h3><p class="price-description">L'expérience complète pour vos productions musicales.</p><div class="price-value"><span data-price data-xof="6900" data-eur="10.52">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>30 générations musicales, soit 60 variantes</span><span>10 clips vidéo au choix parmi vos créations</span><span>Conservation permanente du profil vocal</span><span>Séparation avancée des pistes pour 10 chansons au choix</span><span>Licence commerciale</span><span>Téléchargement MP3 et WAV</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
@@ -434,18 +434,35 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const card = button.closest('.price-card')
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   if (isSingleCredit) {
-    button.textContent = 'Choisir une chanson à télécharger · 300 FCFA'
-    button.href = '#library'
-    button.addEventListener('click', (event) => {
+    button.textContent = 'Acheter 1 crédit · 300 FCFA'
+    button.href = '#buy-credit'
+    button.addEventListener('click', async (event) => {
       event.preventDefault()
-      workspacePricingPage.hidden = true
-      libraryWorkspacePage.hidden = false
-      studioWorkspacePage.hidden = true
-      modelWorkspacePage.hidden = true
-      adminWorkspacePage.hidden = true
-      setWorkspaceSidebarOpen(false)
-      window.history.replaceState(null, '', '#library')
-      if (typeof loadLibrary === 'function') void loadLibrary()
+      if (!auth.currentUser) {
+        toast.textContent = 'Connecte-toi pour acheter un crédit.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 4000)
+        return
+      }
+      const originalLabel = button.textContent
+      button.textContent = 'Préparation du paiement…'
+      button.setAttribute('aria-busy', 'true')
+      button.style.pointerEvents = 'none'
+      try {
+        const checkout = await callAudinooApi('/api/credits/purchase', {
+          method: 'POST',
+          body: JSON.stringify({})
+        })
+        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+        window.location.assign(checkout.checkoutUrl)
+      } catch (error) {
+        toast.textContent = generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5500)
+        button.textContent = originalLabel
+        button.removeAttribute('aria-busy')
+        button.style.pointerEvents = ''
+      }
     })
     return
   }
@@ -2212,35 +2229,76 @@ async function pollGeneration(taskId, card) {
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
 const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
-if (paymentReturnParams.has('payment_return') || returnedPaymentId) {
-  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
-  if (returnedPaymentId && paymentReturnParams.get('payment_return') === 'track') {
-    void callAudinooApi('/api/tracks/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
-      .then(async (result) => {
-        if (result.purchased) {
-          toast.textContent = 'Paiement confirmé : cette chanson est maintenant téléchargeable en MP3.'
-        } else toast.textContent = 'Paiement en attente de confirmation. Réessaie dans quelques instants.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 6000)
-      })
-      .catch((error) => {
-        toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 6000)
-      })
-  } else if (returnedPaymentId) {
-    void callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
-      .then((result) => {
-        toast.textContent = result.credited ? 'Paiement confirmé : ton crédit est disponible.' : 'Paiement en attente de confirmation. Ton crédit sera ajouté après validation.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 6000)
-      })
-      .catch((error) => {
-        toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 6000)
-      })
+const paymentReturnType = paymentReturnParams.get('payment_return')
+if (paymentReturnType === 'credits') {
+  const verificationScreen = document.createElement('main')
+  verificationScreen.className = 'payment-verification-screen'
+  verificationScreen.setAttribute('role', 'status')
+  verificationScreen.setAttribute('aria-live', 'polite')
+  verificationScreen.innerHTML = '<div class="payment-verification-card"><span class="payment-verification-spinner" aria-hidden="true"></span><p class="payment-verification-kicker">AUDINOO · PAIEMENT</p><h1>Vérification de votre paiement</h1><p class="payment-verification-message">Nous confirmons votre transaction auprès de FedaPay. Ne fermez pas cette page.</p><p class="payment-verification-reference"></p><button class="payment-verification-return" type="button" hidden>Retourner au studio</button></div>'
+  document.body.append(verificationScreen)
+  const message = verificationScreen.querySelector('.payment-verification-message')
+  const spinner = verificationScreen.querySelector('.payment-verification-spinner')
+  const reference = verificationScreen.querySelector('.payment-verification-reference')
+  const returnButton = verificationScreen.querySelector('.payment-verification-return')
+  if (returnedPaymentId) reference.textContent = 'Référence : ' + returnedPaymentId
+  else {
+    spinner.hidden = true
+    message.textContent = 'La référence de transaction est absente. Aucun crédit ne sera ajouté sans vérification.'
+    returnButton.hidden = false
   }
+  returnButton.addEventListener('click', () => {
+    verificationScreen.remove()
+    window.history.replaceState(null, '', window.location.pathname + '#studio')
+    if (auth.currentUser) openWorkspace({ uid: auth.currentUser.uid, username: workspaceUsername.textContent || '@createur_audinoo' })
+  })
+  if (returnedPaymentId) {
+    void (async () => {
+      try {
+        await authPersistenceReady
+        if (!auth.currentUser) throw new Error('invalid-session')
+        let result = null
+        for (let attempt = 0; attempt < 30; attempt++) {
+          result = await callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+          if (result.credited) break
+          message.textContent = 'Paiement reçu. Nous attendons la confirmation définitive de FedaPay…'
+          await new Promise(resolve => window.setTimeout(resolve, 2000))
+        }
+        spinner.hidden = true
+        if (result?.credited) {
+          verificationScreen.classList.add('is-success')
+          verificationScreen.querySelector('h1').textContent = 'Paiement vérifié'
+          message.textContent = 'Votre crédit a été ajouté à votre solde. Vous pouvez reprendre votre création musicale.'
+        } else {
+          verificationScreen.classList.add('is-pending')
+          verificationScreen.querySelector('h1').textContent = 'Paiement en attente'
+          message.textContent = 'FedaPay n’a pas encore confirmé cette transaction. Votre crédit sera ajouté automatiquement dès validation. Vous pouvez revenir vérifier votre solde dans quelques instants.'
+        }
+        returnButton.hidden = false
+      } catch (error) {
+        spinner.hidden = true
+        verificationScreen.classList.add('is-error')
+        verificationScreen.querySelector('h1').textContent = 'Vérification impossible'
+        message.textContent = error.message === 'invalid-session'
+          ? 'Votre session n’est plus active. Reconnectez-vous avec le même compte pour vérifier votre paiement.'
+          : generationErrorMessage(error.message)
+        returnButton.hidden = false
+      }
+    })()
+  }
+} else if (paymentReturnType === 'track' && returnedPaymentId) {
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+  void callAudinooApi('/api/tracks/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+    .then((result) => {
+      toast.textContent = result.purchased ? 'Paiement confirmé : cette chanson est maintenant téléchargeable en MP3.' : 'Paiement en attente de confirmation. Réessaie dans quelques instants.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 6000)
+    })
+    .catch((error) => {
+      toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 6000)
+    })
 }
 
 let pendingGenerationPreview = null
