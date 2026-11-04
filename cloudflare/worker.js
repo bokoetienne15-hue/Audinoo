@@ -315,6 +315,97 @@ async function adminGenerations(request, db, user) {
   })
   return response(200, { generations })
 }
+function feedbackIsoDate(value) {
+  return value instanceof Date ? value.toISOString() : typeof value === 'string' ? value : null
+}
+async function feedbackEligibleUserIds(db) {
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  const eligible = new Set()
+  for (const row of rows || []) {
+    if (!row.document?.name?.includes('/documents/users/')) continue
+    const parts = row.document.name.split('/documents/')[1].split('/')
+    if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') continue
+    const data = fromFields(row.document.fields || {})
+    const state = String(data.state || '').toUpperCase()
+    if (['SUCCESS', 'COMPLETE', 'COMPLETED'].includes(state) && Array.isArray(data.tracks) && data.tracks.length > 0) eligible.add(parts[1])
+  }
+  return eligible
+}
+async function createFeedbackCampaign(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const title = typeof body.title === 'string' ? body.title.trim() : ''
+  const message = typeof body.message === 'string' ? body.message.trim() : ''
+  const userIds = Array.isArray(body.userIds) ? [...new Set(body.userIds.filter(uid => typeof uid === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(uid)))] : []
+  if (title.length < 2 || title.length > 80 || message.length < 2 || message.length > 600 || !userIds.length || userIds.length > 2000) return response(400, { error: 'invalid-feedback-campaign' })
+  const eligible = await feedbackEligibleUserIds(db)
+  if (userIds.some(uid => !eligible.has(uid))) return response(400, { error: 'feedback-recipient-not-eligible' })
+  const campaignId = crypto.randomUUID()
+  await db.set('feedbackCampaigns/' + campaignId, { title, message, createdBy: user.uid, recipientCount: userIds.length, createdAt: SERVER_TIMESTAMP })
+  for (let offset = 0; offset < userIds.length; offset += 450) {
+    const writes = userIds.slice(offset, offset + 450).map(uid => db.writeSet('feedbackInvitations/' + campaignId + '_' + uid, { campaignId, userId: uid, title, message, status: 'pending', createdAt: SERVER_TIMESTAMP }, false))
+    await db.commit(writes)
+  }
+  return response(200, { campaignId, recipientCount: userIds.length })
+}
+async function getPendingFeedback(request, db, user) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  const rows = await db.runQuery({ from: [{ collectionId: 'feedbackInvitations' }], where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.uid } } }, limit: 100 })
+  const invitations = (rows || []).filter(row => row.document).map(row => {
+    const data = fromFields(row.document.fields || {})
+    return { id: row.document.name.split('/').pop(), title: data.title || '', message: data.message || '', status: data.status || '' }
+  }).filter(item => item.status === 'pending').slice(0, 1)
+  return response(200, { invitations })
+}
+async function dismissFeedbackInvitation(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const body = await request.json().catch(() => ({}))
+  const invitationId = typeof body.invitationId === 'string' ? body.invitationId : ''
+  if (!/^[A-Za-z0-9_-]{10,180}$/.test(invitationId)) return response(400, { error: 'invalid-feedback-invitation' })
+  const invitation = await db.get('feedbackInvitations/' + invitationId)
+  if (!invitation.exists || invitation.data.userId !== user.uid) return response(404, { error: 'feedback-invitation-not-found' })
+  if (invitation.data.status === 'pending') await db.set('feedbackInvitations/' + invitationId, { status: 'dismissed', dismissedAt: SERVER_TIMESTAMP }, true)
+  return response(200, { dismissed: true })
+}
+async function submitFeedback(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const body = await request.json().catch(() => ({}))
+  const invitationId = typeof body.invitationId === 'string' ? body.invitationId : ''
+  const stars = body.stars === null || body.stars === undefined ? null : Number(body.stars)
+  const comment = typeof body.comment === 'string' ? body.comment.trim() : ''
+  if (!/^[A-Za-z0-9_-]{10,180}$/.test(invitationId) || (stars !== null && (!Number.isInteger(stars) || stars < 1 || stars > 5)) || comment.length > 1200) return response(400, { error: 'invalid-feedback-response' })
+  try {
+    await db.runTransaction(async tx => {
+      const invitationRef = db.doc('feedbackInvitations/' + invitationId)
+      const responseRef = db.doc('feedbackResponses/' + invitationId)
+      const invitation = await tx.get(invitationRef)
+      if (!invitation.exists || invitation.data().userId !== user.uid) throw new Error('feedback-invitation-not-found')
+      if (invitation.data().status !== 'pending') throw new Error('feedback-invitation-not-pending')
+      const previous = await tx.get(responseRef)
+      if (previous.exists) throw new Error('feedback-already-submitted')
+      tx.create(responseRef, { userId: user.uid, campaignId: invitation.data().campaignId || '', title: invitation.data().title || 'Retour sur Audinoo', stars, comment, createdAt: SERVER_TIMESTAMP })
+      tx.update(invitationRef, { status: 'submitted', submittedAt: SERVER_TIMESTAMP })
+    })
+  } catch (error) {
+    if (error.message === 'feedback-invitation-not-found') return response(404, { error: 'feedback-invitation-not-found' })
+    if (error.message === 'feedback-invitation-not-pending' || error.message === 'feedback-already-submitted') return response(409, { error: error.message })
+    throw error
+  }
+  return response(200, { submitted: true })
+}
+async function listAdminFeedbackResponses(request, db, user) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const rows = await db.runQuery({ from: [{ collectionId: 'feedbackResponses' }], limit: 500 })
+  const responses = (rows || []).filter(row => row.document).map(row => {
+    const data = fromFields(row.document.fields || {})
+    return { userId: data.userId || '', title: data.title || 'Retour sur Audinoo', stars: Number.isInteger(data.stars) ? data.stars : null, comment: typeof data.comment === 'string' ? data.comment : '', createdAt: feedbackIsoDate(data.createdAt) }
+  }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+  return response(200, { responses })
+}
+
+
 async function publishTrack(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
@@ -445,6 +536,11 @@ export default {
       if (url.pathname === '/api/admin-audio') return await privateMedia(request,env,db,user,'audio',true)
       if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
+      if (url.pathname === '/api/admin/feedback/campaign') return await createFeedbackCampaign(request,db,user)
+      if (url.pathname === '/api/admin/feedback/responses') return await listAdminFeedbackResponses(request,db,user)
+      if (url.pathname === '/api/feedback/pending') return await getPendingFeedback(request,db,user)
+      if (url.pathname === '/api/feedback/dismiss') return await dismissFeedbackInvitation(request,db,user)
+      if (url.pathname === '/api/feedback/submit') return await submitFeedback(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
@@ -454,7 +550,7 @@ export default {
         const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
         return response(status, { error: allowedPaymentErrors.has(e.message) ? e.message : 'payment-processing-failed' })
       }
-      const err = status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
+      const err = status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname.startsWith('/api/feedback') || url.pathname.startsWith('/api/admin/feedback') ? 'feedback-processing-failed' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
       return response(status,{error:err})
     }
   }
