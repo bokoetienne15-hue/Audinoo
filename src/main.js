@@ -544,6 +544,15 @@ modelPicker.append(
 )
 workspaceLayout.append(modelWorkspacePage)
 workspaceModelChoice.addEventListener('click', () => {
+  const currentUser = auth.currentUser
+  const isVerifiedAdmin = Boolean(currentUser && verifiedAdminUid === currentUser.uid)
+  if (!isVerifiedAdmin) {
+    toast.textContent = 'Audinoo Model sera bientôt disponible. Nous préparons cette expérience pour toi.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3600)
+    setWorkspaceSidebarOpen(false)
+    return
+  }
   studioWorkspacePage.hidden = true
   libraryWorkspacePage.hidden = true
   adminWorkspacePage.hidden = true
