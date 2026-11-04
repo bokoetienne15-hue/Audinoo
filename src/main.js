@@ -2069,19 +2069,14 @@ function openLibraryForGenerationPreview(preview) {
   const card = document.createElement('article')
   card.className = 'library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
+  card.setAttribute('role', 'status')
+  card.setAttribute('aria-live', 'polite')
   card.innerHTML = `
-    <div class="generation-preview-art" aria-hidden="true"><span></span><span></span><span></span></div>
-    <div class="generation-preview-copy">
-      <span class="generation-preview-eyebrow"><i></i> AUDINOO STUDIO · PRÉPARATION</span>
-      <h3></h3>
-      <p class="generation-preview-description">Nous préparons ton espace de création. Aucune génération musicale n’a encore été lancée.</p>
-      <div class="generation-preview-status"><span class="generation-preview-spinner"></span><span class="generation-preview-status-text">Préparation de ton aperçu…</span></div>
-      <div class="generation-preview-actions" hidden>
-        <button class="generation-preview-confirm" type="button">Confirmer et générer la musique <span aria-hidden="true">→</span></button>
-        <button class="generation-preview-edit" type="button">Modifier mon prompt</button>
-      </div>
+    <div class="generation-preview-success" hidden>
+      <span class="generation-preview-check" aria-hidden="true">✓</span>
+      <span class="generation-preview-success-label">Votre chanson est prête !</span>
+      <span class="generation-preview-success-bar" aria-hidden="true"></span>
     </div>`
-  card.querySelector('h3').textContent = preview.title || 'Nouvelle création musicale'
   libraryGenerationList.prepend(card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
@@ -2092,59 +2087,9 @@ function openLibraryForGenerationPreview(preview) {
     if (pendingGenerationPreview !== preview || !card.isConnected) return
     card.classList.remove('is-preparing')
     card.classList.add('is-ready')
-    card.querySelector('.generation-preview-status-text').textContent = 'Ton aperçu est prêt. Tu peux lancer la vraie génération quand tu le souhaites.'
-    card.querySelector('.generation-preview-spinner').classList.add('is-complete')
-    card.querySelector('.generation-preview-actions').hidden = false
+    card.querySelector('.generation-preview-success').hidden = false
+    pendingGenerationPreview = null
   }, 10000)
-
-  card.querySelector('.generation-preview-confirm').addEventListener('click', () => {
-    if (pendingGenerationPreview !== preview) return
-    void confirmGenerationPreview(preview)
-  })
-  card.querySelector('.generation-preview-edit').addEventListener('click', () => {
-    window.clearTimeout(preview.timer)
-    pendingGenerationPreview = null
-    card.remove()
-    studioWorkspacePage.hidden = false
-    libraryWorkspacePage.hidden = true
-    workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#studio'))
-    window.history.replaceState(null, '', '#studio')
-  })
-}
-
-async function confirmGenerationPreview(preview) {
-  if (pendingGenerationPreview !== preview) return
-  const confirmButton = preview.card.querySelector('.generation-preview-confirm')
-  confirmButton.disabled = true
-  confirmButton.textContent = 'Lancement de la génération…'
-  try {
-    const result = await callAudinooApi('/api/generate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt: preview.prompt, style: preview.style, title: preview.title, customMode: preview.customMode })
-    })
-    window.clearTimeout(preview.timer)
-    pendingGenerationPreview = null
-    const generation = { taskId: result.taskId, title: preview.title || (preview.customMode ? '' : 'Sans titre'), prompt: preview.prompt, status: result.status, tracks: [] }
-    const card = upsertGenerationCard(generationPanel, generation)
-    addGenerationToLibrary(generation)
-    preview.card.remove()
-    studioPrompt.value = ''
-    advancedPrompt.value = ''
-    advancedStyle.value = ''
-    advancedTitle.value = ''
-    toast.textContent = 'C’est confirmé ! La vraie génération musicale est lancée.'
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 3500)
-    void pollGeneration(result.taskId, card)
-  } catch (error) {
-    const providerDetail = error.message === 'music-provider-rejected-request' && error.providerMessage ? ` Motif SunoAPI : ${error.providerMessage}` : ''
-    toast.textContent = `${generationErrorMessage(error.message)}${providerDetail} Détail exact : ${exactErrorDetails(error)}`
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 4500)
-    confirmButton.disabled = false
-    confirmButton.innerHTML = 'Réessayer la génération <span aria-hidden="true">→</span>'
-    if (error.message === 'no-free-credit') windowPricingOpen()
-  }
 }
 
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
