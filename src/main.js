@@ -1624,7 +1624,8 @@ function renderLibraryGeneration(generation) {
     const row = document.createElement('div')
     row.className = 'library-song-row'
     row.dataset.libraryTask = generation.taskId
-    const displayTrack = { ...track, imageUrl: track.imageUrl || track.coverUrl || track.cover_url || track.image_url || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
+    const rawCoverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+    const displayTrack = { ...track, imageUrl: rawCoverUrl || '/api/my-cover?taskId=' + encodeURIComponent(generation.taskId) + '&track=' + index }
     const wrapper = document.createElement('div')
     wrapper.className = 'library-song-player'
     renderGenerationTracks(wrapper, [displayTrack])
