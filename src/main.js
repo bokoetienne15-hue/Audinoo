@@ -1548,7 +1548,7 @@ libraryLoading.hidden = true
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
-libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-previous" type="button" aria-label="Chanson précédente" title="Chanson précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
+libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-previous" type="button" aria-label="Chanson précédente" title="Chanson précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
 const libraryMiniCover = libraryMiniPlayer.querySelector('.library-mini-cover')
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
@@ -1573,6 +1573,7 @@ function syncLibraryMiniPlayer() {
   libraryMiniDuration.textContent = formatAudioTime(duration)
   libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
   libraryMiniPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
+  if (typeof syncFullPlayer === 'function' && !libraryFullPlayer.hidden) syncFullPlayer()
 }
 function activateLibraryMiniPlayer(player, title) {
   activeLibraryAudio = player
@@ -1584,6 +1585,7 @@ function activateLibraryMiniPlayer(player, title) {
   if (cover?.dataset.palette) libraryMiniCover.dataset.palette = cover.dataset.palette
   libraryMiniPlayer.hidden = false
   syncLibraryMiniPlayer()
+  if (!libraryFullPlayer.hidden) openLibraryFullPlayer()
 }
 
 const generationStatusLabels = {
@@ -1764,6 +1766,61 @@ libraryMiniSeek.addEventListener('input', () => {
   if (!activeLibraryAudio || !Number.isFinite(activeLibraryAudio.duration)) return
   activeLibraryAudio.currentTime = Number(libraryMiniSeek.value) / 10
 })
+
+const libraryFullPlayer = document.createElement('section')
+libraryFullPlayer.className = 'library-full-player'
+libraryFullPlayer.hidden = true
+libraryFullPlayer.setAttribute('aria-label', 'Lecteur audio')
+libraryFullPlayer.innerHTML = '<button class="library-full-close" type="button" aria-label="Fermer le lecteur">✕</button><div class="library-full-content"><div class="library-full-cover library-mini-cover"><span>♫</span></div><div class="library-full-meta"><span class="library-mini-eyebrow"><i></i> AUDINOO PLAYER</span><h2 class="library-full-title">Sans titre</h2></div><div class="library-audio-visualizer" role="img" aria-label="Visualisation animée de la musique"></div><div class="library-full-controls"><span class="library-full-current">0:00</span><input class="library-full-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-full-duration">0:00</span></div><div class="library-full-actions"><button class="library-full-previous" type="button" aria-label="Chanson précédente"><svg viewBox="0 0 24 24"><path d="M19 5.8v12.4L9 12z" fill="currentColor"/><path d="M5 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button class="library-full-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-full-next" type="button" aria-label="Chanson suivante"><svg viewBox="0 0 24 24"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></div>'
+libraryWorkspacePage.append(libraryFullPlayer)
+const fullCover = libraryFullPlayer.querySelector('.library-full-cover')
+const fullTitle = libraryFullPlayer.querySelector('.library-full-title')
+const fullVisualizer = libraryFullPlayer.querySelector('.library-audio-visualizer')
+const fullSeek = libraryFullPlayer.querySelector('.library-full-seek')
+const fullCurrent = libraryFullPlayer.querySelector('.library-full-current')
+const fullDuration = libraryFullPlayer.querySelector('.library-full-duration')
+const fullPlay = libraryFullPlayer.querySelector('.library-full-play')
+Array.from({ length: 52 }, (_, index) => {
+  const bar = document.createElement('i')
+  bar.style.setProperty('--bar-index', String(index))
+  bar.style.setProperty('--bar-peak', (18 + ((index * 17) % 72)) + '%')
+  fullVisualizer.append(bar)
+})
+function syncFullPlayer() {
+  if (!activeLibraryAudio) return
+  const duration = Number.isFinite(activeLibraryAudio.duration) ? activeLibraryAudio.duration : 0
+  fullSeek.max = String(Math.max(1, Math.round(duration * 10)))
+  fullSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
+  fullCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
+  fullDuration.textContent = formatAudioTime(duration)
+  fullPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
+  fullPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
+  fullVisualizer.classList.toggle('is-playing', !activeLibraryAudio.paused)
+}
+function openLibraryFullPlayer() {
+  if (!activeLibraryAudio) return
+  fullTitle.textContent = libraryMiniTitle.textContent
+  fullCover.innerHTML = libraryMiniCover.innerHTML
+  fullCover.dataset.palette = libraryMiniCover.dataset.palette || ''
+  fullCover.classList.toggle('has-image', libraryMiniCover.classList.contains('has-image'))
+  libraryFullPlayer.hidden = false
+  syncFullPlayer()
+}
+libraryMiniPlayer.addEventListener('click', (event) => {
+  if (event.target.closest('button,input')) return
+  openLibraryFullPlayer()
+})
+libraryFullPlayer.querySelector('.library-full-close').addEventListener('click', () => { libraryFullPlayer.hidden = true })
+libraryFullPlayer.querySelector('.library-full-play').addEventListener('click', async () => {
+  if (!activeLibraryAudio) return
+  try { if (activeLibraryAudio.paused) await activeLibraryAudio.play(); else activeLibraryAudio.pause() } catch (error) { console.warn('[Audinoo full player]', error) }
+})
+libraryFullPlayer.querySelector('.library-full-previous').addEventListener('click', () => playLibraryTrackAtOffset(-1, 'previous'))
+libraryFullPlayer.querySelector('.library-full-next').addEventListener('click', () => playLibraryTrackAtOffset(1, 'next'))
+fullSeek.addEventListener('input', () => {
+  if (activeLibraryAudio && Number.isFinite(activeLibraryAudio.duration)) activeLibraryAudio.currentTime = Number(fullSeek.value) / 10
+})
+
 
 function renderLibraryGeneration(generation) {
   const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
