@@ -1548,8 +1548,9 @@ libraryLoading.hidden = true
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
 libraryMiniPlayer.hidden = true
-libraryMiniPlayer.innerHTML = '<button class="library-mini-play" type="button" aria-label="Lire la chanson"><span class="library-mini-play-icon">▶</span></button><button class="library-mini-next" type="button" aria-label="Passer à la chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7L5 5Z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="library-mini-details"><strong class="library-mini-title">Sans titre</strong><div class="library-mini-progress-row"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div></div>'
+libraryMiniPlayer.innerHTML = '<div class="library-mini-cover" aria-hidden="true"><span>♫</span></div><div class="library-mini-info"><span class="library-mini-eyebrow"><i></i> EN COURS DE LECTURE</span><strong class="library-mini-title">Sans titre</strong></div><div class="library-mini-actions"><button class="library-mini-play" type="button" aria-label="Lire la chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg></button><button class="library-mini-next" type="button" aria-label="Chanson suivante" title="Chanson suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.8v12.4L15 12z" fill="currentColor"/><path d="M19 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="library-mini-timeline"><span class="library-mini-current">0:00</span><input class="library-mini-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans la chanson"><span class="library-mini-duration">0:00</span></div>'
 libraryWorkspacePage.append(libraryMiniPlayer)
+const libraryMiniCover = libraryMiniPlayer.querySelector('.library-mini-cover')
 const libraryMiniPlay = libraryMiniPlayer.querySelector('.library-mini-play')
 const libraryMiniNext = libraryMiniPlayer.querySelector('.library-mini-next')
 const libraryMiniTitle = libraryMiniPlayer.querySelector('.library-mini-title')
@@ -1569,12 +1570,17 @@ function syncLibraryMiniPlayer() {
   libraryMiniSeek.value = String(Math.round((activeLibraryAudio.currentTime || 0) * 10))
   libraryMiniCurrent.textContent = formatAudioTime(activeLibraryAudio.currentTime)
   libraryMiniDuration.textContent = formatAudioTime(duration)
-  libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<span class="library-mini-play-icon">▶</span>' : '<span class="library-mini-pause-icon">Ⅱ</span>'
+  libraryMiniPlay.innerHTML = activeLibraryAudio.paused ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4L18 12z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
   libraryMiniPlay.setAttribute('aria-label', activeLibraryAudio.paused ? 'Lire la chanson' : 'Mettre en pause')
 }
 function activateLibraryMiniPlayer(player, title) {
   activeLibraryAudio = player
   libraryMiniTitle.textContent = title || 'Sans titre'
+  const cover = player.closest('.library-song-item')?.querySelector('.generation-track-cover')
+  const image = cover?.querySelector('img')
+  libraryMiniCover.innerHTML = image?.src ? '<img src="' + image.src.replace(/"/g, '&quot;') + '" alt="">' : '<span>♫</span>'
+  libraryMiniCover.classList.toggle('has-image', !!image?.src)
+  if (cover?.dataset.palette) libraryMiniCover.dataset.palette = cover.dataset.palette
   libraryMiniPlayer.hidden = false
   syncLibraryMiniPlayer()
 }
