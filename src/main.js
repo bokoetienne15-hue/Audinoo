@@ -550,7 +550,7 @@ const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<p class="workspace-kicker">TON ESPACE MUSICAL</p><h1>Ma bibliothèque</h1><p class="workspace-intro">Retrouve ici toutes tes créations musicales.</p><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque commence ici.</h2><p>Tous tes projets et tes créations seront enregistrés ici.</p><a class="workspace-library-create" href="#studio">Aller au studio de création <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><p class="workspace-kicker">AUDINOO STUDIO</p><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -1575,6 +1575,35 @@ function renderGenerationTracks(container, tracks) {
   })
 }
 
+function renderLibraryGeneration(generation) {
+  const existing = [...libraryGenerationList.querySelectorAll('[data-library-task]')].filter(node => node.dataset.libraryTask === generation.taskId)
+  existing.forEach(node => node.remove())
+  if (!generation.tracks?.length) {
+    const pending = createGenerationCard(generation)
+    pending.dataset.libraryTask = generation.taskId
+    pending.classList.add('library-pending-generation')
+    libraryGenerationList.prepend(pending)
+    return
+  }
+  generation.tracks.forEach((track, index) => {
+    if (!track?.audioUrl) return
+    const row = document.createElement('div')
+    row.className = 'library-song-row'
+    row.dataset.libraryTask = generation.taskId
+    const wrapper = document.createElement('div')
+    wrapper.className = 'library-song-player'
+    renderGenerationTracks(wrapper, [track])
+    const song = wrapper.firstElementChild
+    if (!song) return
+    song.classList.add('library-song-item')
+    const meta = document.createElement('span')
+    meta.className = 'library-song-variant'
+    meta.textContent = generation.title || track.title || 'Création Audinoo'
+    song.querySelector('.generation-track-content strong')?.insertAdjacentElement('afterend', meta)
+    row.append(song)
+    libraryGenerationList.append(row)
+  })
+}
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
   if (!card) {
@@ -1636,7 +1665,7 @@ async function callAudinooApi(path, options = {}) {
 function addGenerationToLibrary(generation) {
   const empty = libraryWorkspacePage.querySelector('.workspace-library-empty')
   empty.hidden = true
-  upsertGenerationCard(libraryGenerationList, generation)
+  renderLibraryGeneration(generation)
 }
 
 async function pollGeneration(taskId, card) {
@@ -1658,7 +1687,7 @@ async function pollGeneration(taskId, card) {
       const result = await callAudinooApi('/api/generation-status?taskId=' + encodeURIComponent(taskId))
       const generation = { taskId, status: result.status, tracks: result.tracks || [], failed: result.failed }
       upsertGenerationCard(generationPanel, generation)
-      upsertGenerationCard(libraryGenerationList, generation)
+      renderLibraryGeneration(generation)
       if (result.completed || result.failed) {
         if (percentNode) percentNode.textContent = result.completed ? '100%' : '—'
         if (bar) bar.style.width = result.completed ? '100%' : '0%'
@@ -1750,10 +1779,10 @@ async function loadUserLibrary() {
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
     result.generations.forEach((generation) => {
-      const card = createGenerationCard(generation)
-      libraryGenerationList.append(card)
+      renderLibraryGeneration(generation)
       if (generation.status === 'PENDING' || generation.status === 'TEXT_SUCCESS' || generation.status === 'FIRST_SUCCESS') {
-        void pollGeneration(generation.taskId, card)
+        const card = [...libraryGenerationList.querySelectorAll('.library-pending-generation')].find(item => item.dataset.libraryTask === generation.taskId)
+        if (card) void pollGeneration(generation.taskId, card)
       }
     })
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
