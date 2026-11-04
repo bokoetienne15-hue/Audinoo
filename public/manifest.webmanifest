@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "Audinoo — Création musicale IA",
+  "short_name": "Audinoo",
+  "description": "Crée tes chansons avec l'intelligence artificielle.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#070710",
+  "theme_color": "#070710",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
