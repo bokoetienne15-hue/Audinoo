@@ -1530,7 +1530,6 @@ function renderGenerationTracks(container, tracks) {
     const imageSource = track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
     if (imageSource && (/^https?:\/\//i.test(imageSource) || imageSource.startsWith('/api/'))) {
       const image = document.createElement('img')
-      image.src = imageSource
       image.alt = 'Pochette de ' + (track.title || 'la chanson')
       image.loading = 'eager'
       image.decoding = 'async'
@@ -1538,6 +1537,26 @@ function renderGenerationTracks(container, tracks) {
       image.addEventListener('error', () => { image.remove(); cover.classList.add('cover-unavailable'); cover.textContent = '♫' }, { once: true })
       image.addEventListener('load', () => cover.classList.add('cover-loaded'), { once: true })
       cover.append(image)
+      if (imageSource.startsWith('/api/')) {
+        // The private cover endpoint requires a Firebase Bearer token.
+        // An <img src> cannot attach Authorization, so fetch it and display a blob URL.
+        void (async () => {
+          try {
+            const token = await auth.currentUser?.getIdToken()
+            if (!token) throw new Error('authentication-required')
+            const coverResponse = await fetch(imageSource, { headers: { authorization: 'Bearer ' + token } })
+            if (!coverResponse.ok) throw new Error('cover-unavailable-' + coverResponse.status)
+            const blob = await coverResponse.blob()
+            if (!blob.type.startsWith('image/')) throw new Error('invalid-cover-content-type')
+            image.src = URL.createObjectURL(blob)
+          } catch (error) {
+            console.warn('[Audinoo cover]', error)
+            image.remove()
+            cover.classList.add('cover-unavailable')
+            cover.textContent = '♫'
+          }
+        })()
+      } else image.src = imageSource
     } else cover.textContent = '♫'
     const content = document.createElement('div'); content.className = 'generation-track-content'
     const name = document.createElement('strong'); name.textContent = track.title || 'Variante ' + (index + 1)
