@@ -1099,6 +1099,31 @@ function renderAdminGenerationsTable() {
   })
 }
 
+
+adminUserSearch.addEventListener('input',renderAdminUsersTable)
+adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
+adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
+
+adminCreditsSection.append(workspaceCreditPanel)
+
+const adminGrantCreditsPanel = document.createElement('section')
+adminGrantCreditsPanel.className = 'admin-panel admin-credit-control'
+adminGrantCreditsPanel.innerHTML = '<div class="admin-panel-heading"><div><p>GESTE COMMERCIAL</p><h2>Offrir des crédits à un compte</h2></div><span class="admin-credit-state">ADMIN</span></div><p class="admin-panel-status">Recherche un compte par son adresse e-mail ou son identifiant, puis ajoute des crédits utilisables pour créer des chansons. Ces crédits sont ajoutés au solde payant et ne remplacent pas les crédits gratuits.</p><form id="admin-grant-credits-form" class="admin-notification-form"><label for="admin-grant-credits-account">E-mail ou identifiant du compte</label><input id="admin-grant-credits-account" name="account" type="text" list="admin-grant-credits-users" autocomplete="off" maxlength="254" placeholder="exemple@email.com ou @pseudo_nom" required /><datalist id="admin-grant-credits-users"></datalist><label for="admin-grant-credits-amount">Nombre de crédits à ajouter</label><input id="admin-grant-credits-amount" name="amount" type="number" min="1" max="1000" step="1" value="1" required /><button class="admin-publish-button" type="submit">Ajouter les crédits <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-grant-credits-status" role="status" aria-live="polite"></p></form>'
+adminCreditsSection.append(adminGrantCreditsPanel)
+const adminGrantCreditsForm = adminGrantCreditsPanel.querySelector('#admin-grant-credits-form')
+const adminGrantCreditsInput = adminGrantCreditsForm.elements.account
+const adminGrantCreditsAmount = adminGrantCreditsForm.elements.amount
+const adminGrantCreditsStatus = adminGrantCreditsPanel.querySelector('#admin-grant-credits-status')
+function refreshAdminGrantCreditOptions() {
+  const list = adminGrantCreditsPanel.querySelector('#admin-grant-credits-users')
+  replaceNodeChildren(list, ...latestAdminUsers.flatMap((profile) => [profile.email, profile.username].filter(Boolean).map((value) => {
+    const option = document.createElement('option')
+    option.value = value
+    option.label = profile.displayName || profile.username || profile.email || profile.uid
+    return option
+  })))
+}
+
 adminGrantCreditsForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const user = auth.currentUser
@@ -1138,30 +1163,6 @@ adminGrantCreditsForm.addEventListener('submit', async (event) => {
     submit.disabled = false
   }
 })
-
-adminUserSearch.addEventListener('input',renderAdminUsersTable)
-adminGenerationSearch.addEventListener('input',renderAdminGenerationsTable);
-adminGenerationsSection.querySelector('#admin-refresh-generations').addEventListener('click',loadAdminGenerations)
-
-adminCreditsSection.append(workspaceCreditPanel)
-
-const adminGrantCreditsPanel = document.createElement('section')
-adminGrantCreditsPanel.className = 'admin-panel admin-credit-control'
-adminGrantCreditsPanel.innerHTML = '<div class="admin-panel-heading"><div><p>GESTE COMMERCIAL</p><h2>Offrir des crédits à un compte</h2></div><span class="admin-credit-state">ADMIN</span></div><p class="admin-panel-status">Recherche un compte par son adresse e-mail ou son identifiant, puis ajoute des crédits utilisables pour créer des chansons. Ces crédits sont ajoutés au solde payant et ne remplacent pas les crédits gratuits.</p><form id="admin-grant-credits-form" class="admin-notification-form"><label for="admin-grant-credits-account">E-mail ou identifiant du compte</label><input id="admin-grant-credits-account" name="account" type="text" list="admin-grant-credits-users" autocomplete="off" maxlength="254" placeholder="exemple@email.com ou @pseudo_nom" required /><datalist id="admin-grant-credits-users"></datalist><label for="admin-grant-credits-amount">Nombre de crédits à ajouter</label><input id="admin-grant-credits-amount" name="amount" type="number" min="1" max="1000" step="1" value="1" required /><button class="admin-publish-button" type="submit">Ajouter les crédits <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-grant-credits-status" role="status" aria-live="polite"></p></form>'
-adminCreditsSection.append(adminGrantCreditsPanel)
-const adminGrantCreditsForm = adminGrantCreditsPanel.querySelector('#admin-grant-credits-form')
-const adminGrantCreditsInput = adminGrantCreditsForm.elements.account
-const adminGrantCreditsAmount = adminGrantCreditsForm.elements.amount
-const adminGrantCreditsStatus = adminGrantCreditsPanel.querySelector('#admin-grant-credits-status')
-function refreshAdminGrantCreditOptions() {
-  const list = adminGrantCreditsPanel.querySelector('#admin-grant-credits-users')
-  replaceNodeChildren(list, ...latestAdminUsers.flatMap((profile) => [profile.email, profile.username].filter(Boolean).map((value) => {
-    const option = document.createElement('option')
-    option.value = value
-    option.label = profile.displayName || profile.username || profile.email || profile.uid
-    return option
-  })))
-}
 
 adminCommunicationSection.append(adminDashboardGrid)
 adminExportsSection.append(adminExportGroup)
