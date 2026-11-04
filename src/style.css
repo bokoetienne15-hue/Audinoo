@@ -1068,3 +1068,5 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .workspace-library-page .workspace-library-empty{margin-top:20px}
 .workspace-library-page .workspace-library-empty[hidden]{display:none}
 @media(max-width:760px){.workspace-library-page{padding:30px 0 60px}.library-page-heading{margin-bottom:20px}.library-song-item{grid-template-columns:62px minmax(0,1fr);gap:10px;padding:9px}.library-song-item .generation-track-cover{width:62px;height:62px}.library-song-item .generation-track-content{column-gap:6px}.library-song-item .generation-action{width:32px;height:32px}}
+
+.library-song-item .generation-action svg{width:18px;height:18px;display:block}.library-song-item .generation-favorite.is-favorite svg path{fill:currentColor;stroke:currentColor}.library-song-item .generation-play svg{width:20px;height:20px}
