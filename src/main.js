@@ -2082,27 +2082,62 @@ function openLibraryForGenerationPreview(preview) {
   card.className = 'library-song-item library-generation-preview is-preparing'
   card.dataset.previewId = preview.id
   card.setAttribute('aria-label', 'Nouvelle chanson en préparation')
+
+  const coverColumn = document.createElement('div')
+  coverColumn.className = 'generation-preview-cover-column'
   const cover = document.createElement('div')
   cover.className = 'generation-track-cover generation-preview-cover'
   cover.setAttribute('aria-hidden', 'true')
+  const progress = document.createElement('div')
+  progress.className = 'generation-preview-progress'
+  progress.setAttribute('role', 'progressbar')
+  progress.setAttribute('aria-label', 'Progression de la simulation')
+  progress.setAttribute('aria-valuemin', '0')
+  progress.setAttribute('aria-valuemax', '100')
+  progress.setAttribute('aria-valuenow', '0')
+  progress.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="generation-preview-progress-track" cx="18" cy="18" r="15.5"></circle><circle class="generation-preview-progress-value" cx="18" cy="18" r="15.5"></circle></svg><span class="generation-preview-progress-label">0%</span>'
+  coverColumn.append(cover, progress)
+
   const content = document.createElement('div')
   content.className = 'generation-track-content generation-preview-content'
-  card.append(cover, content)
+  const slimTile = document.createElement('div')
+  slimTile.className = 'generation-preview-slim-tile'
+  slimTile.setAttribute('aria-hidden', 'true')
+  content.append(slimTile)
+  card.append(coverColumn, content)
   todayGroup.querySelector('.library-generation-date').insertAdjacentElement('afterend', card)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
 
   preview.card = card
+  const duration = 10000
+  const startedAt = Date.now()
+  const updateProgress = () => {
+    if (pendingGenerationPreview !== preview || !card.isConnected) return
+    const elapsed = Math.min(1, (Date.now() - startedAt) / duration)
+    // Progression rapide au départ, puis de plus en plus lente. Elle ne termine volontairement pas à 100 %.
+    const percent = Math.min(60, Math.floor(60 * (1 - Math.exp(-4 * elapsed)) / (1 - Math.exp(-4))))
+    const circle = progress.querySelector('.generation-preview-progress-value')
+    const circumference = 2 * Math.PI * 15.5
+    circle.style.strokeDasharray = String(circumference)
+    circle.style.strokeDashoffset = String(circumference * (1 - percent / 100))
+    progress.querySelector('.generation-preview-progress-label').textContent = percent + '%'
+    progress.setAttribute('aria-valuenow', String(percent))
+  }
+  updateProgress()
+  preview.progressTimer = window.setInterval(updateProgress, 100)
   preview.timer = window.setTimeout(() => {
     if (pendingGenerationPreview !== preview || !card.isConnected) return
+    window.clearInterval(preview.progressTimer)
+    updateProgress()
     card.classList.remove('is-preparing')
     card.classList.add('is-ready')
     toast.textContent = 'Votre chanson est prête !'
     toast.classList.add('show', 'is-success')
     window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
     pendingGenerationPreview = null
-  }, 10000)
+  }, duration)
 }
 
 async function submitGeneration({ prompt, style = '', title = '', customMode = false, submitButton }) {
@@ -2123,6 +2158,7 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
 
   if (pendingGenerationPreview) {
     window.clearTimeout(pendingGenerationPreview.timer)
+    window.clearInterval(pendingGenerationPreview.progressTimer)
     pendingGenerationPreview.card?.remove()
     pendingGenerationPreview = null
   }
