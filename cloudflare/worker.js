@@ -122,6 +122,73 @@ async function createCreditPayment(request, env, db, user) {
   if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
 }
+async function createTrackPurchase(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
+  const body = await request.json().catch(() => ({}))
+  const taskId = String(body.taskId || '')
+  const trackIndex = Number(body.trackIndex)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(trackIndex) || trackIndex < 0) return response(400, { error: 'invalid-track' })
+  const generationPath = 'users/' + user.uid + '/generations/' + taskId
+  const generation = await db.get(generationPath)
+  const track = generation.data?.tracks?.[trackIndex]
+  if (!generation.exists || !track) return response(404, { error: 'track-not-found' })
+  if (track.downloadPurchased === true) return response(200, { alreadyPurchased: true })
+  if (!track.r2Key && !/^https?:\/\//i.test(track.audioUrl || '')) return response(409, { error: 'audio-not-ready' })
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) return response(404, { error: 'profile-not-found' })
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
+  if (!email) return response(400, { error: 'customer-email-required' })
+  const origin = new URL(request.url).origin
+  const transactionBody = {
+    description: 'Audinoo — téléchargement MP3 : ' + String(track.title || generation.data.title || 'Chanson').slice(0, 80),
+    amount: CREDIT_PRICE_XOF,
+    currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=track',
+    customer: { email }
+  }
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify(transactionBody) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: CREDIT_PRICE_XOF, currency: 'XOF',
+    kind: 'track_download', taskId, trackIndex, status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const token = fedapayObject(tokenResponse, 'v1/token')
+  const checkoutUrl = token?.url || token?.token?.url
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists || order.data.kind !== 'track_download' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) return { status: 'approved', purchased: true, taskId: order.data.taskId, trackIndex: order.data.trackIndex }
+  const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
+  const transaction = fedapayObject(responseBody, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (status !== 'approved') return { status: status || 'pending', purchased: false }
+  const amount = Number(transaction.amount)
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (amount !== Number(order.data.amount) || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  const generationRef = db.doc('users/' + order.data.uid + '/generations/' + order.data.taskId)
+  await db.runTransaction(async tx => {
+    const [currentOrder, generation] = await Promise.all([tx.get(orderRef), tx.get(generationRef)])
+    if (!currentOrder.exists || !generation.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    const tracks = Array.isArray(generation.data().tracks) ? generation.data().tracks : []
+    const index = Number(currentOrder.data().trackIndex)
+    if (!tracks[index]) throw new Error('track-not-found')
+    tracks[index] = { ...tracks[index], downloadPurchased: true, downloadPurchasedAt: new Date().toISOString() }
+    tx.update(generationRef, { tracks })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP })
+  })
+  return { status: 'approved', purchased: true, taskId: order.data.taskId, trackIndex: order.data.trackIndex }
+}
 async function confirmCreditPayment(env, db, transactionId) {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
   if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
@@ -156,7 +223,9 @@ async function fedapayWebhook(request, env, db) {
   const transactionId = String(payload?.entity?.id || payload?.data?.entity?.id || payload?.data?.id || payload?.entity?.id || '')
   if (event !== 'transaction.approved' || !/^\d+$/.test(transactionId)) return response(200, { received: true, ignored: true })
   try {
-    await confirmCreditPayment(env, db, transactionId)
+    const order = await db.get('fedapayOrders/' + transactionId)
+    if (order.exists && order.data.kind === 'track_download') await confirmTrackPurchase(env, db, transactionId)
+    else await confirmCreditPayment(env, db, transactionId)
     return response(200, { received: true })
   } catch (error) {
     console.error('[Audinoo FedaPay webhook]', error)
@@ -250,10 +319,11 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
   const snap = await db.get('users/' + uid + '/generations/' + taskId)
   const track = snap.data?.tracks?.[index]
   if (!snap.exists || (!admin && snap.data.uid !== user.uid)) return response(404, { error: 'media-not-found' })
+  if (kind === 'download' && track?.downloadPurchased !== true) return response(403, { error: 'download-purchase-required' })
   const key = kind === 'cover' ? track?.coverKey : track?.r2Key
   if (key) {
     const object = await env.AUDIO_BUCKET?.get(key)
-    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, max-age=86400', ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
+    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, no-store', ...(kind === 'download' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'chanson').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp3"' } : {}), ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
   }
   // Legacy/unarchived tracks can still be listened to by an authenticated administrator.
   // Publishing will archive this provider URL into R2 before making it public.
@@ -463,6 +533,11 @@ export default {
       if (!user) return response(401,{error:'authentication-required'})
       const db = new FirestoreRest(env)
       if (url.pathname === '/api/credits/purchase') return await createCreditPayment(request,env,db,user)
+      if (url.pathname === '/api/tracks/purchase') return await createTrackPurchase(request,env,db,user)
+      if (url.pathname === '/api/tracks/confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        return response(200, await confirmTrackPurchase(env,db,url.searchParams.get('transaction_id') || '',user.uid))
+      }
       if (url.pathname === '/api/credits/confirm') {
         if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
         const transactionId = url.searchParams.get('transaction_id') || ''
@@ -474,6 +549,7 @@ export default {
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,env,db,user)
       if (url.pathname === '/api/my-audio') return await privateMedia(request,env,db,user,'audio')
+      if (url.pathname === '/api/my-download') return await privateMedia(request,env,db,user,'download')
       if (url.pathname === '/api/my-cover') return await privateMedia(request,env,db,user,'cover')
       if (url.pathname === '/api/admin-audio') return await privateMedia(request,env,db,user,'audio',true)
       if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
