@@ -2093,7 +2093,7 @@ function openLibraryForGenerationPreview(preview) {
   progress.setAttribute('aria-valuemin', '0')
   progress.setAttribute('aria-valuemax', '100')
   progress.setAttribute('aria-valuenow', '0')
-  progress.innerHTML = '<span class="generation-preview-progress-label">0%</span><span class="generation-preview-progress-track"><span class="generation-preview-progress-value"></span></span>'
+  progress.innerHTML = '<span class="generation-preview-progress-label">0%</span>'
   cover.append(progress)
   const content = document.createElement('div')
   content.className = 'generation-track-content generation-preview-content'
@@ -2115,7 +2115,6 @@ function openLibraryForGenerationPreview(preview) {
     const elapsed = Math.min(1, (Date.now() - startedAt) / duration)
     // Progression rapide au départ, puis de plus en plus lente. Elle ne termine volontairement pas à 100 %.
     const percent = Math.min(60, Math.floor(60 * (1 - Math.exp(-4 * elapsed)) / (1 - Math.exp(-4))))
-    progress.querySelector('.generation-preview-progress-value').style.width = percent + '%'
     progress.querySelector('.generation-preview-progress-label').textContent = percent + '%'
     progress.setAttribute('aria-valuenow', String(percent))
   }
