@@ -1317,3 +1317,47 @@ body:has(.admin-workspace-shell) { overflow-y:auto; }
 .library-mini-seek::-moz-range-track{height:4px;border-radius:99px;background:transparent}
 .library-mini-seek::-moz-range-progress{height:4px;border-radius:99px;background:linear-gradient(90deg,#ff4d6d,#ff9f43,#ffe45e,#45d483,#27c5db,#5578ff,#b45cff)}
 .toast{bottom:clamp(84px,12vh,120px)!important;z-index:10050!important;max-width:min(92vw,520px);text-align:center}
+
+
+/* Barre violette : piste et curseur alignés sur le même axe horizontal. */
+.library-mini-seek{
+  --track-progress:0%;
+  appearance:none!important;-webkit-appearance:none!important;
+  display:block!important;
+  width:100%!important;
+  height:16px!important;
+  min-height:16px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:linear-gradient(to right,#a855f7 0%,#a855f7 var(--track-progress),rgba(255,255,255,.2) var(--track-progress),rgba(255,255,255,.2) 100%) center/100% 4px no-repeat!important;
+  accent-color:#a855f7!important;
+  vertical-align:middle!important;
+  cursor:pointer;
+}
+.library-mini-seek::-webkit-slider-runnable-track{
+  height:4px!important;
+  border:0!important;
+  border-radius:99px!important;
+  background:transparent!important;
+}
+.library-mini-seek::-webkit-slider-thumb{
+  appearance:none!important;-webkit-appearance:none!important;
+  width:12px!important;height:12px!important;
+  margin-top:-4px!important;
+  border:2px solid #fff!important;
+  border-radius:50%!important;
+  background:#a855f7!important;
+  box-shadow:0 0 0 2px rgba(168,85,247,.22),0 0 9px rgba(168,85,247,.5)!important;
+}
+.library-mini-seek::-moz-range-track{
+  height:4px!important;border:0!important;border-radius:99px!important;background:rgba(255,255,255,.2)!important;
+}
+.library-mini-seek::-moz-range-progress{
+  height:4px!important;border-radius:99px!important;background:#a855f7!important;
+}
+.library-mini-seek::-moz-range-thumb{
+  width:9px!important;height:9px!important;border:2px solid #fff!important;border-radius:50%!important;background:#a855f7!important;
+  box-shadow:0 0 0 2px rgba(168,85,247,.22),0 0 9px rgba(168,85,247,.5)!important;
+}
