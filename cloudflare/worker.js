@@ -332,8 +332,11 @@ async function publishTrack(request, env, db, user) {
   return response(200, { published: true, id })
 }
 async function publicTracks(request, db) {
-  const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], where: { fieldFilter: { field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } } }, orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 40 })
-  return response(200, { tracks: (rows || []).filter(x => x.document).map(x => { const d = fromFields(x.document.fields || {}); return { id: d.id, title: d.title, imageUrl: d.imageUrl || '', audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) } }) })
+  // Sort on the single indexed timestamp field, then filter published tracks in code.
+  // This avoids requiring a composite Firestore index for published + publishedAt.
+  const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
+  const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true).slice(0, 40)
+  return response(200, { tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) })
 }
 async function publicAudio(request, env, db) {
   const id = new URL(request.url).searchParams.get('id')
