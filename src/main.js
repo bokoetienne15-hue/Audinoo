@@ -1372,8 +1372,26 @@ async function loadAdminAudioGenerations(silent = false) {
       const card = document.createElement('article')
       card.className = 'admin-panel admin-audio-generation-card'
       const title = document.createElement('strong'); title.textContent = track.title || generation.title || 'Création Audinoo'
-      const meta = document.createElement('small'); meta.textContent = 'UID : ' + generation.uid + ' · ID : ' + generation.taskId + ' · ' + adminDateLabel(generation.createdAt)
-      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = track.audioUrl
+      const owner = latestAdminUsers.find(user => user.uid === generation.uid)
+      const meta = document.createElement('small'); meta.textContent = (owner?.displayName || owner?.username || owner?.email || generation.uid) + ' · ' + adminDateLabel(generation.createdAt) + ' · ' + (track.archived ? 'Archive R2' : 'Source audio')
+      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'
+      audio.addEventListener('play', async () => {
+        if (audio.dataset.loaded === 'true' || audio.dataset.loading === 'true') return
+        audio.dataset.loading = 'true'
+        audio.pause()
+        try {
+          const token = await auth.currentUser?.getIdToken()
+          if (!token) throw new Error('admin-session-required')
+          const response = await fetch(track.audioUrl, { headers: { authorization: 'Bearer ' + token } })
+          if (!response.ok) throw new Error('audio-http-' + response.status)
+          audio.src = URL.createObjectURL(await response.blob())
+          audio.dataset.loaded = 'true'
+          await audio.play()
+        } catch (error) {
+          status.textContent = 'Lecture impossible : ' + error.message
+          console.error('[Audinoo admin audio]', error)
+        } finally { audio.dataset.loading = 'false' }
+      })
       const publish = document.createElement('button'); publish.type = 'button'; publish.className = 'admin-publish-button'; publish.textContent = 'Publier sur l’accueil'
       publish.addEventListener('click', async () => {
         publish.disabled = true
@@ -1384,7 +1402,7 @@ async function loadAdminAudioGenerations(silent = false) {
       })
       card.append(title, meta, audio, publish); container.append(card)
     }
-    status.textContent = count ? count + ' variante(s) archivée(s).' : 'Aucune variante archivée pour le moment.'
+    status.textContent = count ? count + ' variante(s) disponible(s) à écouter et examiner.' : 'Aucune création trouvée pour cette date.'
   } catch (error) {
     if (!container.childElementCount) status.textContent = 'Chargement impossible : ' + error.message
     else console.warn('[Audinoo admin] Actualisation des archives impossible', error)
