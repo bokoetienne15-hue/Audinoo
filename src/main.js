@@ -1462,8 +1462,8 @@ function generationErrorMessage(errorCode) {
   const messages = {
     'no-free-credit': 'Ton crédit gratuit a déjà été utilisé ou l’offre est désactivée. Le paiement n’est pas encore disponible.',
     'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
-    'music-provider-not-configured': 'Le service musical n’est pas encore configuré dans Netlify.',
-    'backend-not-configured': 'Le backend Firebase n’est pas encore configuré dans Netlify.',
+    'music-provider-not-configured': 'Le service musical n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret SUNOAPI_KEY dans les paramètres du Worker audinoo-test.',
+    'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
     'advanced-fields-required': 'Ajoute un titre et une direction musicale en mode avancé.',
