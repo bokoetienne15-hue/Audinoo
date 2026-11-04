@@ -59,7 +59,7 @@ function tracksIn(value, output = [], depth = 0) {
     const track = {
       ...(existing >= 0 ? output[existing] : {}),
       ...(id ? { id } : {}),
-      title: String(value.title || value.song_title || value.songTitle || (existing >= 0 ? output[existing].title : 'Ta création Audinoo')),
+      title: String(value.title || value.song_title || value.songTitle || (existing >= 0 ? output[existing].title : '')),
       ...(audioCandidate ? { audioUrl: audioCandidate } : {}),
       ...(imageCandidate ? { imageUrl: imageCandidate, sourceImageUrl: imageCandidate } : {}),
       duration: Number.isFinite(Number(value.duration)) ? Number(value.duration) : (existing >= 0 ? output[existing].duration : null)
@@ -174,7 +174,7 @@ async function generate(request, env, db, user) {
   const title = typeof body.title === 'string' ? body.title.trim() : ''
   if (prompt.length < 10) return response(400, { error: 'prompt-too-short' })
   if (customMode && (prompt.length > 5000 || style.length > 1000 || title.length > 80)) return response(400, { error: 'prompt-too-long' })
-  if (customMode && (!style || !title)) return response(400, { error: 'advanced-fields-required' })
+  if (customMode && !style) return response(400, { error: 'advanced-fields-required' })
   if (!customMode && prompt.length > 400) return response(400, { error: 'prompt-too-long' })
   const profile = 'users/' + user.uid, lock = 'generationLocks/' + user.uid, requestId = crypto.randomUUID()
   let campaign = null
@@ -195,7 +195,7 @@ async function generate(request, env, db, user) {
     if (mapped) return response(mapped[0], { error: mapped[1] })
     throw error
   }
-  const provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, title } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
+  const provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, ...(title ? { title } : {}) } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
   const result = await provider.json().catch(() => ({}))
   if (!provider.ok || result.code !== 200 || !result.data?.taskId) {
     await db.runTransaction(async tx => { const [p,l] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock))]); if (l.exists && l.data().requestId === requestId) tx.delete(db.doc(lock)); if (p.exists && p.data().freeCreditCampaignId === campaign) { /* welcome credit remains unused */ } })
@@ -378,7 +378,7 @@ async function library(request, env, db, user) {
   const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || 'Ta création Audinoo', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   return response(200, { generations })
 }
