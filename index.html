@@ -7,6 +7,10 @@
     <link rel="canonical" href="https://audinoo.com/" />
     <link rel="alternate" type="text/plain" href="https://audinoo.com/llms.txt" title="Informations publiques pour les assistants IA" />
     <meta name="theme-color" content="#070710" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="author" content="ETIENNE BOKO — fondateur d’Audinoo, entrepreneur technologique et développeur Full Stack" />
     <meta name="description" content="Audinoo est une plateforme africaine de création musicale par intelligence artificielle. Imagine une ambiance, une émotion ou une scène : crée une musique originale en quelques secondes." />
@@ -300,6 +304,13 @@
         window.addEventListener('error', (event) => reportClientError(event.error || event.message, event.filename ? `${event.filename}:${event.lineno || 0}:${event.colno || 0}` : ''))
         window.addEventListener('unhandledrejection', (event) => reportClientError(event.reason))
       })()
+    </script>
+    <script>
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('[Audinoo PWA]', error))
+        }, { once: true })
+      }
     </script>
     <script type="module" src="/src/main.js" onerror="document.documentElement.classList.remove('js')"></script>
   </body>
