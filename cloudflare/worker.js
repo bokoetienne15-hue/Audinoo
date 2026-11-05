@@ -174,6 +174,10 @@ async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
   const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
   const transaction = fedapayObject(responseBody, 'v1/transaction')
   const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, purchased: false }
+  }
   if (status !== 'approved') return { status: status || 'pending', purchased: false }
   const amount = Number(transaction.amount)
   const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
@@ -205,6 +209,10 @@ async function confirmCreditPayment(env, db, transactionId) {
   const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
   const transaction = fedapayObject(responseBody, 'v1/transaction')
   const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, credited: false }
+  }
   if (status !== 'approved') return { status: status || 'pending', credited: false }
   const amount = Number(transaction.amount)
   const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()

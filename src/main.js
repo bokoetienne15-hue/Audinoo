@@ -2384,16 +2384,54 @@ if (paymentReturnType === 'credits') {
   const spinner = verificationScreen.querySelector('.payment-verification-spinner')
   const reference = verificationScreen.querySelector('.payment-verification-reference')
   const returnButton = verificationScreen.querySelector('.payment-verification-return')
+  let paymentFailed = false
+  let redirectTimer = null
+  const returnToPricing = () => {
+    if (redirectTimer) window.clearTimeout(redirectTimer)
+    verificationScreen.remove()
+    if (auth.currentUser) {
+      openWorkspace({ uid: auth.currentUser.uid, username: workspaceUsername.textContent || '@createur_audinoo' })
+      workspacePricingNav.click()
+    } else {
+      window.history.replaceState(null, '', window.location.pathname + '#pricing')
+      window.location.hash = '#pricing'
+    }
+  }
+  const showPaymentFailure = (status) => {
+    paymentFailed = true
+    spinner.hidden = true
+    verificationScreen.classList.remove('is-pending')
+    verificationScreen.classList.add('is-error')
+    verificationScreen.querySelector('h1').textContent = 'Paiement échoué'
+    if (status === 'canceled' || status === 'cancelled') {
+      message.textContent = 'Tu as annulé le paiement dans le menu USSD. Aucun crédit n’a été ajouté. Retour aux tarifs…'
+    } else if (status === 'expired') {
+      message.textContent = 'La demande de paiement a expiré. Aucun crédit n’a été ajouté. Retour aux tarifs…'
+    } else {
+      message.textContent = 'FedaPay a refusé ou échoué le paiement. Aucun crédit n’a été ajouté. Retour aux tarifs…'
+    }
+    returnButton.textContent = 'Retourner aux tarifs maintenant'
+    returnButton.hidden = false
+    redirectTimer = window.setTimeout(returnToPricing, 3500)
+  }
   if (returnedPaymentId) reference.textContent = 'Référence : ' + returnedPaymentId
   else {
     spinner.hidden = true
-    message.textContent = 'La référence de transaction est absente. Aucun crédit ne sera ajouté sans vérification.'
+    verificationScreen.classList.add('is-error')
+    verificationScreen.querySelector('h1').textContent = 'Paiement non confirmé'
+    message.textContent = 'La référence de transaction est absente. Aucun crédit ne sera ajouté. Retour aux tarifs…'
+    paymentFailed = true
+    returnButton.textContent = 'Retourner aux tarifs maintenant'
     returnButton.hidden = false
+    redirectTimer = window.setTimeout(returnToPricing, 3500)
   }
   returnButton.addEventListener('click', () => {
-    verificationScreen.remove()
-    window.history.replaceState(null, '', window.location.pathname + '#studio')
-    if (auth.currentUser) openWorkspace({ uid: auth.currentUser.uid, username: workspaceUsername.textContent || '@createur_audinoo' })
+    if (paymentFailed) returnToPricing()
+    else {
+      verificationScreen.remove()
+      window.history.replaceState(null, '', window.location.pathname + '#studio')
+      if (auth.currentUser) openWorkspace({ uid: auth.currentUser.uid, username: workspaceUsername.textContent || '@createur_audinoo' })
+    }
   })
   if (returnedPaymentId) {
     void (async () => {
@@ -2403,9 +2441,12 @@ if (paymentReturnType === 'credits') {
         let result = null
         for (let attempt = 0; attempt < 30; attempt++) {
           result = await callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
-          if (result.credited) break
-          message.textContent = 'Paiement reçu. Nous attendons la confirmation définitive de FedaPay…'
-          await new Promise(resolve => window.setTimeout(resolve, 2000))
+          if (result.credited || result.failed) break
+          if (attempt < 29) await new Promise(resolve => window.setTimeout(resolve, 2000))
+        }
+        if (result?.failed) {
+          showPaymentFailure(result.status)
+          return
         }
         spinner.hidden = true
         if (result?.credited) {
