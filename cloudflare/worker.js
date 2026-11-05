@@ -80,6 +80,10 @@ function fedapayBase(env) {
 function fedapayObject(body, key) {
   return body?.[key] || body?.data?.[key] || body?.transaction || body?.token || body?.data || body
 }
+function fedapayCheckoutUrl(body) {
+  const payload = body?.['v1/token'] || body?.data?.['v1/token'] || body?.data || body
+  return payload?.url || payload?.token?.url || ''
+}
 async function fedapayRequest(env, path, options = {}) {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
   const result = await fetch(fedapayBase(env) + path, {
@@ -118,8 +122,7 @@ async function createCreditPayment(request, env, db, user) {
     credits: CREDIT_QUANTITY, status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
   })
   const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
-  const token = fedapayObject(tokenResponse, 'v1/token')
-  const checkoutUrl = token?.url || token?.token?.url
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
   if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
 }
@@ -157,8 +160,7 @@ async function createTrackPurchase(request, env, db, user) {
     kind: 'track_download', taskId, trackIndex, status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
   })
   const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
-  const token = fedapayObject(tokenResponse, 'v1/token')
-  const checkoutUrl = token?.url || token?.token?.url
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
   if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
 }

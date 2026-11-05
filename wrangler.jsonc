@@ -3,6 +3,9 @@
   "name": "audinoo-test",
   "main": "cloudflare/worker.js",
   "compatibility_date": "2026-11-03",
+  "vars": {
+    "FEDAPAY_ENVIRONMENT": "sandbox"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
