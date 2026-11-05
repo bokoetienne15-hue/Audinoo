@@ -919,6 +919,9 @@ body.workspace-menu-locked { overflow: hidden !important; overscroll-behavior: n
 .admin-mobile-menu-toggle { display:none; }
 .admin-section-nav { min-width:0; }
 .admin-section-link { overflow-wrap:anywhere; }
+.admin-section-link[data-admin-section="danger"] { color:#ff9caf; }
+.admin-danger-section > .admin-section-heading h2 { color:#ff9caf; }
+.admin-danger-section #admin-delete-user-button:not(:disabled), .admin-danger-section #admin-reset-visitors-button:not(:disabled) { border-color:rgba(255,117,143,.38); color:#ffc1cb; background:rgba(225,67,98,.14); }
 .admin-data-table-wrap { max-width:100%; -webkit-overflow-scrolling:touch; }
 .admin-chart-panel, .admin-stat-card, .admin-panel { min-width:0; }
 .admin-section-view input, .admin-section-view select, .admin-section-view textarea { max-width:100%; }

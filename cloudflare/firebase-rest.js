@@ -66,14 +66,15 @@ function docPath(path) { return `projects/${FIREBASE_PROJECT_ID}/databases/(defa
 function resourceName(path) { return docPath(path) }
 
 export class FirestoreRest {
-  constructor(env) { this.env = env; this.token = null; this.tokenExpiry = 0 }
-  async accessToken() {
-    if (this.token && this.tokenExpiry > Date.now() + 60000) return this.token
+  constructor(env) { this.env = env; this.tokens = new Map() }
+  async accessToken(scope = 'https://www.googleapis.com/auth/datastore') {
+    const cached = this.tokens.get(scope)
+    if (cached && cached.expiry > Date.now() + 60000) return cached.value
     const account = JSON.parse(this.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}')
     if (!account.client_email || !account.private_key) throw new Error('firebase-admin-not-configured')
     const now = Math.floor(Date.now() / 1000)
     const head = encode({ alg: 'RS256', typ: 'JWT' })
-    const body = encode({ iss: account.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: account.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })
+    const body = encode({ iss: account.client_email, scope, aud: account.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })
     const keyData = account.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '')
     const binary = Uint8Array.from(atob(keyData), c => c.charCodeAt(0))
     const key = await crypto.subtle.importKey('pkcs8', binary, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
@@ -83,9 +84,8 @@ export class FirestoreRest {
     const response = await fetch(account.token_uri || 'https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }) })
     const result = await response.json()
     if (!response.ok || !result.access_token) throw new Error('firebase-admin-not-configured')
-    this.token = result.access_token
-    this.tokenExpiry = Date.now() + Number(result.expires_in || 3600) * 1000
-    return this.token
+    this.tokens.set(scope, { value: result.access_token, expiry: Date.now() + Number(result.expires_in || 3600) * 1000 })
+    return result.access_token
   }
   async request(path, init = {}) {
     const response = await fetch('https://firestore.googleapis.com/v1/' + path, { ...init, headers: { authorization: 'Bearer ' + await this.accessToken(), 'content-type': 'application/json', ...(init.headers || {}) } })
@@ -109,8 +109,19 @@ export class FirestoreRest {
   async rollback(transaction) {
     try { await this.request(docPath('').replace(/documents\/$/, 'documents:rollback'), { method: 'POST', body: JSON.stringify({ transaction }) }) } catch {}
   }
-  async runQuery(structuredQuery) {
-    return this.request(docPath('').replace(/documents\/$/, 'documents:runQuery'), { method: 'POST', body: JSON.stringify({ structuredQuery }) })
+  async runQuery(structuredQuery, parent = '') {
+    return this.request(docPath(parent).replace(/\/$/, '') + ':runQuery', { method: 'POST', body: JSON.stringify({ structuredQuery }) })
+  }
+  async identityRequest(path, init = {}) {
+    const token = await this.accessToken('https://www.googleapis.com/auth/identitytoolkit')
+    const response = await fetch('https://identitytoolkit.googleapis.com/v1/' + path, { ...init, headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json', ...(init.headers || {}) } })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const error = new Error(body.error?.message || 'firebase-auth-admin-failed')
+      error.status = response.status
+      throw error
+    }
+    return body
   }
   writeSet(path, data, update = false) {
     const fields = Object.fromEntries(Object.entries(data).filter(([,v]) => !(v && v.__serverTimestamp)).map(([k,v]) => [k, toFirestore(v)]))

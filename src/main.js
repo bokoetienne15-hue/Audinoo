@@ -2,7 +2,7 @@ import './style.css'
 import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
-import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
@@ -125,8 +125,8 @@ app.innerHTML = `
       <div class="currency-toggle" id="currency-toggle" role="group" aria-label="Choisir la devise"><span class="currency-label">Devise</span><button class="currency-option is-active" type="button" data-currency="xof" aria-pressed="true">FCFA</button><button class="currency-option" type="button" data-currency="eur" aria-pressed="false">EUR</button></div>
       <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule adaptée à tes besoins et découvre les avantages inclus dans chaque offre.</p></div>
       <div class="pricing-grid">
-        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Un crédit</h3><p class="price-description">Obtiens un crédit pour lancer une génération musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / crédit</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 crédit de génération musicale</span><span>2 variantes musicales à écouter</span><span>Paiement unique, sans abonnement</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
-        <article class="price-card"><p class="price-label">Plan Découverte</p><h3>Formule mensuelle</h3><p class="price-description">Chante avec ta propre voix.</p><div class="price-value"><span data-price data-xof="1000" data-eur="1.52">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>3 générations musicales, soit 6 variantes</span><span>3 clips vidéo, un par création</span><span>Téléchargement au format MP3</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
+        <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Un crédit</h3><p class="price-description">Obtiens un crédit pour lancer une génération musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / crédit</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 crédit de génération musicale</span><span>2 variantes musicales à écouter et télécharger en MP3</span><span>Téléchargements répétés sans frais supplémentaires</span><span>Paiement unique, sans abonnement</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
+        <article class="price-card"><p class="price-label">Plan Découverte</p><h3>Formule mensuelle</h3><p class="price-description">Chante avec ta propre voix.</p><div class="price-value"><span data-price data-xof="1000" data-eur="2.00">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>3 générations musicales, soit 6 variantes</span><span>3 clips vidéo, un par création</span><span>Téléchargement au format MP3</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Créateur / Artiste</p><h3>Formule mensuelle</h3><p class="price-description">Libérez tout votre potentiel créatif.</p><div class="price-value"><span data-price data-xof="3000" data-eur="4.57">3 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>8 générations musicales, soit 16 variantes</span><span>3 clips vidéo au choix parmi vos créations</span><span>Accès au mode sauvage</span><span>Chansons d'une durée pouvant atteindre 8 minutes</span><span>Téléchargement MP3 et WAV</span><span>Téléchargement séparé de la voix et de l'instrumental</span><span>Licence commerciale pour l'exploitation de vos créations musicales</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Pro</p><h3>Formule avancée</h3><p class="price-description">L'expérience complète pour vos productions musicales.</p><div class="price-value"><span data-price data-xof="6900" data-eur="10.52">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>30 générations musicales, soit 60 variantes</span><span>10 clips vidéo au choix parmi vos créations</span><span>Conservation permanente du profil vocal</span><span>Séparation avancée des pistes pour 10 chansons au choix</span><span>Licence commerciale</span><span>Téléchargement MP3 et WAV</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
       </div>
@@ -204,7 +204,7 @@ app.innerHTML = `
       <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="assertive" hidden></p>
       <button class="google-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"/><path fill="#34A853" d="M12 21.58c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.74 9.74 0 0 0 12 21.58Z"/><path fill="#FBBC05" d="M6.54 13.66A5.85 5.85 0 0 1 6.23 12c0-.58.1-1.14.31-1.66V7.81H3.3A9.73 9.73 0 0 0 2.26 12c0 1.52.36 2.96 1.04 4.19l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.31c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.31 14.63 2.42 12 2.42a9.74 9.74 0 0 0-8.7 5.39l3.24 2.53C7.31 8.03 9.46 6.31 12 6.31Z"/></svg><span>Continuer avec Google</span></button>
       <div class="auth-divider"><span>ou avec ton adresse e-mail</span></div>
-      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="current-password" minlength="8" required /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button><button class="password-reset-link" id="password-reset" type="button">Mot de passe oublié ?</button></form>
+      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" name="username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" name="email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="new-password" minlength="8" required /><label class="signup-only" for="auth-password-confirm" hidden>Confirme ton mot de passe</label><input class="signup-only" id="auth-password-confirm" name="password-confirm" type="password" placeholder="Saisis le même mot de passe" autocomplete="new-password" minlength="8" hidden /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
       <p class="auth-switch" id="auth-switch">Pas encore de compte ? <button type="button" data-auth-switch="signup">S'inscrire</button></p>
     </section>
   </div>
@@ -433,13 +433,21 @@ workspacePricingPage.querySelectorAll('[id]').forEach((element) => element.remov
 const workspacePricingNav = workspaceSidebar.querySelector('.workspace-nav[href="#workspace-pricing"]')
 let pricingPreviousDestination = '#studio'
 workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
+  button.dataset.xofLabel = button.textContent.trim()
   const card = button.closest('.price-card')
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   if (isSingleCredit) {
     button.textContent = 'Acheter 1 crédit · 300 FCFA'
+    button.dataset.xofLabel = button.textContent
     button.href = '#buy-credit'
     button.addEventListener('click', async (event) => {
       event.preventDefault()
+      if (workspacePricingPage.querySelector('.currency-toggle').classList.contains('is-eur')) {
+        toast.textContent = 'Les paiements en euros seront bientôt disponibles.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3600)
+        return
+      }
       if (!auth.currentUser) {
         toast.textContent = 'Connecte-toi pour acheter un crédit.'
         toast.classList.add('show')
@@ -489,6 +497,9 @@ workspacePricingPage.querySelectorAll('.currency-option').forEach((option) => op
     price.textContent = currency === 'xof' ? new Intl.NumberFormat('fr-FR').format(amount) : new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(euroAmount)
   })
   workspacePricingPage.querySelectorAll('[data-price-currency]').forEach((label) => { label.textContent = currency === 'xof' ? 'FCFA' : '€' })
+  workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
+    if (button.closest('.credit-card')) button.textContent = currency === 'eur' ? 'Bientôt disponible' : 'Acheter 1 crédit · 300 FCFA'
+  })
 }))
 workspaceLayout.append(workspacePricingPage)
 function windowPricingOpen() {
@@ -984,10 +995,21 @@ const adminGenerationsSection = createAdminSection('generations', 'Générations
 const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
 const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
 const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
+const adminRevenueSection = createAdminSection('revenue', 'Revenus et ventes', 'Paiements confirmés par FedaPay et créations payées, avec filtres par période et pays.')
+const adminDangerSection = createAdminSection('danger', 'Zone dangereuse', 'Actions irréversibles réservées à l’administration. Chaque opération demande une confirmation explicite.')
+adminDangerSection.classList.add('admin-danger-section')
+for (const [id, title] of [['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
+  const button = document.createElement('button')
+  button.type = 'button'; button.className = 'admin-section-link'; button.dataset.adminSection = id
+  button.textContent = title
+  adminNavigation.append(button)
+}
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
+adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
+adminDangerSection.innerHTML += '<section class="admin-panel"><div class="admin-panel-heading"><div><p>SUPPRESSION DÉFINITIVE</p><h3>Supprimer un compte utilisateur</h3></div><span aria-hidden="true">⚠</span></div><p class="admin-panel-status">Supprime le compte Firebase Authentication, le profil et ses données Audinoo (créations, commandes, reçus, publications et fichiers audio). Les comptes administrateurs sont protégés.</p><div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Compte à supprimer</span><select id="admin-delete-user"><option value="">Choisir un compte…</option></select></label><label class="admin-search-field"><span>Confirmation exacte</span><input id="admin-delete-confirmation" type="text" autocomplete="off" placeholder="Saisis l’adresse e-mail affichée"></label><button class="admin-refresh-button" id="admin-delete-user-button" type="button" disabled>Supprimer définitivement</button></div><p class="admin-panel-status" id="admin-delete-status" role="status"></p></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>RÉINITIALISATION</p><h3>Effacer les visites anonymes</h3></div><span aria-hidden="true">↺</span></div><p class="admin-panel-status">Supprime toutes les sessions anonymes enregistrées et remet à zéro les statistiques de visites correspondantes.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span>Confirmation à saisir</span><input id="admin-reset-visitors-confirmation" type="text" autocomplete="off" placeholder="RESET VISITEURS"></label><button class="admin-refresh-button" id="admin-reset-visitors-button" type="button" disabled>Réinitialiser les visites</button></div><p class="admin-panel-status" id="admin-reset-visitors-status" role="status"></p></section>'
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
 const adminGenerationDateFilter = adminGenerationsSection.querySelector('#admin-generation-date')
@@ -1024,6 +1046,13 @@ function renderAdminUsersTable() {
     row.append(identity,created,country,uid); body.append(row)
   })
   if(users.length>250){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=4;cell.textContent='Affichage limité aux 250 premiers résultats. Affine ta recherche.';row.append(cell);body.append(row)}
+  const deleteSelect = adminDangerSection.querySelector('#admin-delete-user')
+  if (deleteSelect) {
+    const previous = deleteSelect.value
+    replaceNodeChildren(deleteSelect, new Option('Choisir un compte…', ''))
+    latestAdminUsers.filter(user => user.uid && user.email).sort((a,b) => String(a.email).localeCompare(String(b.email), 'fr')).forEach(user => deleteSelect.add(new Option(`${user.displayName || user.username || 'Utilisateur'} · ${user.email}`, user.uid)))
+    if (latestAdminUsers.some(user => user.uid === previous)) deleteSelect.value = previous
+  }
 }
 let adminGenerationRecords = []
 let adminGenerationsRequestRunning = false
@@ -1296,6 +1325,121 @@ adminGrantCreditsForm.addEventListener('submit', async (event) => {
   }
 })
 
+let adminRevenueData = { orders: [], generations: [] }
+let adminRevenueRequestRunning = false
+function adminRevenueInRange(value, period) {
+  const date = value ? new Date(value) : null
+  if (!date || !Number.isFinite(date.getTime())) return false
+  const now = new Date()
+  if (period === 'month') return date >= new Date(now.getFullYear(), now.getMonth() - 11, 1)
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
+  return date >= start
+}
+function renderAdminRevenue() {
+  const period = adminRevenueSection.querySelector('#admin-revenue-period').value
+  const country = adminRevenueSection.querySelector('#admin-revenue-country').value || 'all'
+  const orders = adminRevenueData.orders.filter(item => (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.paidAt, period))
+  const generations = adminRevenueData.generations.filter(item => (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.createdAt, period))
+  const total = orders.reduce((sum, item) => sum + (item.currency === 'XOF' ? Number(item.amount || 0) : 0), 0)
+  const paid = generations.filter(item => item.paidCredit).length
+  adminRevenueSection.querySelector('#admin-revenue-total').textContent = adminNumber(total)
+  adminRevenueSection.querySelector('#admin-revenue-payments').textContent = adminNumber(orders.length)
+  adminRevenueSection.querySelector('#admin-revenue-paid-songs').textContent = adminNumber(paid)
+  adminRevenueSection.querySelector('#admin-revenue-chart-total').textContent = `${adminNumber(total)} FCFA`
+  adminRevenueSection.querySelector('#admin-country-songs-total').textContent = `${adminNumber(generations.length)} créations`
+  const dates = []
+  const now = new Date()
+  const length = period === 'month' ? 12 : 30
+  for (let i = length - 1; i >= 0; i--) {
+    const d = period === 'month' ? new Date(now.getFullYear(), now.getMonth() - i, 1) : new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const key = period === 'month' ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-')
+    dates.push({ key, label: period === 'month' ? new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(d) : `${d.getDate()}/${d.getMonth()+1}`, value: 0 })
+  }
+  const bins = new Map(dates.map(item => [item.key, item]))
+  orders.forEach(item => {
+    if (item.currency !== 'XOF' || !item.paidAt) return
+    const d = new Date(item.paidAt)
+    const key = period === 'month' ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-')
+    if (bins.has(key)) bins.get(key).value += Number(item.amount || 0)
+  })
+  drawAdminChart(adminRevenueSection.querySelector('#admin-revenue-chart'), dates, '#67dcca')
+  const countryCounts = new Map()
+  generations.forEach(item => {
+    const key = item.countryCode || 'XX'
+    const row = countryCounts.get(key) || { code: key, name: item.country || (key === 'XX' ? 'Pays non renseigné' : key), count: 0 }
+    row.count++; countryCounts.set(key, row)
+  })
+  const list = adminRevenueSection.querySelector('#admin-paid-country-list')
+  replaceNodeChildren(list)
+  ;[...countryCounts.values()].sort((a,b) => b.count-a.count).forEach(item => {
+    const row = document.createElement('div'); row.className = 'admin-country-row'
+    const name = document.createElement('span'); name.textContent = `${countryFlag(item.code)} ${item.name}`
+    const count = document.createElement('strong'); count.textContent = `${adminNumber(item.count)} ${item.count === 1 ? 'création' : 'créations'} · ${adminNumber(generations.filter(g => (g.countryCode || 'XX') === item.code && g.paidCredit).length)} payée(s)`
+    row.append(name, count); list.append(row)
+  })
+  if (!countryCounts.size) list.textContent = 'Aucune création enregistrée pour cette période.'
+}
+async function loadAdminRevenue() {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminRevenueRequestRunning) return
+  const status = adminRevenueSection.querySelector('#admin-revenue-status')
+  adminRevenueRequestRunning = true; status.textContent = 'Chargement des paiements confirmés et des créations…'
+  try {
+    adminRevenueData = await callAudinooApi('/api/admin/revenue')
+    const select = adminRevenueSection.querySelector('#admin-revenue-country'), previous = select.value
+    replaceNodeChildren(select, new Option('Tous les pays', 'all'))
+    const countries = new Map()
+    ;[...(adminRevenueData.orders || []), ...(adminRevenueData.generations || [])].forEach(item => { if (item.countryCode) countries.set(item.countryCode, item.country || item.countryCode) })
+    ;[...countries].sort((a,b) => a[1].localeCompare(b[1], 'fr')).forEach(([code,name]) => select.add(new Option(`${countryFlag(code)} ${name}`, code)))
+    if (countries.has(previous)) select.value = previous
+    status.textContent = `${adminNumber(adminRevenueData.orders.length)} paiements FedaPay confirmés · ${adminNumber(adminRevenueData.generations.length)} créations synchronisées.${adminRevenueData.limited ? ' Affichage limité aux 1 000 dernières entrées.' : ''}`
+    renderAdminRevenue()
+  } catch (error) { status.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message) }
+  finally { adminRevenueRequestRunning = false }
+}
+adminRevenueSection.querySelector('#admin-revenue-period').addEventListener('change', renderAdminRevenue)
+adminRevenueSection.querySelector('#admin-revenue-country').addEventListener('change', renderAdminRevenue)
+adminRevenueSection.querySelector('#admin-refresh-revenue').addEventListener('click', () => void loadAdminRevenue())
+
+const deleteUserSelect = adminDangerSection.querySelector('#admin-delete-user')
+const deleteUserConfirmation = adminDangerSection.querySelector('#admin-delete-confirmation')
+const deleteUserButton = adminDangerSection.querySelector('#admin-delete-user-button')
+const deleteUserStatus = adminDangerSection.querySelector('#admin-delete-status')
+function selectedDeleteUser() { return latestAdminUsers.find(user => user.uid === deleteUserSelect.value) }
+function updateDeleteUserButton() {
+  const target = selectedDeleteUser()
+  deleteUserButton.disabled = !target || !target.email || deleteUserConfirmation.value.trim() !== target.email
+}
+deleteUserSelect.addEventListener('change', () => { deleteUserConfirmation.value = ''; deleteUserStatus.textContent = ''; updateDeleteUserButton() })
+deleteUserConfirmation.addEventListener('input', updateDeleteUserButton)
+deleteUserButton.addEventListener('click', async () => {
+  const target = selectedDeleteUser()
+  if (!target || deleteUserConfirmation.value.trim() !== target.email || !window.confirm(`Supprimer définitivement le compte ${target.email} et ses données ? Cette action est irréversible.`)) return
+  deleteUserButton.disabled = true; deleteUserStatus.textContent = 'Suppression du compte, de ses données et de ses fichiers…'
+  try {
+    const result = await callAudinooApi('/api/admin/users/delete', { method: 'POST', body: JSON.stringify({ uid: target.uid, confirmation: target.email }) })
+    latestAdminUsers = latestAdminUsers.filter(user => user.uid !== target.uid)
+    deleteUserConfirmation.value = ''; deleteUserStatus.textContent = `Compte supprimé. ${adminNumber(result.firestoreDocuments)} documents Firebase effacés; fichiers personnels supprimés.`
+    renderAdminUsersTable(); renderAdminDashboard()
+  } catch (error) {
+    const messages = { 'firebase-auth-delete-permission-required': 'Ajoute au compte de service Firebase le droit firebaseauth.users.delete, puis réessaie.', 'firebase-auth-delete-failed': 'Firebase Authentication n’a pas pu supprimer ce compte; aucune donnée n’a été effacée.', 'admin-account-protected': 'Les comptes administrateurs ne peuvent pas être supprimés depuis cette section.', 'user-data-limit-reached': 'Trop de données liées à ce compte pour une suppression sécurisée en une seule opération.' }
+    deleteUserStatus.textContent = messages[error.message] || 'Suppression impossible : ' + generationErrorMessage(error.message)
+  } finally { updateDeleteUserButton() }
+})
+const resetVisitorsConfirmation = adminDangerSection.querySelector('#admin-reset-visitors-confirmation')
+const resetVisitorsButton = adminDangerSection.querySelector('#admin-reset-visitors-button')
+const resetVisitorsStatus = adminDangerSection.querySelector('#admin-reset-visitors-status')
+resetVisitorsConfirmation.addEventListener('input', () => { resetVisitorsButton.disabled = resetVisitorsConfirmation.value.trim() !== 'RESET VISITEURS' })
+resetVisitorsButton.addEventListener('click', async () => {
+  if (resetVisitorsConfirmation.value.trim() !== 'RESET VISITEURS' || !window.confirm('Effacer définitivement toutes les sessions anonymes ?')) return
+  resetVisitorsButton.disabled = true; resetVisitorsStatus.textContent = 'Suppression des sessions anonymes…'
+  try {
+    const result = await callAudinooApi('/api/admin/visitors/reset', { method: 'POST', body: JSON.stringify({ confirmation: 'RESET VISITEURS' }) })
+    resetVisitorsStatus.textContent = `${adminNumber(result.deleted)} session(s) anonyme(s) supprimée(s).`
+    resetVisitorsConfirmation.value = ''; latestAdminVisitors = []; renderAdminDashboard()
+  } catch (error) { resetVisitorsStatus.textContent = error.message === 'visitor-data-limit-reached' ? 'Plus de 1 000 sessions : réinitialisation sécurisée non effectuée.' : 'Réinitialisation impossible : ' + generationErrorMessage(error.message) }
+  finally { resetVisitorsButton.disabled = resetVisitorsConfirmation.value.trim() !== 'RESET VISITEURS' }
+})
+
 adminCommunicationSection.append(adminDashboardGrid)
 adminExportsSection.append(adminExportGroup)
 function activateAdminSection(sectionId) {
@@ -1313,6 +1457,7 @@ adminNavigation.addEventListener('click', (event) => {
   if (button.dataset.adminSection === 'generations') {
     void loadAdminGenerations()
   }
+  if (button.dataset.adminSection === 'revenue') void loadAdminRevenue()
 })
 activateAdminSection('overview')
 
@@ -2550,7 +2695,6 @@ const authFeedback = document.querySelector('#auth-feedback')
 const authSubmit = document.querySelector('#auth-submit')
 const authSwitch = document.querySelector('#auth-switch')
 const authForm = document.querySelector('#auth-form')
-const passwordResetButton = document.querySelector('#password-reset')
 const authUsername = document.querySelector('#auth-username')
 const signupOnlyFields = document.querySelectorAll('.signup-only')
 const usernameFeedback = document.querySelector('#username-feedback')
@@ -2755,8 +2899,22 @@ window.setInterval(() => {
 
 const formatPrice = (amount, currency) => {
   if (currency === 'xof') return new Intl.NumberFormat('fr-FR').format(amount)
-  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: amount ? 2 : 0, maximumFractionDigits: 2 }).format(amount / 655.957)
+  const price = priceElements ? [...priceElements].find((element) => Number(element.dataset.xof) === amount) : null
+  const euroAmount = Number(price?.dataset.eur ?? (amount / 655.957).toFixed(2))
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(euroAmount)
 }
+
+document.querySelectorAll('#pricing .price-button').forEach((button) => {
+  button.dataset.xofLabel = button.textContent.trim()
+  button.addEventListener('click', (event) => {
+    if (!currencyToggle.classList.contains('is-eur')) return
+    event.preventDefault()
+    event.stopPropagation()
+    toast.textContent = 'Les paiements en euros seront bientôt disponibles.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3600)
+  })
+})
 
 currencyOptions.forEach((option) => option.addEventListener('click', () => {
   const currency = option.dataset.currency
@@ -2768,6 +2926,7 @@ currencyOptions.forEach((option) => option.addEventListener('click', () => {
   })
   priceElements.forEach((price) => { price.textContent = formatPrice(Number(price.dataset.xof), currency) })
   priceCurrencies.forEach((label) => { label.textContent = currency === 'xof' ? 'FCFA' : '€' })
+  document.querySelectorAll('#pricing .price-button').forEach((button) => { button.textContent = currency === 'eur' ? 'Bientôt disponible' : button.dataset.xofLabel })
 }))
 
 const openAuth = (mode) => {
@@ -2783,8 +2942,8 @@ const openAuth = (mode) => {
   authSwitch.innerHTML = isSignup ? 'Déjà un compte ? <button type="button" data-auth-switch="login">Se connecter</button>' : 'Pas encore de compte ? <button type="button" data-auth-switch="signup">S’inscrire</button>'
   signupOnlyFields.forEach((field) => { field.hidden = !isSignup })
   authUsername.required = isSignup
+  authPasswordConfirm.required = isSignup
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
-  passwordResetButton.hidden = isSignup
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
   replaceNodeChildren(usernameSuggestions)
@@ -2818,7 +2977,8 @@ function showAuthError(error, mode, operationStep = '') {
     'username-generation-failed': 'Impossible de générer un nom d’utilisateur unique. Réessaie.',
     'username-taken': 'Ce nom d’utilisateur vient d’être pris. Choisis une autre proposition.',
     'invalid-username': 'Le nom d’utilisateur doit commencer par @ et contenir au moins un _.',
-    'weak-password-format': 'Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre.'
+    'weak-password-format': 'Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre.',
+    'password-mismatch': 'Les deux mots de passe ne sont pas identiques. Vérifie la confirmation.'
   }
   const code = error.code || (messages[error.message] ? error.message : 'unknown-error')
   const fallback = mode === 'signup'
@@ -2835,6 +2995,7 @@ function showAuthError(error, mode, operationStep = '') {
 
 const authEmail = document.querySelector('#auth-email')
 const authPassword = document.querySelector('#auth-password')
+const authPasswordConfirm = document.querySelector('#auth-password-confirm')
 
 function normalizeUsername(value) {
   return value.trim().toLowerCase()
@@ -3257,39 +3418,6 @@ googleButton.addEventListener('click', async () => {
     label.textContent = defaultLabel
   }
 })
-passwordResetButton.addEventListener('click', async () => {
-  const email = authEmail.value.trim().toLowerCase()
-  if (!email) {
-    authFeedback.textContent = 'Saisis ton adresse e-mail dans le champ prévu, puis réessaie.'
-    authFeedback.hidden = false
-    authEmail.focus()
-    return
-  }
-
-  passwordResetButton.disabled = true
-  passwordResetButton.textContent = 'Envoi en cours…'
-  try {
-    await authPersistenceReady
-    await sendPasswordResetEmail(auth, email)
-    authFeedback.textContent = 'Si un compte Audinoo est associé à cette adresse, un e-mail de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.'
-    authFeedback.hidden = false
-  } catch (error) {
-    const messages = {
-      'auth/invalid-email': 'Cette adresse e-mail n’est pas valide.',
-      'auth/user-disabled': 'Ce compte est désactivé. Contacte le support Audinoo.',
-      'auth/too-many-requests': 'Trop de demandes. Attends quelques minutes avant de réessayer.',
-      'auth/network-request-failed': 'Connexion réseau impossible. Vérifie Internet puis réessaie.',
-      'auth/operation-not-allowed': 'La réinitialisation par e-mail n’est pas activée dans Firebase.'
-    }
-    authFeedback.textContent = messages[error.code] || 'Impossible d’envoyer l’e-mail de récupération. Réessaie plus tard.'
-    authFeedback.hidden = false
-    console.error('[Audinoo password reset] failed', error)
-  } finally {
-    passwordResetButton.disabled = false
-    passwordResetButton.textContent = 'Mot de passe oublié ?'
-  }
-})
-
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const submittingMode = authMode
@@ -3308,6 +3436,7 @@ authForm.addEventListener('submit', async (event) => {
       const username = normalizeUsername(authUsername.value)
       if (!isValidUsername(username)) throw new Error('invalid-username')
       if (!/(?=.*[a-zA-Z])(?=.*\d).{8,}/.test(password)) throw new Error('weak-password-format')
+      if (password !== authPasswordConfirm.value) throw new Error('password-mismatch')
       operationStep = 'vérification du nom d’utilisateur dans Firestore'
       await checkUsernameAvailability()
       if (!usernameIsAvailable) throw new Error('username-taken')
@@ -3463,6 +3592,13 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     pricingPreviousDestination = workspaceSidebar.querySelector('.workspace-nav.is-active')?.getAttribute('href') || '#studio'
   }
   if (destination === '#home') {
+    if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) {
+      toast.textContent = 'La rubrique Accueil sera bientôt disponible.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 3600)
+      setWorkspaceSidebarOpen(false)
+      return
+    }
     studioWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true

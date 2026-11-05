@@ -137,7 +137,7 @@ async function createTrackPurchase(request, env, db, user) {
   const generation = await db.get(generationPath)
   const track = generation.data?.tracks?.[trackIndex]
   if (!generation.exists || !track) return response(404, { error: 'track-not-found' })
-  if (track.downloadPurchased === true) return response(200, { alreadyPurchased: true })
+  if (track.downloadPurchased === true || generation.data.downloadIncluded === true) return response(200, { alreadyPurchased: true })
   if (!track.r2Key && !/^https?:\/\//i.test(track.audioUrl || '')) return response(409, { error: 'audio-not-ready' })
   const profile = await db.get('users/' + user.uid)
   if (!profile.exists) return response(404, { error: 'profile-not-found' })
@@ -286,7 +286,8 @@ async function generate(request, env, db, user) {
       tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
     }
     tx.delete(db.doc(lock))
-    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: customMode ? title.slice(0,80) : (title || 'Sans titre').slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', createdAt: SERVER_TIMESTAMP, expiresAt })
+    const paidCreditUsed = l.data().creditType === 'paid'
+    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: customMode ? title.slice(0,80) : (title || 'Sans titre').slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', paidCreditUsed, downloadIncluded: paidCreditUsed, createdAt: SERVER_TIMESTAMP, expiresAt })
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true })
 }
@@ -329,7 +330,8 @@ async function generationStatus(request, env, db, user) {
   const taskId = new URL(request.url).searchParams.get('taskId') || ''
   if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId)) return response(400, { error: 'invalid-task-id' })
   const path = 'users/' + user.uid + '/generations/' + taskId
-  if (!(await db.get(path)).exists) return response(404, { error: 'generation-not-found' })
+  const generation = await db.get(path)
+  if (!generation.exists) return response(404, { error: 'generation-not-found' })
   const r = await fetch(SUNO_STATUS_URL + '?taskId=' + encodeURIComponent(taskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(15000) })
   const body = await r.json().catch(() => ({}))
   if (!r.ok || body.code !== 200) return response(502, { error: 'music-status-unavailable' })
@@ -340,7 +342,7 @@ async function generationStatus(request, env, db, user) {
   if (!tracks.length) tracks = (await db.get(path)).data?.tracks || []
   if (tracks.length) tracks = await archiveTracks(env, db, path, tracks, user.uid, taskId)
   await db.set(path, { state, ...(tracks.length ? { tracks } : {}) }, true)
-  const clientTracks = tracks.map((track, index) => ({ ...track, audioUrl: track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(taskId) + '&track=' + index : track.audioUrl }))
+  const clientTracks = tracks.map((track, index) => ({ ...track, downloadPurchased: track.downloadPurchased === true || generation.data.downloadIncluded === true, audioUrl: track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(taskId) + '&track=' + index : track.audioUrl }))
   return response(200, { taskId, status: state, completed: ['SUCCESS','COMPLETE','COMPLETED'].includes(state), failed: FAILED.has(state), tracks: clientTracks })
 }
 
@@ -355,7 +357,7 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
   const snap = await db.get('users/' + uid + '/generations/' + taskId)
   const track = snap.data?.tracks?.[index]
   if (!snap.exists || (!admin && snap.data.uid !== user.uid)) return response(404, { error: 'media-not-found' })
-  if (kind === 'download' && track?.downloadPurchased !== true) return response(403, { error: 'download-purchase-required' })
+  if (kind === 'download' && track?.downloadPurchased !== true && snap.data.downloadIncluded !== true) return response(403, { error: 'download-purchase-required' })
   const key = kind === 'cover' ? track?.coverKey : track?.r2Key
   if (key) {
     const object = await env.AUDIO_BUCKET?.get(key)
@@ -442,6 +444,104 @@ async function adminGenerations(request, db, user) {
     .slice(0, 1000)
   return response(200, { generations })
 }
+function firestoreRows(rows) { return (rows || []).filter(row => row.document).map(row => ({ name: row.document.name, data: fromFields(row.document.fields || {}) })) }
+function firestoreDocPath(name) { return name.split('/documents/')[1] || '' }
+async function queryByField(db, collectionId, field, value, limit = 1000) {
+  const rows = await db.runQuery({ from: [{ collectionId }], where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: typeof value === 'string' ? { stringValue: value } : { booleanValue: value } } }, limit })
+  return firestoreRows(rows)
+}
+async function deleteFirestoreDocs(db, paths) {
+  const unique = [...new Set(paths.filter(Boolean))]
+  for (let i = 0; i < unique.length; i += 400) await db.commit(unique.slice(i, i + 400).map(path => ({ delete: 'projects/audinoo/databases/(default)/documents/' + path })))
+  return unique.length
+}
+async function adminRevenue(request, db, user) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const [ordersRaw, generationsRaw] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'fedapayOrders' }], limit: 1000 }),
+    db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  ])
+  const orders = firestoreRows(ordersRaw).map(({ data }) => data).filter(order => order.status === 'approved' && order.credited === true).map(order => ({ uid: order.uid || '', amount: Number(order.amount || 0), currency: order.currency || 'XOF', kind: order.kind || 'credit', paidAt: order.creditedAt || order.createdAt || null }))
+  const generations = firestoreRows(generationsRaw).flatMap(({ name, data }) => {
+    const parts = firestoreDocPath(name).split('/')
+    if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return []
+    const date = data.createdAt || null
+    return [{ uid: parts[1], createdAt: date, paidCredit: data.paidCreditUsed === true || data.downloadIncluded === true }]
+  })
+  const ids = [...new Set([...orders, ...generations].map(item => item.uid).filter(Boolean))]
+  const profiles = new Map()
+  for (let i = 0; i < ids.length; i += 20) {
+    const results = await Promise.all(ids.slice(i, i + 20).map(async uid => [uid, await db.get('users/' + uid)]))
+    results.forEach(([uid, snap]) => profiles.set(uid, snap.data || {}))
+  }
+  const countryFields = item => {
+    const profile = profiles.get(item.uid) || {}
+    return { countryCode: String(profile.countryCode || '').toUpperCase(), country: profile.country || '' }
+  }
+  const iso = value => value instanceof Date ? value.toISOString() : typeof value === 'string' ? value : null
+  return response(200, {
+    orders: orders.map(item => ({ ...item, ...countryFields(item), paidAt: iso(item.paidAt) })),
+    generations: generations.map(item => ({ ...item, ...countryFields(item), createdAt: iso(item.createdAt) })),
+    limited: ordersRaw?.length >= 1000 || generationsRaw?.length >= 1000
+  })
+}
+async function adminDeleteUser(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const uid = typeof body.uid === 'string' ? body.uid.trim() : ''
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid) || uid === user.uid) return response(400, { error: 'invalid-delete-target' })
+  const [profile, adminRecord] = await Promise.all([db.get('users/' + uid), db.get('admins/' + uid)])
+  if (!profile.exists) return response(404, { error: 'user-not-found' })
+  if (adminRecord.exists) return response(409, { error: 'admin-account-protected' })
+  const expectedConfirmation = String(profile.data.email || uid).trim()
+  if (typeof body.confirmation !== 'string' || body.confirmation.trim() !== expectedConfirmation) return response(400, { error: 'delete-confirmation-mismatch' })
+  if (!env.AUDIO_BUCKET) return response(503, { error: 'user-media-storage-not-configured' })
+  const [generationsRaw, orders, published, reads, grants] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'generations' }], limit: 1000 }, 'users/' + uid),
+    queryByField(db, 'fedapayOrders', 'uid', uid), queryByField(db, 'publishedTracks', 'uid', uid),
+    queryByField(db, 'notificationReads', 'userId', uid), queryByField(db, 'adminCreditGrants', 'uid', uid)
+  ])
+  if ((generationsRaw || []).length >= 1000 || [orders, published, reads, grants].some(rows => rows.length >= 1000)) return response(409, { error: 'user-data-limit-reached' })
+  const generations = firestoreRows(generationsRaw).filter(row => firestoreDocPath(row.name).startsWith('users/' + uid + '/generations/'))
+  const paths = [
+    'users/' + uid, ...generations.map(row => firestoreDocPath(row.name)),
+    ...orders.map(row => firestoreDocPath(row.name)), ...published.map(row => firestoreDocPath(row.name)),
+    ...reads.map(row => firestoreDocPath(row.name)), ...grants.map(row => firestoreDocPath(row.name))
+  ]
+  if (profile.data.username) paths.push('usernames/' + String(profile.data.username))
+  // Delete Firebase Auth first, so a permission/configuration error never erases the profile or media.
+  try {
+    await db.identityRequest('accounts:delete', { method: 'POST', body: JSON.stringify({ localId: uid, targetProjectId: 'audinoo' }) })
+  } catch (error) {
+    console.error('[Audinoo admin auth delete]', error.status || '', error.message)
+    return response(error.status === 403 ? 503 : 502, { error: error.status === 403 ? 'firebase-auth-delete-permission-required' : 'firebase-auth-delete-failed' })
+  }
+  await deleteFirestoreDocs(db, paths)
+  const publicKeys = published.map(row => row.data.r2Key).filter(Boolean)
+  if (env.AUDIO_BUCKET) {
+    let cursor
+    do {
+      const listing = await env.AUDIO_BUCKET.list({ prefix: 'private/' + uid + '/', limit: 1000, ...(cursor ? { cursor } : {}) })
+      const keys = (listing.objects || []).map(object => object.key)
+      if (keys.length) await env.AUDIO_BUCKET.delete(keys)
+      cursor = listing.truncated ? listing.cursor : null
+    } while (cursor)
+    if (publicKeys.length) await env.AUDIO_BUCKET.delete(publicKeys)
+  }
+  return response(200, { deleted: true, firestoreDocuments: paths.length, mediaObjects: 'removed' })
+}
+async function adminResetVisitors(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  if (body.confirmation !== 'RESET VISITEURS') return response(400, { error: 'reset-confirmation-mismatch' })
+  const rows = firestoreRows(await db.runQuery({ from: [{ collectionId: 'visitorSessions' }], limit: 1000 }))
+  if (rows.length >= 1000) return response(409, { error: 'visitor-data-limit-reached' })
+  const count = await deleteFirestoreDocs(db, rows.map(row => firestoreDocPath(row.name)))
+  return response(200, { reset: true, deleted: count, limited: rows.length >= 1000 })
+}
 async function publishTrack(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
@@ -514,7 +614,7 @@ async function library(request, env, db, user) {
   const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   return response(200, { generations })
 }
@@ -603,6 +703,9 @@ export default {
       if (url.pathname === '/api/admin-audio') return await privateMedia(request,env,db,user,'audio',true)
       if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
+      if (url.pathname === '/api/admin/revenue') return await adminRevenue(request,db,user)
+      if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
+      if (url.pathname === '/api/admin/visitors/reset') return await adminResetVisitors(request,db,user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
@@ -612,7 +715,8 @@ export default {
         const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
         return response(status, { error: allowedPaymentErrors.has(e.message) ? e.message : 'payment-processing-failed' })
       }
-      const err = status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
+      const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','visitor-data-limit-reached'])
+      const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
       return response(status,{error:err})
     }
   }
