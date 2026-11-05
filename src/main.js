@@ -1917,7 +1917,7 @@ function renderGenerationTracks(container, tracks) {
       share.classList.toggle('generation-download-locked', !purchased)
       share.title = purchased ? 'Télécharger MP3' : 'Acheter le téléchargement · 300 FCFA'
       share.setAttribute('aria-label', share.title)
-      share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' + (purchased ? '' : '<span class="generation-download-lock" aria-hidden="true">300</span>')
+      share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' + (purchased ? '' : '<span class="generation-download-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>')
     }
     updateDownloadButton()
     share.addEventListener('click', async () => {
