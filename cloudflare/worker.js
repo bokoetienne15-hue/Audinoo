@@ -4,6 +4,7 @@ const response = (status, data) => new Response(JSON.stringify(data), { status, 
 const FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
 const SUNO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/generate'
 const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
+const SUNO_CREDIT_URL = 'https://api.sunoapi.org/api/v1/generate/credit'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 async function archiveTracks(env, db, path, tracks, uid, taskId) {
@@ -287,6 +288,39 @@ async function generate(request, env, db, user) {
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true })
 }
+async function sunoHealth(request, env) {
+  if (request.method !== 'GET') return response(405, { connected: false, error: 'method-not-allowed' })
+  if (!env.SUNOAPI_KEY) return response(503, { connected: false, error: 'music-provider-not-configured' })
+
+  const cache = globalThis.caches?.default
+  const cacheKey = new Request(new URL('/__internal/suno-health', request.url).toString())
+  try {
+    const cached = cache ? await cache.match(cacheKey) : null
+    if (cached) return cached
+  } catch (error) { console.warn('[Audinoo Suno health cache]', error) }
+
+  try {
+    const upstream = await fetch(SUNO_CREDIT_URL, {
+      headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' },
+      signal: AbortSignal.timeout(10000)
+    })
+    const result = await upstream.json().catch(() => ({}))
+    if (!upstream.ok || result.code !== 200) return response(502, { connected: false, error: 'music-provider-unavailable' })
+
+    const checked = response(200, { connected: true })
+    if (cache) {
+      try {
+        const cacheEntry = response(200, { connected: true })
+        cacheEntry.headers.set('cache-control', 'public, max-age=60')
+        await cache.put(cacheKey, cacheEntry)
+      } catch (error) { console.warn('[Audinoo Suno health cache]', error) }
+    }
+    return checked
+  } catch (error) {
+    console.error('[Audinoo Suno health]', error)
+    return response(502, { connected: false, error: 'music-provider-unavailable' })
+  }
+}
 async function generationStatus(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
@@ -535,6 +569,7 @@ export default {
       return response(200,{received:true,savedTracks:merged.length})
     }
     if (url.pathname === '/api/fedapay-webhook') return await fedapayWebhook(request,env,new FirestoreRest(env))
+    if (url.pathname === '/api/suno-health') return await sunoHealth(request,env)
     if (url.pathname === '/api/session-check') {
       if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
       try { const u = await userFrom(request,env); return u ? response(200,{authenticated:true,uid:u.uid}) : response(401,{error:'authentication-required'}) } catch { return response(401,{error:'invalid-session'}) }
