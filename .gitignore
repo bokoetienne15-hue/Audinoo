@@ -6,7 +6,5 @@ firebase-debug.log
 .DS_Store
 .env
 .env.*
-!.env.example
-
-# Local Netlify folder
-.netlify
+!.dev.vars.example
+.dev.vars

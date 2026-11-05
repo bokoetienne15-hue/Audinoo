@@ -1,0 +1,7 @@
+# Copie ce fichier vers .dev.vars pour le développement local avec Wrangler.
+# Utilise des valeurs de test et ne commit jamais de vrais secrets.
+FIREBASE_SERVICE_ACCOUNT_JSON=
+FIREBASE_WEB_API_KEY=
+SUNOAPI_KEY=
+FEDAPAY_SECRET_KEY=
+FEDAPAY_ENVIRONMENT=sandbox

@@ -18,17 +18,13 @@ Audinoo est conçu autour d'une expérience simple : l'utilisateur décrit une i
 
 Le projet s'adresse aux artistes, créateurs de contenu, entrepreneurs, passionnés de musique et débutants qui souhaitent explorer la création sonore sans devoir maîtriser immédiatement toute la théorie musicale. L'objectif est de proposer une expérience moderne, claire et accessible depuis un ordinateur comme depuis un téléphone.
 
-### Backend Netlify et génération musicale
+### Hébergement Cloudflare et backend
 
-Le frontend est publié depuis `dist`; les fonctions serveur se trouvent dans `netlify/functions` et les routes `/api/*` sont réécrites vers ces fonctions. `POST /api/generate` vérifie le Firebase ID token, réserve le crédit de bienvenue en transaction Firestore, puis appelle SunoAPI depuis le serveur. `GET /api/generation-status?taskId=…` vérifie l'avancement et `GET /api/my-library` charge les créations du compte. Le navigateur ne reçoit jamais la clé du wrapper.
+Le site public et ses routes `/api/*` sont servis par le Worker Cloudflare défini dans `cloudflare/worker.js`. Le build Vite et les pages pré-rendues sont publiés depuis `dist`; `wrangler.jsonc` relie ces fichiers au Worker et configure le bucket R2 `audinoo`. Le Worker gère les requêtes de génération, le suivi des tâches, la bibliothèque, les téléchargements, les paiements FedaPay et les chansons publiques.
 
-Dans **Netlify → Project configuration → Environment variables**, ajoute `FIREBASE_SERVICE_ACCOUNT_JSON` (JSON complet du compte de service Firebase) et `SUNOAPI_KEY` (clé du wrapper). Configure-les pour le contexte **Production**, puis redéploie le site. Ne partage jamais ces secrets dans un message et ne les ajoute pas à `src/`, à `.env.example` ou à GitHub. Après toute modification des variables, un nouveau déploiement est nécessaire.
+Firebase fournit l'authentification et Firestore conserve les comptes et les créations. `cloudflare/firebase-rest.js` vérifie les jetons Firebase et communique avec Firestore. SunoAPI génère les chansons; FedaPay traite les paiements; Cloudflare R2 stocke les fichiers audio et certaines images. Les clés secrètes restent dans les variables/secrets du Worker Cloudflare, jamais dans le navigateur ni dans Git. Les variables utilisées par le Worker comprennent `FIREBASE_SERVICE_ACCOUNT_JSON`, `SUNOAPI_KEY` et `FEDAPAY_SECRET_KEY`; `FEDAPAY_ENVIRONMENT`, `PUBLIC_BASE_URL` et `FIREBASE_WEB_API_KEY` peuvent aussi être configurées selon l'environnement.
 
-Le mode simple transmet l'idée (jusqu'à 3 000 caractères) au mode description du wrapper, qui compose automatiquement les paroles. Le mode avancé transmet le texte comme paroles avec le style et le titre. Le modèle est choisi uniquement côté serveur. Le wrapper documente plusieurs variantes par requête; Audinoo affiche les pistes reçues dès qu'elles sont prêtes. Les fichiers générés par le wrapper sont annoncés comme conservés 15 jours : télécharge les résultats importants.
-
-Seul le crédit gratuit de bienvenue est activé dans ce branchement. Le tarif affiché de 300 FCFA n'est pas encore facturé : aucun fournisseur de paiement n'est intégré. Une génération peut néanmoins consommer le solde de la clé SunoAPI; teste d'abord avec un solde que tu acceptes d'utiliser. Le serveur ne consomme le crédit gratuit Audinoo qu'après acceptation de la tâche par le wrapper.
-
-Pour le développement local, copie `.env.example` vers `.env` et utilise des secrets de test; `.env` est ignoré par Git. `npm run dev:netlify` lance le frontend avec les fonctions Netlify en local.
+Pour développer le Worker localement, copie `.dev.vars.example` vers `.dev.vars` et ajoute des identifiants de test. Ce fichier est ignoré par Git. `npm run dev:cloudflare` lance le Worker localement; `npm run build` construit le site; `npm run deploy:cloudflare` publie directement le Worker configuré par Wrangler.
 
 ### Signature
 
