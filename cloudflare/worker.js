@@ -7,6 +7,52 @@ const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
 const SUNO_CREDIT_URL = 'https://api.sunoapi.org/api/v1/generate/credit'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+const FREE_GENERATION_LIMIT = 50
+async function ensureFreeGenerationCounter(db) {
+  const settingsPath = 'settings/credits'
+  const settings = await db.get(settingsPath)
+  if (settings.exists && typeof settings.data.freeGenerationCount === 'number' && typeof settings.data.freeGenerationReservations === 'number' && Object.hasOwn(settings.data, 'freeGenerationCampaignId')) return
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  const existingFreeGenerations = (rows || []).filter(row => {
+    const parts = row.document?.name?.split('/documents/')[1]?.split('/') || []
+    if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return false
+    return fromFields(row.document.fields || {}).paidCreditUsed !== true
+  }).length
+  const seededCount = Math.min(FREE_GENERATION_LIMIT, existingFreeGenerations)
+  await db.runTransaction(async tx => {
+    const current = await tx.get(db.doc(settingsPath))
+    if (!current.exists) {
+      tx.create(db.doc(settingsPath), {
+        enabled: seededCount < FREE_GENERATION_LIMIT,
+        activeCampaignId: seededCount < FREE_GENERATION_LIMIT ? FREE_CREDIT_CAMPAIGN_ID : null,
+        freeGenerationCount: seededCount,
+        freeGenerationReservations: 0,
+        freeGenerationCampaignId: FREE_CREDIT_CAMPAIGN_ID,
+        ...(seededCount >= FREE_GENERATION_LIMIT ? { freeOfferExhausted: true } : {})
+      })
+      return
+    }
+    const data = current.data()
+    const updates = {
+      ...(typeof data.freeGenerationCount !== 'number' ? { freeGenerationCount: seededCount } : {}),
+      ...(typeof data.freeGenerationReservations !== 'number' ? { freeGenerationReservations: 0 } : {}),
+      ...(!Object.hasOwn(data, 'freeGenerationCampaignId') ? { freeGenerationCampaignId: data.activeCampaignId || null } : {}),
+      ...(seededCount >= FREE_GENERATION_LIMIT && data.enabled === true ? { enabled: false, activeCampaignId: null, freeOfferExhausted: true, freeOfferDisabledAt: SERVER_TIMESTAMP } : {})
+    }
+    if (Object.keys(updates).length) tx.update(db.doc(settingsPath), updates)
+  })
+}
+async function releaseGenerationReservation(db, lockPath, requestId) {
+  await db.runTransaction(async tx => {
+    const policyRef = db.doc('settings/credits')
+    const [lock, policy] = await Promise.all([tx.get(db.doc(lockPath)), tx.get(policyRef)])
+    if (!lock.exists || lock.data().requestId !== requestId) return
+    if (lock.data().creditType === 'free' && policy.exists && policy.data().freeGenerationCampaignId === lock.data().campaignId) {
+      tx.update(policyRef, { freeGenerationReservations: Math.max(0, Number(policy.data().freeGenerationReservations || 0) - 1) })
+    }
+    tx.delete(db.doc(lockPath))
+  })
+}
 async function archiveTracks(env, db, path, tracks, uid, taskId) {
   if (!env.AUDIO_BUCKET || !Array.isArray(tracks)) return tracks || []
   const saved = []
@@ -171,6 +217,9 @@ async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
   const order = await db.get(orderRef.path)
   if (!order.exists || order.data.kind !== 'track_download' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
   if (order.data.credited === true) return { status: 'approved', purchased: true, taskId: order.data.taskId, trackIndex: order.data.trackIndex }
+  if (order.data.status === 'failed' && ['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(String(order.data.providerStatus || '').toLowerCase())) {
+    return { status: String(order.data.providerStatus).toLowerCase(), failed: true, purchased: false }
+  }
   const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
   const transaction = fedapayObject(responseBody, 'v1/transaction')
   const status = String(transaction?.status || '').toLowerCase()
@@ -206,6 +255,9 @@ async function confirmCreditPayment(env, db, transactionId) {
     const profile = await db.get('users/' + order.data.uid)
     return { status: 'approved', credited: true, paidCredits: Number(profile.data?.paidCredits || 0) }
   }
+  if (order.data.status === 'failed' && ['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(String(order.data.providerStatus || '').toLowerCase())) {
+    return { status: String(order.data.providerStatus).toLowerCase(), failed: true, credited: false }
+  }
   const responseBody = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
   const transaction = fedapayObject(responseBody, 'v1/transaction')
   const status = String(transaction?.status || '').toLowerCase()
@@ -232,7 +284,7 @@ async function fedapayWebhook(request, env, db) {
   const payload = await request.json().catch(() => ({}))
   const event = payload?.name || payload?.event || ''
   const transactionId = String(payload?.entity?.id || payload?.data?.entity?.id || payload?.data?.id || payload?.entity?.id || '')
-  if (event !== 'transaction.approved' || !/^\d+$/.test(transactionId)) return response(200, { received: true, ignored: true })
+  if (!['transaction.approved', 'transaction.canceled', 'transaction.declined'].includes(event) || !/^\d+$/.test(transactionId)) return response(200, { received: true, ignored: true })
   try {
     const order = await db.get('fedapayOrders/' + transactionId)
     if (order.exists && order.data.kind === 'track_download') await confirmTrackPurchase(env, db, transactionId)
@@ -256,18 +308,25 @@ async function generate(request, env, db, user) {
   if (customMode && (prompt.length > 5000 || style.length > 1000 || title.length > 80)) return response(400, { error: 'prompt-too-long' })
   if (customMode && !style) return response(400, { error: 'advanced-fields-required' })
   if (!customMode && prompt.length > 400) return response(400, { error: 'prompt-too-long' })
+  await ensureFreeGenerationCounter(db)
   const profile = 'users/' + user.uid, lock = 'generationLocks/' + user.uid, requestId = crypto.randomUUID()
   let campaign = null
   try {
     await db.runTransaction(async tx => {
-      const [p, policy, l] = await Promise.all([tx.get(db.doc(profile)), tx.get(db.doc('settings/credits')), tx.get(db.doc(lock))])
+      const policyRef = db.doc('settings/credits')
+      const [p, policy, l] = await Promise.all([tx.get(db.doc(profile)), tx.get(policyRef), tx.get(db.doc(lock))])
       if (!p.exists) throw new Error('profile-not-found')
       if (l.exists) throw new Error('generation-already-running')
-      const data = p.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID }
+      const data = p.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID, freeGenerationCount: 0, freeGenerationReservations: 0, freeGenerationCampaignId: FREE_CREDIT_CAMPAIGN_ID }
       campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
-      const hasFreeCredit = Boolean(rules.enabled && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const counterMatchesCampaign = rules.freeGenerationCampaignId === rules.activeCampaignId
+      const freeCount = counterMatchesCampaign ? Math.max(0, Number(rules.freeGenerationCount || 0)) : 0
+      const reservations = counterMatchesCampaign ? Math.max(0, Number(rules.freeGenerationReservations || 0)) : 0
+      const hasFreeSlot = freeCount + reservations < FREE_GENERATION_LIMIT
+      const hasFreeCredit = Boolean(rules.enabled && hasFreeSlot && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
       const hasPaidCredit = Number(data.paidCredits || 0) > 0
       if (!hasFreeCredit && !hasPaidCredit) throw new Error('no-free-credit')
+      if (hasFreeCredit) tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
       tx.create(db.doc(lock), { requestId, uid: user.uid, creditType: hasFreeCredit ? 'free' : 'paid', campaignId: hasFreeCredit ? campaign : null, createdAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
@@ -275,16 +334,24 @@ async function generate(request, env, db, user) {
     if (mapped) return response(mapped[0], { error: mapped[1] })
     throw error
   }
-  const provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, ...(title ? { title } : {}) } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
-  const result = await provider.json().catch(() => ({}))
+  let provider, result
+  try {
+    provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, ...(title ? { title } : {}) } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
+    result = await provider.json().catch(() => ({}))
+  } catch (error) {
+    await releaseGenerationReservation(db, lock, requestId)
+    console.error('[Audinoo generation provider]', error)
+    return response(502, { error: 'music-provider-unavailable' })
+  }
   if (!provider.ok || result.code !== 200 || !result.data?.taskId) {
-    await db.runTransaction(async tx => { const [p,l] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock))]); if (l.exists && l.data().requestId === requestId) tx.delete(db.doc(lock)); if (p.exists && p.data().freeCreditCampaignId === campaign) { /* welcome credit remains unused */ } })
+    await releaseGenerationReservation(db, lock, requestId)
     return response(502, { error: 'music-provider-rejected-request', providerCode: Number(result.code), providerMessage: typeof result.msg === 'string' ? result.msg : '' })
   }
   const taskId = String(result.data.taskId)
   const expiresAt = new Date(Date.now() + RETENTION_MS)
   await db.runTransaction(async tx => {
-    const [p,l] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock))])
+    const policyRef = db.doc('settings/credits')
+    const [p,l,policy] = await Promise.all([tx.get(db.doc(profile)),tx.get(db.doc(lock)),tx.get(policyRef)])
     if (!p.exists || !l.exists || l.data().requestId !== requestId) throw new Error('generation-reservation-lost')
     if (l.data().creditType === 'paid') {
       const remaining = Number(p.data().paidCredits || 0)
@@ -292,6 +359,15 @@ async function generate(request, env, db, user) {
       tx.update(db.doc(profile), { paidCredits: remaining - 1, updatedAt: SERVER_TIMESTAMP })
     } else {
       tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
+      if (policy.exists && policy.data().freeGenerationCampaignId === l.data().campaignId) {
+        const freeGenerationCount = Math.min(FREE_GENERATION_LIMIT, Math.max(0, Number(policy.data().freeGenerationCount || 0)) + 1)
+        const freeGenerationReservations = Math.max(0, Number(policy.data().freeGenerationReservations || 0) - 1)
+        tx.update(policyRef, {
+          freeGenerationCount,
+          freeGenerationReservations,
+          ...(freeGenerationCount >= FREE_GENERATION_LIMIT ? { enabled: false, activeCampaignId: null, freeOfferExhausted: true, freeOfferDisabledAt: SERVER_TIMESTAMP } : {})
+        })
+      }
     }
     tx.delete(db.doc(lock))
     const paidCreditUsed = l.data().creditType === 'paid'
@@ -464,17 +540,28 @@ async function deleteFirestoreDocs(db, paths) {
   return unique.length
 }
 async function adminRevenue(request, db, user) {
-  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  if (request.method !== 'GET' && request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
-  const [ordersRaw, generationsRaw] = await Promise.all([
+  if (request.method === 'POST') {
+    const body = await request.json().catch(() => ({}))
+    if (body.confirmation !== 'RESET REVENUS') return response(400, { error: 'revenue-reset-confirmation-mismatch' })
+    const resetAt = new Date()
+    await db.set('adminSettings/revenue', { resetAt, updatedAt: SERVER_TIMESTAMP, updatedBy: user.uid }, true)
+    return response(200, { reset: true, resetAt: resetAt.toISOString() })
+  }
+  const [ordersRaw, generationsRaw, revenueSettings] = await Promise.all([
     db.runQuery({ from: [{ collectionId: 'fedapayOrders' }], limit: 1000 }),
-    db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+    db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 }),
+    db.get('adminSettings/revenue')
   ])
-  const orders = firestoreRows(ordersRaw).map(({ data }) => data).filter(order => order.status === 'approved' && order.credited === true).map(order => ({ uid: order.uid || '', amount: Number(order.amount || 0), currency: order.currency || 'XOF', kind: order.kind || 'credit', paidAt: order.creditedAt || order.createdAt || null }))
+  const resetAt = revenueSettings.data?.resetAt || null
+  const timestamp = value => value instanceof Date ? value.getTime() : typeof value === 'string' ? new Date(value).getTime() : Number.NaN
+  const orders = firestoreRows(ordersRaw).map(({ data }) => data).filter(order => order.status === 'approved' && order.credited === true && (!resetAt || timestamp(order.creditedAt || order.createdAt) >= timestamp(resetAt))).map(order => ({ uid: order.uid || '', amount: Number(order.amount || 0), currency: order.currency || 'XOF', kind: order.kind || 'credit', paidAt: order.creditedAt || order.createdAt || null }))
   const generations = firestoreRows(generationsRaw).flatMap(({ name, data }) => {
     const parts = firestoreDocPath(name).split('/')
     if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return []
     const date = data.createdAt || null
+    if (resetAt && (!date || timestamp(date) < timestamp(resetAt))) return []
     return [{ uid: parts[1], createdAt: date, paidCredit: data.paidCreditUsed === true || data.downloadIncluded === true }]
   })
   const ids = [...new Set([...orders, ...generations].map(item => item.uid).filter(Boolean))]
@@ -491,6 +578,7 @@ async function adminRevenue(request, db, user) {
   return response(200, {
     orders: orders.map(item => ({ ...item, ...countryFields(item), paidAt: iso(item.paidAt) })),
     generations: generations.map(item => ({ ...item, ...countryFields(item), createdAt: iso(item.createdAt) })),
+    resetAt: iso(resetAt),
     limited: ordersRaw?.length >= 1000 || generationsRaw?.length >= 1000
   })
 }

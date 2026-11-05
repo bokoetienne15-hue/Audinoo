@@ -464,6 +464,7 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
           body: JSON.stringify({})
         })
         if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+        if (checkout.transactionId) sessionStorage.setItem('audinooPendingCreditTransaction', String(checkout.transactionId))
         window.location.assign(checkout.checkoutUrl)
       } catch (error) {
         toast.textContent = generationErrorMessage(error.message)
@@ -658,19 +659,22 @@ const workspaceMobileCreditCount = workspaceMobileCredit.querySelector('#workspa
 const workspaceMobileCreditCaption = workspaceMobileCredit.querySelector('#workspace-mobile-credit-caption')
 const workspaceCreditPanel = document.createElement('section')
 workspaceCreditPanel.className = 'admin-panel admin-credit-control'
-workspaceCreditPanel.innerHTML = '<div class="admin-panel-heading"><div><p>OFFRE DE BIENVENUE</p><h2>Crédit gratuit</h2></div><span class="admin-credit-state" id="admin-credit-state">Chargement…</span></div><p class="admin-panel-status">Un nouveau compte reçoit un crédit gratuit. Désactiver l’offre rend immédiatement inutilisables les crédits gratuits non consommés, pour les comptes existants comme les nouveaux.</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-credit-toggle" type="button" disabled>Chargement du réglage…</button><small id="admin-credit-note">Le réglage s’applique à tous les comptes.</small></div></section>'
+workspaceCreditPanel.innerHTML = '<div class="admin-panel-heading"><div><p>OFFRE DE BIENVENUE</p><h2>Crédit gratuit</h2></div><span class="admin-credit-state" id="admin-credit-state">Chargement…</span></div><p class="admin-panel-status">Un nouveau compte peut recevoir un crédit gratuit. L’offre se désactive automatiquement après 50 générations gratuites et tous les crédits gratuits restants deviennent alors inutilisables. Les crédits payants ne sont jamais modifiés.</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-credit-toggle" type="button" disabled>Chargement du réglage…</button><small id="admin-credit-note">Le réglage s’applique à tous les comptes.</small></div></section>'
 adminWorkspacePage.insertBefore(workspaceCreditPanel, adminWorkspacePage.querySelector('.admin-stats-grid'))
 const adminCreditToggle = workspaceCreditPanel.querySelector('#admin-credit-toggle')
 const adminCreditState = workspaceCreditPanel.querySelector('#admin-credit-state')
 const adminCreditNote = workspaceCreditPanel.querySelector('#admin-credit-note')
 const DEFAULT_FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
-let freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
+let freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID, freeGenerationCount: 0, freeGenerationReservations: 0, freeGenerationCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
 let stopFreeCreditPolicyListener = null
 let activeWorkspaceProfile = null
 function renderWorkspaceFreeCredit() {
   const profile = activeWorkspaceProfile
   const profileCampaignId = profile?.freeCreditCampaignId || (!profile?.freeCreditPolicyAssigned ? DEFAULT_FREE_CREDIT_CAMPAIGN_ID : null)
-  const freeCredits = Number(Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && profileCampaignId === freeCreditPolicy.activeCampaignId))
+  const freeGenerationCount = Math.max(0, Number(freeCreditPolicy.freeGenerationCount || 0))
+  const freeGenerationReservations = Math.max(0, Number(freeCreditPolicy.freeGenerationReservations || 0))
+  const freeOfferHasCapacity = freeGenerationCount + freeGenerationReservations < 50
+  const freeCredits = Number(Boolean(profileCampaignId && profile?.freeCreditUsed !== true && freeCreditPolicy.enabled && freeOfferHasCapacity && profileCampaignId === freeCreditPolicy.activeCampaignId))
   const paidCredits = Math.max(0, Math.floor(Number(profile?.paidCredits || 0)))
   const totalCredits = freeCredits + paidCredits
   workspaceFreeCreditCount.textContent = String(totalCredits)
@@ -679,7 +683,8 @@ function renderWorkspaceFreeCredit() {
   workspaceMobileCreditCaption.textContent = freeCredits + ' gratuit(s) · ' + paidCredits + ' payant(s)'
 }
 function renderAdminCreditPolicy() {
-  adminCreditState.textContent = freeCreditPolicy.enabled ? 'ACTIVE' : 'DÉSACTIVÉE'
+  const count = Math.min(50, Math.max(0, Number(freeCreditPolicy.freeGenerationCount || 0)))
+  adminCreditState.textContent = (freeCreditPolicy.enabled ? 'ACTIVE' : 'DÉSACTIVÉE') + ' · ' + count + '/50'
   adminCreditState.classList.toggle('is-disabled', !freeCreditPolicy.enabled)
   adminCreditToggle.disabled = false
   adminCreditToggle.textContent = freeCreditPolicy.enabled ? 'Désactiver l’offre pour tous' : 'Activer une nouvelle offre'
@@ -702,8 +707,8 @@ function listenToFreeCreditPolicy(profile) {
   stopFreeCreditPolicyListener = onSnapshot(doc(db, 'settings', 'credits'), (snapshot) => {
     if (auth.currentUser?.uid !== profile.uid) return
     freeCreditPolicy = snapshot.exists()
-      ? { enabled: snapshot.data().enabled === true, activeCampaignId: snapshot.data().activeCampaignId || null }
-      : { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
+      ? { enabled: snapshot.data().enabled === true, activeCampaignId: snapshot.data().activeCampaignId || null, freeGenerationCount: Number(snapshot.data().freeGenerationCount || 0), freeGenerationReservations: Number(snapshot.data().freeGenerationReservations || 0), freeGenerationCampaignId: snapshot.data().freeGenerationCampaignId || null }
+      : { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID, freeGenerationCount: 0, freeGenerationReservations: 0, freeGenerationCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
     renderAdminCreditPolicy()
   }, (error) => {
     console.error('[Audinoo credits] Could not load free-credit policy', error)
@@ -728,6 +733,10 @@ adminCreditToggle.addEventListener('click', async () => {
     await setDoc(doc(db, 'settings', 'credits'), {
       enabled: !disabling,
       activeCampaignId: nextCampaignId,
+      freeGenerationCount: disabling ? Math.max(0, Number(freeCreditPolicy.freeGenerationCount || 0)) : 0,
+      freeGenerationReservations: disabling ? Math.max(0, Number(freeCreditPolicy.freeGenerationReservations || 0)) : 0,
+      freeGenerationCampaignId: disabling ? freeCreditPolicy.freeGenerationCampaignId || freeCreditPolicy.activeCampaignId : nextCampaignId,
+      ...(disabling ? {} : { freeOfferExhausted: false, freeOfferDisabledAt: null }),
       updatedAt: serverTimestamp(),
       updatedBy: user.uid
     })
@@ -1008,7 +1017,7 @@ for (const [id, title] of [['revenue', 'Revenus et ventes'], ['danger', 'Zone da
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
-adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
+adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button><button class="admin-refresh-button" id="admin-reset-revenue" type="button">Remettre les compteurs à zéro</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article><article class="admin-stat-card"><span>Chansons achetées pour téléchargement</span><strong id="admin-revenue-downloads">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
 adminDangerSection.innerHTML += '<section class="admin-panel"><div class="admin-panel-heading"><div><p>SUPPRESSION DÉFINITIVE</p><h3>Supprimer un compte utilisateur</h3></div><span aria-hidden="true">⚠</span></div><p class="admin-panel-status">Supprime le compte Firebase Authentication, le profil et ses données Audinoo (créations, commandes, reçus, publications et fichiers audio). Les comptes administrateurs sont protégés.</p><div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Compte à supprimer</span><select id="admin-delete-user"><option value="">Choisir un compte…</option></select></label><label class="admin-search-field"><span>Confirmation exacte</span><input id="admin-delete-confirmation" type="text" autocomplete="off" placeholder="Saisis l’adresse e-mail affichée"></label><button class="admin-refresh-button" id="admin-delete-user-button" type="button" disabled>Supprimer définitivement</button></div><p class="admin-panel-status" id="admin-delete-status" role="status"></p></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>RÉINITIALISATION</p><h3>Effacer les visites anonymes</h3></div><span aria-hidden="true">↺</span></div><p class="admin-panel-status">Supprime toutes les sessions anonymes enregistrées et remet à zéro les statistiques de visites correspondantes.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span>Confirmation à saisir</span><input id="admin-reset-visitors-confirmation" type="text" autocomplete="off" placeholder="RESET VISITEURS"></label><button class="admin-refresh-button" id="admin-reset-visitors-button" type="button" disabled>Réinitialiser les visites</button></div><p class="admin-panel-status" id="admin-reset-visitors-status" role="status"></p></section>'
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
@@ -1338,13 +1347,16 @@ function adminRevenueInRange(value, period) {
 function renderAdminRevenue() {
   const period = adminRevenueSection.querySelector('#admin-revenue-period').value
   const country = adminRevenueSection.querySelector('#admin-revenue-country').value || 'all'
-  const orders = adminRevenueData.orders.filter(item => (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.paidAt, period))
-  const generations = adminRevenueData.generations.filter(item => (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.createdAt, period))
+  const afterReset = value => !adminRevenueData.resetAt || (value && new Date(value).getTime() >= new Date(adminRevenueData.resetAt).getTime())
+  const orders = adminRevenueData.orders.filter(item => afterReset(item.paidAt) && (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.paidAt, period))
+  const generations = adminRevenueData.generations.filter(item => afterReset(item.createdAt) && (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.createdAt, period))
   const total = orders.reduce((sum, item) => sum + (item.currency === 'XOF' ? Number(item.amount || 0) : 0), 0)
   const paid = generations.filter(item => item.paidCredit).length
+  const downloads = orders.filter(item => item.kind === 'track_download').length
   adminRevenueSection.querySelector('#admin-revenue-total').textContent = adminNumber(total)
   adminRevenueSection.querySelector('#admin-revenue-payments').textContent = adminNumber(orders.length)
   adminRevenueSection.querySelector('#admin-revenue-paid-songs').textContent = adminNumber(paid)
+  adminRevenueSection.querySelector('#admin-revenue-downloads').textContent = adminNumber(downloads)
   adminRevenueSection.querySelector('#admin-revenue-chart-total').textContent = `${adminNumber(total)} FCFA`
   adminRevenueSection.querySelector('#admin-country-songs-total').textContent = `${adminNumber(generations.length)} créations`
   const dates = []
@@ -1391,7 +1403,7 @@ async function loadAdminRevenue() {
     ;[...(adminRevenueData.orders || []), ...(adminRevenueData.generations || [])].forEach(item => { if (item.countryCode) countries.set(item.countryCode, item.country || item.countryCode) })
     ;[...countries].sort((a,b) => a[1].localeCompare(b[1], 'fr')).forEach(([code,name]) => select.add(new Option(`${countryFlag(code)} ${name}`, code)))
     if (countries.has(previous)) select.value = previous
-    status.textContent = `${adminNumber(adminRevenueData.orders.length)} paiements FedaPay confirmés · ${adminNumber(adminRevenueData.generations.length)} créations synchronisées.${adminRevenueData.limited ? ' Affichage limité aux 1 000 dernières entrées.' : ''}`
+    status.textContent = `${adminNumber(adminRevenueData.orders.length)} paiements FedaPay confirmés · ${adminNumber(adminRevenueData.generations.length)} créations synchronisées.${adminRevenueData.resetAt ? ' Compteurs depuis le ' + adminDateLabel(adminRevenueData.resetAt) + '.' : ''}${adminRevenueData.limited ? ' Affichage limité aux 1 000 dernières entrées.' : ''}`
     renderAdminRevenue()
   } catch (error) { status.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message) }
   finally { adminRevenueRequestRunning = false }
@@ -1399,6 +1411,23 @@ async function loadAdminRevenue() {
 adminRevenueSection.querySelector('#admin-revenue-period').addEventListener('change', renderAdminRevenue)
 adminRevenueSection.querySelector('#admin-revenue-country').addEventListener('change', renderAdminRevenue)
 adminRevenueSection.querySelector('#admin-refresh-revenue').addEventListener('click', () => void loadAdminRevenue())
+adminRevenueSection.querySelector('#admin-reset-revenue').addEventListener('click', async (event) => {
+  const button = event.currentTarget
+  const status = adminRevenueSection.querySelector('#admin-revenue-status')
+  const confirmation = 'RESET REVENUS'
+  if (window.prompt('Pour remettre les compteurs de revenus et de chansons à zéro, saisis exactement : ' + confirmation) !== confirmation) return
+  button.disabled = true
+  status.textContent = 'Remise à zéro des compteurs…'
+  try {
+    await callAudinooApi('/api/admin/revenue', { method: 'POST', body: JSON.stringify({ confirmation }) })
+    status.textContent = 'Compteurs remis à zéro. Les prochains paiements et téléchargements seront comptés à partir de maintenant.'
+    await loadAdminRevenue()
+  } catch (error) {
+    status.textContent = 'Remise à zéro impossible : ' + generationErrorMessage(error.message)
+  } finally {
+    button.disabled = false
+  }
+})
 
 const deleteUserSelect = adminDangerSection.querySelector('#admin-delete-user')
 const deleteUserConfirmation = adminDangerSection.querySelector('#admin-delete-confirmation')
@@ -1920,6 +1949,26 @@ function createGenerationCard(generation) {
   return card
 }
 
+function showTrackUnlockDialog() {
+  const dialog = document.createElement('dialog')
+  dialog.className = 'track-unlock-dialog'
+  dialog.setAttribute('aria-labelledby', 'track-unlock-title')
+  dialog.innerHTML = '<button class="track-unlock-close" type="button" aria-label="Fermer">×</button><span class="track-unlock-icon" aria-hidden="true">♫</span><p class="track-unlock-kicker">TA CRÉATION, TON HISTOIRE</p><h2 id="track-unlock-title">Emporte ta chanson partout</h2><p class="track-unlock-copy">Ta chanson est prête. Débloque son téléchargement et garde-la avec toi, autant de fois que tu veux.</p><button class="track-unlock-confirm" type="button">Débloquer la chanson</button><small class="track-unlock-price">300 FCFA · paiement unique</small>'
+  document.body.append(dialog)
+  return new Promise(resolve => {
+    let answer = false
+    const finish = (unlocked) => {
+      answer = unlocked
+      if (dialog.open) dialog.close()
+    }
+    dialog.querySelector('.track-unlock-close').addEventListener('click', () => finish(false))
+    dialog.querySelector('.track-unlock-confirm').addEventListener('click', () => finish(true))
+    dialog.addEventListener('click', event => { if (event.target === dialog) finish(false) })
+    dialog.addEventListener('close', () => { dialog.remove(); resolve(answer) }, { once: true })
+    dialog.showModal()
+  })
+}
+
 function renderGenerationTracks(container, tracks) {
   replaceNodeChildren(container)
   tracks.forEach((track, index) => {
@@ -2071,9 +2120,14 @@ function renderGenerationTracks(container, tracks) {
         const trackIndex = Number.isInteger(track.trackIndex) ? track.trackIndex : 0
         if (!taskId) throw new Error('track-not-found')
         if (track.downloadPurchased !== true) {
+          if (!await showTrackUnlockDialog()) return
           const purchase = await callAudinooApi('/api/tracks/purchase', { method: 'POST', body: JSON.stringify({ taskId, trackIndex }) })
           if (purchase.alreadyPurchased) track.downloadPurchased = true
-          else if (purchase.checkoutUrl) { window.location.assign(purchase.checkoutUrl); return }
+          else if (purchase.checkoutUrl) {
+            if (purchase.transactionId) sessionStorage.setItem('audinooPendingTrackTransaction', String(purchase.transactionId))
+            window.location.assign(purchase.checkoutUrl)
+            return
+          }
           else throw new Error('fedapay-checkout-unavailable')
         }
         const downloadUrl = '/api/my-download?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex
@@ -2371,8 +2425,8 @@ async function pollGeneration(taskId, card) {
 
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
-const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id')
 const paymentReturnType = paymentReturnParams.get('payment_return')
+const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id') || (paymentReturnType === 'credits' ? sessionStorage.getItem('audinooPendingCreditTransaction') : paymentReturnType === 'track' ? sessionStorage.getItem('audinooPendingTrackTransaction') : '')
 if (paymentReturnType === 'credits') {
   const verificationScreen = document.createElement('main')
   verificationScreen.className = 'payment-verification-screen'
@@ -2399,6 +2453,7 @@ if (paymentReturnType === 'credits') {
   }
   const showPaymentFailure = (status) => {
     paymentFailed = true
+    sessionStorage.removeItem('audinooPendingCreditTransaction')
     spinner.hidden = true
     verificationScreen.classList.remove('is-pending')
     verificationScreen.classList.add('is-error')
@@ -2442,7 +2497,10 @@ if (paymentReturnType === 'credits') {
         for (let attempt = 0; attempt < 30; attempt++) {
           result = await callAudinooApi('/api/credits/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
           if (result.credited || result.failed) break
-          if (attempt < 29) await new Promise(resolve => window.setTimeout(resolve, 2000))
+          if (attempt < 29) {
+            message.textContent = 'FedaPay traite encore la demande. Nous vérifions si le paiement a été validé ou annulé…'
+            await new Promise(resolve => window.setTimeout(resolve, 1000))
+          }
         }
         if (result?.failed) {
           showPaymentFailure(result.status)
@@ -2450,6 +2508,7 @@ if (paymentReturnType === 'credits') {
         }
         spinner.hidden = true
         if (result?.credited) {
+          sessionStorage.removeItem('audinooPendingCreditTransaction')
           verificationScreen.classList.add('is-success')
           verificationScreen.querySelector('h1').textContent = 'Paiement vérifié'
           message.textContent = 'Votre crédit a été ajouté à votre solde. Vous pouvez reprendre votre création musicale.'
@@ -2470,19 +2529,42 @@ if (paymentReturnType === 'credits') {
       }
     })()
   }
-} else if (paymentReturnType === 'track' && returnedPaymentId) {
+} else if (paymentReturnType === 'track') {
   window.history.replaceState(null, '', window.location.pathname + window.location.hash)
-  void callAudinooApi('/api/tracks/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
-    .then((result) => {
-      toast.textContent = result.purchased ? 'Paiement confirmé : cette chanson est maintenant téléchargeable en MP3.' : 'Paiement en attente de confirmation. Réessaie dans quelques instants.'
+  void (async () => {
+    try {
+      if (!returnedPaymentId) throw new Error('payment-reference-missing')
+      await authPersistenceReady
+      if (!auth.currentUser) throw new Error('invalid-session')
+      let result = null
+      for (let attempt = 0; attempt < 30; attempt++) {
+        result = await callAudinooApi('/api/tracks/confirm?transaction_id=' + encodeURIComponent(returnedPaymentId))
+        if (result.purchased || result.failed) break
+        if (attempt < 29) await new Promise(resolve => window.setTimeout(resolve, 1000))
+      }
+      if (result.purchased) {
+        sessionStorage.removeItem('audinooPendingTrackTransaction')
+        toast.textContent = 'Paiement confirmé : le cadenas a disparu. Tu peux télécharger cette chanson autant de fois que tu veux.'
+        if (workspace.hidden) openWorkspace({ uid: auth.currentUser.uid, username: workspaceUsername.textContent || '@createur_audinoo' })
+        workspaceSidebar.querySelector('.workspace-nav[href="#library"]')?.click()
+      } else if (result.failed) {
+        sessionStorage.removeItem('audinooPendingTrackTransaction')
+        toast.textContent = result.status === 'canceled' || result.status === 'cancelled'
+          ? 'Paiement annulé. Le cadenas reste en place et aucun téléchargement n’a été débloqué.'
+          : 'Paiement échoué. Le cadenas reste en place et aucun téléchargement n’a été débloqué.'
+      } else {
+        toast.textContent = 'Paiement toujours en attente de confirmation. Réessaie dans quelques instants.'
+      }
       toast.classList.add('show')
-      window.setTimeout(() => toast.classList.remove('show'), 6000)
-    })
-    .catch((error) => {
-      toast.textContent = 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
+      window.setTimeout(() => toast.classList.remove('show'), 6500)
+    } catch (error) {
+      toast.textContent = error.message === 'payment-reference-missing'
+        ? 'Référence FedaPay introuvable. Le cadenas reste en place; actualise ta bibliothèque pour vérifier le paiement.'
+        : 'Vérification du paiement impossible : ' + generationErrorMessage(error.message)
       toast.classList.add('show')
-      window.setTimeout(() => toast.classList.remove('show'), 6000)
-    })
+      window.setTimeout(() => toast.classList.remove('show'), 6500)
+    }
+  })()
 }
 
 let pendingGenerationPreview = null

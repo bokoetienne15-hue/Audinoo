@@ -1614,3 +1614,18 @@ button.is-generating:disabled {
 .payment-verification-screen.is-pending .payment-verification-card h1 { color: #ffc66b; }
 .payment-verification-screen.is-error .payment-verification-card h1 { color: #ff8294; }
 @keyframes payment-spin { to { transform: rotate(360deg); } }
+
+.track-unlock-dialog { position: relative; width: min(420px, calc(100vw - 36px)); margin: auto; padding: 30px 28px 26px; overflow: visible; border: 1px solid rgba(195,137,239,.34); border-radius: 22px; color: #f8f3ff; background: radial-gradient(ellipse at 50% 0%,rgba(151,63,208,.2),transparent 58%),linear-gradient(145deg,#1b1429,#0e0c18 75%); box-shadow: 0 28px 90px rgba(0,0,0,.58),0 0 42px rgba(156,70,220,.15); text-align: center; }
+.track-unlock-dialog::backdrop { background: rgba(5,4,12,.78); backdrop-filter: blur(8px); }
+.track-unlock-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; color: #cfc4dc; background: rgba(255,255,255,.05); cursor: pointer; font-size: 23px; line-height: 1; }
+.track-unlock-icon { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 15px; border: 1px solid rgba(228,115,240,.32); border-radius: 17px; color: #f3a4ef; background: linear-gradient(145deg,rgba(131,57,205,.23),rgba(230,60,178,.1)); font: 700 24px 'Space Grotesk',sans-serif; }
+.track-unlock-kicker { margin: 0 0 8px; color: #d998ed; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.track-unlock-dialog h2 { margin: 0; color: #fff; font: 700 23px/1.2 'Space Grotesk',sans-serif; letter-spacing: -.035em; }
+.track-unlock-copy { margin: 12px 0 22px; color: #b9b1c7; font-size: 12px; line-height: 1.7; }
+.track-unlock-confirm { width: 100%; min-height: 48px; border: 0; border-radius: 999px; color: #fff; background: linear-gradient(100deg,#792eff,#d82cc3 58%,#ff8a30); box-shadow: 0 8px 24px rgba(194,52,204,.22); cursor: pointer; font: 700 13px 'DM Sans',sans-serif; transition: transform .18s ease,filter .18s ease; }
+.track-unlock-confirm:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.track-unlock-price { display: block; margin-top: 11px; color: #d7c6e7; font-size: 11px; font-weight: 600; }
+.workspace.is-light .track-unlock-dialog { border-color: rgba(129,72,157,.24); color: #30283b; background: radial-gradient(ellipse at 50% 0%,rgba(192,111,216,.15),transparent 58%),linear-gradient(145deg,#fff,#f8f5fa 75%); }
+.workspace.is-light .track-unlock-dialog h2 { color: #30283b; }
+.workspace.is-light .track-unlock-copy { color: #746b7d; }
+.workspace.is-light .track-unlock-price { color: #594662; }
