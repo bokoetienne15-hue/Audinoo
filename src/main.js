@@ -503,6 +503,42 @@ workspacePricingPage.querySelectorAll('.currency-option').forEach((option) => op
   })
 }))
 workspaceLayout.append(workspacePricingPage)
+
+const workspaceSupportPage = document.createElement('section')
+workspaceSupportPage.className = 'workspace-content workspace-support-page'
+workspaceSupportPage.id = 'support-page'
+workspaceSupportPage.hidden = true
+workspaceSupportPage.innerHTML = `
+  <div class="support-hero">
+    <p class="workspace-kicker">AUDINOO · CENTRE D’AIDE</p>
+    <h1>On est là pour t’aider.</h1>
+    <p class="workspace-intro">Une question sur tes créations, tes crédits ou ton compte ? Trouve rapidement une réponse ou écris à notre équipe.</p>
+  </div>
+  <section class="support-faq-section" aria-labelledby="support-faq-title">
+    <div class="support-section-heading"><span>LES RÉPONSES RAPIDES</span><h2 id="support-faq-title">Questions fréquentes</h2></div>
+    <div class="support-faq-list">
+      <details class="support-faq-item"><summary>Comment créer ma première chanson ?</summary><p>Ouvre le Studio de création, décris l’idée ou l’ambiance que tu souhaites, choisis le mode Simple ou Avancé, puis lance la création. Audinoo transforme ta description en proposition musicale.</p></details>
+      <details class="support-faq-item"><summary>Où retrouver les chansons que j’ai créées ?</summary><p>Après connexion, ouvre « Ma bibliothèque » dans le menu latéral. Tes créations enregistrées y sont regroupées.</p></details>
+      <details class="support-faq-item"><summary>À quoi servent les crédits ?</summary><p>Les crédits servent à lancer des créations musicales. Le solde disponible est affiché dans ton espace. Consulte la rubrique Tarifs pour connaître les offres et les prix actuels.</p></details>
+      <details class="support-faq-item"><summary>J’ai payé, mais mon crédit ou mon déblocage n’apparaît pas. Que faire ?</summary><p>Vérifie d’abord que le paiement est confirmé et actualise ta bibliothèque. Si le problème persiste, écris à notre support avec l’adresse de ton compte, l’heure approximative et la référence de transaction. Ne communique jamais ton mot de passe ni tes données bancaires.</p></details>
+      <details class="support-faq-item"><summary>Comment télécharger une chanson débloquée ?</summary><p>Dans « Ma bibliothèque », utilise le bouton de téléchargement associé à la chanson. Une chanson débloquée peut être téléchargée à nouveau sans repayer.</p></details>
+      <details class="support-faq-item"><summary>Je n’arrive plus à me connecter. Que faire ?</summary><p>Vérifie l’adresse e-mail utilisée lors de l’inscription et réessaie la procédure de connexion ou de réinitialisation du mot de passe. Si tu restes bloqué, contacte l’assistance.</p></details>
+    </div>
+  </section>
+  <section class="support-contact-section" aria-labelledby="support-contact-title">
+    <div class="support-section-heading"><span>CONTACTE L’ÉQUIPE</span><h2 id="support-contact-title">Parlons-en.</h2><p>Choisis le bon interlocuteur pour que ton message arrive au bon endroit.</p></div>
+    <div class="support-contact-grid">
+      <article class="support-contact-card"><span class="support-contact-icon">✉</span><p class="support-contact-label">CONTACT GÉNÉRAL</p><h3>Audinoo · Équipe</h3><p>Partenariats, collaborations, propositions et demandes professionnelles.</p><a href="mailto:contact@audinoo.com">contact@audinoo.com <span>↗</span></a></article>
+      <article class="support-contact-card"><span class="support-contact-icon">◉</span><p class="support-contact-label">ASSISTANCE UTILISATEURS</p><h3>Audinoo · Support</h3><p>Compte, crédits, paiements, créations musicales et téléchargements.</p><a href="mailto:support@audinoo.com?subject=Assistance%20Audinoo">support@audinoo.com <span>↗</span></a></article>
+      <article class="support-contact-card support-founder-card"><span class="support-contact-icon">✦</span><p class="support-contact-label">CONTACT DU FONDATEUR</p><h3>Etienne Boko</h3><p>Pour les situations sérieuses, les demandes confidentielles ou un problème qui n’a pas été résolu par le support.</p><a href="mailto:bokoetienne15@gmail.com?subject=Demande%20importante%20-%20Audinoo">bokoetienne15@gmail.com <span>↗</span></a></article>
+    </div>
+    <p class="support-note">Pour un dépannage courant, écris d’abord à l’assistance. Le fondateur reste disponible pour les situations importantes ou non résolues.</p>
+  </section>
+  <div class="support-bottom-actions"><a href="/documentation/" target="_blank" rel="noopener">Consulter la documentation complète ↗</a><button class="workspace-return-button" type="button" id="support-return-studio">Retour au studio →</button></div>
+`
+workspaceLayout.append(workspaceSupportPage)
+workspaceSupportPage.querySelector('#support-return-studio').addEventListener('click', () => workspaceSidebar.querySelector('.workspace-nav[href="#studio"]').click())
+
 function windowPricingOpen() {
   if (workspacePricingPage.hidden) workspacePricingNav.click()
 }
@@ -629,7 +665,7 @@ modelSuggestionForm.addEventListener('submit', async (event) => {
 })
 const sidebarToolsSection = document.createElement('section')
 sidebarToolsSection.className = 'workspace-sidebar-section workspace-tools-section'
-sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" type="button" data-sidebar-message="Les paramètres seront bientôt disponibles."><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><button class="workspace-nav workspace-tool-button" type="button" data-sidebar-message="La rubrique Aide & Support sera bientôt disponible."><span aria-hidden="true">ⓘ</span> Aide &amp; Support</button>'
+sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" type="button" data-sidebar-message="Les paramètres seront bientôt disponibles."><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><a class="workspace-nav workspace-tool-button" href="#support"><span aria-hidden="true">ⓘ</span> Aide &amp; Support</a>'
 workspaceSidebar.insertBefore(sidebarToolsSection, sidebarFooter)
 const adminSidebarButton = document.createElement('a')
 adminSidebarButton.className = 'workspace-nav workspace-admin-nav'
@@ -3736,6 +3772,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     libraryWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
+    workspaceSupportPage.hidden = true
     workspacePricingPage.hidden = true
     homeWorkspacePage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
@@ -3745,7 +3782,17 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     libraryWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
     workspacePricingPage.hidden = true
+    workspaceSupportPage.hidden = true
     studioWorkspacePage.hidden = false
+    workspaceModelChoice.classList.remove('is-active')
+  } else if (destination === '#support') {
+    homeWorkspacePage.hidden = true
+    studioWorkspacePage.hidden = true
+    modelWorkspacePage.hidden = true
+    libraryWorkspacePage.hidden = true
+    adminWorkspacePage.hidden = true
+    workspacePricingPage.hidden = true
+    workspaceSupportPage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
   } else if (destination === '#library') {
     homeWorkspacePage.hidden = true
@@ -3762,6 +3809,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     libraryWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
     adminWorkspacePage.hidden = true
+    workspaceSupportPage.hidden = true
     workspacePricingPage.hidden = false
     workspaceModelChoice.classList.remove('is-active')
   } else if (destination === '#admin') {
@@ -3777,6 +3825,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     libraryWorkspacePage.hidden = true
     workspacePricingPage.hidden = true
     adminWorkspacePage.hidden = false
+    workspaceSupportPage.hidden = true
     workspaceModelChoice.classList.remove('is-active')
     void loadAdminSuggestions()
   }
