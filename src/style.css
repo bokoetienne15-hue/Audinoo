@@ -1632,3 +1632,43 @@ button.is-generating:disabled {
 
 /* Founder portrait beside the founder name on the homepage */
 .founder-inline{display:flex;align-items:center;gap:14px;margin:16px 0 18px}.founder-inline img{display:block;flex:0 0 52px;width:52px;height:52px;object-fit:cover;object-position:center;border-radius:12px}.founder-inline h3{margin:0}
+
+.site-footer-expanded .footer-main{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:28px;width:100%}.footer-contact-column{display:flex;flex-direction:column;align-items:flex-start;gap:9px}.footer-contact-column>a{display:flex;flex-direction:column;gap:3px;color:#c9c3d5}.footer-contact-column small{color:#858095;font-size:10px}@media(max-width:760px){.site-footer-expanded .footer-main{grid-template-columns:1fr 1fr;gap:22px}.site-footer-expanded .footer-brand-column{grid-column:1/-1}}
+
+/* Logged-in help and support centre */
+.workspace-support-page{max-width:1120px}
+.support-hero{padding:clamp(24px,5vw,52px);border:1px solid rgba(188,118,235,.2);border-radius:24px;background:radial-gradient(circle at 85% 10%,rgba(151,74,202,.22),transparent 36%),linear-gradient(130deg,rgba(38,24,57,.96),rgba(19,17,32,.96));margin-bottom:34px}
+.support-hero h1{font-size:clamp(30px,5vw,48px);line-height:1.08;margin:8px 0 12px;letter-spacing:-.04em}
+.support-hero .workspace-intro{max-width:650px;margin:0;color:#bcb4ca;line-height:1.7}
+.support-section-heading{margin:0 0 18px}
+.support-section-heading>span{font-size:10px;letter-spacing:.16em;font-weight:800;color:#c38be8}
+.support-section-heading h2{font-size:clamp(23px,3vw,30px);margin:7px 0}
+.support-section-heading>p{color:#a9a1b5;margin:6px 0}
+.support-faq-section{margin:0 0 38px}
+.support-faq-list{display:grid;gap:10px}
+.support-faq-item{border:1px solid rgba(177,158,202,.17);border-radius:14px;background:rgba(255,255,255,.025);padding:0 18px}
+.support-faq-item summary{cursor:pointer;list-style:none;padding:17px 28px 17px 0;color:#f2edf8;font-size:14px;font-weight:650;position:relative}
+.support-faq-item summary::-webkit-details-marker{display:none}
+.support-faq-item summary:after{content:"+";position:absolute;right:2px;top:13px;color:#cf9aef;font-size:22px;font-weight:400}
+.support-faq-item[open] summary:after{content:"−"}
+.support-faq-item p{margin:0 0 17px;color:#aaa2b8;font-size:13px;line-height:1.75;max-width:850px}
+.support-contact-section{margin:0 0 30px}
+.support-contact-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.support-contact-card{min-width:0;padding:21px;border:1px solid rgba(177,158,202,.18);border-radius:17px;background:linear-gradient(155deg,rgba(43,31,58,.78),rgba(22,19,34,.88));display:flex;flex-direction:column;align-items:flex-start}
+.support-contact-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(178,111,219,.15);color:#e1b5fa;font-size:19px}
+.support-contact-label{margin:17px 0 5px;color:#c38be8;font-size:9px;font-weight:800;letter-spacing:.12em}
+.support-contact-card h3{margin:0 0 8px;font-size:17px;color:#f4eff9}
+.support-contact-card>p:not(.support-contact-label){margin:0 0 17px;color:#aaa2b8;font-size:12px;line-height:1.65;flex:1}
+.support-contact-card>a{display:flex;align-items:center;gap:8px;max-width:100%;overflow-wrap:anywhere;color:#e4bafa;font-size:12px;font-weight:700;text-decoration:none}
+.support-contact-card>a:hover{text-decoration:underline}
+.support-contact-card>a span{font-size:15px}
+.support-founder-card{border-color:rgba(209,164,111,.25);background:linear-gradient(155deg,rgba(65,45,35,.42),rgba(22,19,34,.9))}
+.support-founder-card .support-contact-icon{background:rgba(209,164,111,.14);color:#eac99e}
+.support-founder-card .support-contact-label{color:#eac99e}
+.support-founder-card>a{color:#f0d2aa}
+.support-note{padding:13px 16px;border-left:2px solid rgba(193,139,232,.7);background:rgba(170,108,214,.06);color:#aaa2b8;font-size:12px;line-height:1.65}
+.support-bottom-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:26px}
+.support-bottom-actions>a{color:#d7a8f0;font-size:13px;text-decoration:none}
+.support-bottom-actions>a:hover{text-decoration:underline}
+@media(max-width:900px){.support-contact-grid{grid-template-columns:1fr 1fr}.support-founder-card{grid-column:1/-1}}
+@media(max-width:600px){.support-hero{padding:23px 19px;border-radius:18px}.support-contact-grid{grid-template-columns:1fr}.support-founder-card{grid-column:auto}.support-contact-card{padding:18px}.support-bottom-actions{align-items:stretch;flex-direction:column}.support-bottom-actions .workspace-return-button{width:100%}}
