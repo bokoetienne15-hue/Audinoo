@@ -811,6 +811,15 @@ export default {
         const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
         return response(status, { error: allowedPaymentErrors.has(e.message) ? e.message : 'payment-processing-failed' })
       }
+      if (url.pathname.startsWith('/api/tracks/')) {
+        const allowedTrackPaymentErrors = new Set([
+          'fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable',
+          'payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id',
+          'invalid-track','track-not-found','audio-not-ready','profile-not-found','customer-email-required'
+        ])
+        const error = allowedTrackPaymentErrors.has(e.message) ? e.message : 'track-purchase-failed'
+        return response(status, { error })
+      }
       const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','visitor-data-limit-reached'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
       return response(status,{error:err})
