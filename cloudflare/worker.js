@@ -200,7 +200,7 @@ async function createTrackPurchase(request, env, db, user) {
   const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify(transactionBody) })
   const transaction = fedapayObject(created, 'v1/transaction')
   const transactionId = String(transaction?.id || '')
-  if (!/^\\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
   await db.set('fedapayOrders/' + transactionId, {
     uid: user.uid, transactionId, amount: CREDIT_PRICE_XOF, currency: 'XOF',
     kind: 'track_download', taskId, trackIndex, status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
@@ -212,7 +212,7 @@ async function createTrackPurchase(request, env, db, user) {
 }
 async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
-  if (!/^\\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
   const orderRef = db.doc('fedapayOrders/' + transactionId)
   const order = await db.get(orderRef.path)
   if (!order.exists || order.data.kind !== 'track_download' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
