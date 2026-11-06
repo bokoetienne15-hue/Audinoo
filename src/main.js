@@ -171,7 +171,7 @@ app.innerHTML = `
           <small>Fondée par ETIENNE BOKO.</small>
         </div>
         <div class="footer-link-column"><strong>Découvrir</strong><a href="#explore">Explorer Audinoo</a><a href="#create">Créer une musique</a><a href="#pricing">Tarifs</a></div>
-        <div class="footer-link-column"><strong>Ressources</strong><a href="/documentation/">Documentation complète</a><a href="#documentation">Centre d'aide</a><a href="#about">À propos du fondateur</a></div>
+        <div class="footer-link-column"><strong>Ressources</strong><a href="/documentation/">Documentation complète</a><a href="#documentation">Centre d'aide</a><a href="#about">À propos du fondateur</a></div><div class="footer-link-column footer-contact-column"><strong>Nous contacter</strong><a href="mailto:contact@audinoo.com">contact@audinoo.com <small>Contact général &amp; partenariats</small></a><a href="mailto:support@audinoo.com">support@audinoo.com <small>Assistance utilisateurs</small></a></div>
       </div>
       <div class="footer-bottom"><span>© 2026 Audinoo. Tous droits réservés.</span><span>Une vision africaine. Une ambition mondiale.</span><a href="#top">Retour en haut ↑</a></div>
     </footer>
