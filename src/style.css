@@ -1681,7 +1681,7 @@ button.is-generating:disabled {
 .home-hero h1{max-width:580px;margin:0;color:#fff;font-size:clamp(28px,4vw,43px);line-height:1.08;letter-spacing:-1.3px}
 .home-hero h1 span{color:#c34aff}
 .home-hero-copy>p:not(.home-eyebrow){max-width:460px;margin:14px 0 18px;color:#c5c1d1;font-size:14px;line-height:1.55}
-.home-explore-button{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:0 19px;border:0;border-radius:999px;color:#fff;background:linear-gradient(105deg,#862cff,#d02be2);font:700 12px inherit;box-shadow:0 8px 24px rgba(143,43,255,.24);cursor:pointer}
+.home-explore-button{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:0 19px;border:0;border-radius:999px;color:#fff;background:linear-gradient(105deg,#862cff,#d02be2);font:700 12px 'DM Sans',sans-serif;box-shadow:0 8px 24px rgba(143,43,255,.24);cursor:pointer}
 .home-hero-art{position:absolute;right:7%;top:50%;width:180px;height:180px;transform:translateY(-50%);display:grid;place-items:center}
 .home-hero-glow{position:absolute;inset:0;border-radius:50%;background:#6b20d8;filter:blur(55px);opacity:.34}
 .home-hero-note{position:relative;display:grid;place-items:center;width:112px;height:112px;border:1px solid rgba(196,105,255,.7);border-radius:25px;color:#e9c4ff;background:linear-gradient(145deg,rgba(71,29,120,.7),rgba(8,20,53,.92));box-shadow:0 0 30px rgba(142,44,255,.38),inset 0 0 25px rgba(119,55,255,.18);transform:rotate(-5deg)}
@@ -1697,7 +1697,7 @@ button.is-generating:disabled {
 .home-section-heading p{margin:5px 0 0;color:#9993aa;font-size:11px}
 .home-section-heading>button{border:0;color:#b76aff;background:none;font-size:12px;white-space:nowrap;cursor:pointer}
 .home-search{display:flex;align-items:center;gap:9px;max-width:460px;height:40px;margin:0 0 10px;padding:0 13px;border:1px solid rgba(151,137,180,.18);border-radius:12px;color:#a99dbb;background:#0e1020}
-.home-search input{width:100%;border:0;outline:0;color:#fff;background:transparent;font:13px inherit}
+.home-search input{width:100%;border:0;outline:0;color:#fff;background:transparent;font:13px 'DM Sans',sans-serif}
 .home-track-list{display:grid;gap:0}
 .home-track-row{display:grid;grid-template-columns:48px minmax(0,1fr) 40px 24px;align-items:center;gap:13px;min-height:70px;padding:9px 4px;border-bottom:1px solid rgba(160,150,190,.13)}
 .home-track-cover{width:46px;height:46px;border-radius:9px;object-fit:cover;background:linear-gradient(135deg,#462071,#141a36)}
