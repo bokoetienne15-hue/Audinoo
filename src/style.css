@@ -2618,3 +2618,75 @@ button.is-generating:disabled {
     margin:18px 0 0 !important;
   }
 }
+
+/* Accueil musical : pochettes de secours identiques à celles de la bibliothèque. */
+.workspace-home-page .home-track-cover,
+.workspace-home-page .home-player-cover{
+  position:relative;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  overflow:hidden;
+  color:#fff;
+  background:linear-gradient(135deg,#ffe36b 0%,#d77ae8 48%,#6748c9 100%);
+  font-size:23px;
+  text-shadow:0 2px 12px rgba(0,0,0,.25);
+}
+.workspace-home-page .home-track-cover img,
+.workspace-home-page .home-player-cover img{
+  position:absolute;
+  inset:0;
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.workspace-home-page .home-track-cover[data-palette="ocean"],
+.workspace-home-page .home-player-cover[data-palette="ocean"]{background:linear-gradient(135deg,#fff06a 0%,#42d6c4 48%,#4268e8 100%)}
+.workspace-home-page .home-track-cover[data-palette="sunset"],
+.workspace-home-page .home-player-cover[data-palette="sunset"]{background:linear-gradient(135deg,#ffe36e 0%,#ff9b59 42%,#ee5a91 100%)}
+.workspace-home-page .home-track-cover[data-palette="electric"],
+.workspace-home-page .home-player-cover[data-palette="electric"]{background:linear-gradient(135deg,#ffe76a 0%,#ff7e8a 45%,#7b54e8 100%)}
+.workspace-home-page .home-track-cover[data-palette="rose"],
+.workspace-home-page .home-player-cover[data-palette="rose"]{background:linear-gradient(135deg,#fff078 0%,#ff9bc2 45%,#a64be0 100%)}
+.workspace-home-page .home-track-cover[data-palette="lime"],
+.workspace-home-page .home-player-cover[data-palette="lime"]{background:linear-gradient(135deg,#f7ee65 0%,#8bdc78 48%,#16a6a0 100%)}
+.workspace-home-page .home-track-cover[data-palette="violet"],
+.workspace-home-page .home-player-cover[data-palette="violet"]{background:linear-gradient(135deg,#ffe36b 0%,#d77ae8 48%,#6748c9 100%)}
+.workspace-home-page .home-track-cover.is-missing img,
+.workspace-home-page .home-player-cover.is-missing img{display:none}
+
+/* Le lecteur communautaire reste ancré en bas pendant le défilement du catalogue. */
+.workspace-home-page{padding-bottom:132px!important}
+.workspace-home-page .home-mini-player{
+  position:fixed!important;
+  z-index:10020!important;
+  left:calc(50% + 120px);
+  bottom:max(14px,env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%);
+  width:min(720px,calc(100vw - 300px));
+  min-height:62px;
+  box-sizing:border-box;
+  margin:0!important;
+  padding:10px 14px;
+  border:1px solid rgba(186,151,255,.28);
+  border-radius:15px;
+  background:rgba(16,18,35,.97);
+  box-shadow:0 12px 38px rgba(0,0,0,.48);
+  backdrop-filter:blur(18px);
+}
+.workspace-home-page .home-player-cover{width:44px;height:44px;border-radius:9px}
+.workspace-home-page .home-player-info{min-width:0}
+.workspace-home-page .home-player-toggle{flex:0 0 38px}
+@media(max-width:760px){
+  .workspace-home-page{padding-bottom:116px!important}
+  .workspace-home-page .home-mini-player{
+    left:50%;
+    bottom:calc(10px + env(safe-area-inset-bottom))!important;
+    width:calc(100vw - 20px);
+    min-height:60px;
+    padding:9px 11px;
+    gap:10px;
+  }
+  .workspace-home-page .home-player-cover{width:42px;height:42px}
+}
