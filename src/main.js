@@ -917,7 +917,7 @@ workspaceSettingsPage.innerHTML = `
 workspaceLayout.append(workspaceSettingsPage)
 const settingsNavButton = workspaceSidebar.querySelector('#workspace-settings-nav')
 let settingsProfileCache = null
-let settingsPreferences = { theme: 'dark', announcements: true, playbackRate: 1 }
+let settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1 }
 let settingsThemeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null
 function applyWorkspaceTheme(theme) {
   const resolvedTheme = theme === 'system' ? (settingsThemeMedia?.matches ? 'light' : 'dark') : theme
@@ -972,7 +972,7 @@ async function loadWorkspaceSettings(user) {
     const snapshot = await getDoc(doc(db, 'users', user.uid))
     if (!snapshot.exists() || auth.currentUser?.uid !== user.uid) throw new Error('Profil introuvable.')
     settingsProfileCache = { ...snapshot.data(), uid: user.uid }
-    settingsPreferences = { theme: 'dark', announcements: true, playbackRate: 1, ...(settingsProfileCache.preferences || {}) }
+    settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1, ...(settingsProfileCache.preferences || {}) }
     const profile = settingsProfileCache
     const avatar = workspaceSettingsPage.querySelector('#settings-profile-avatar')
     const photoURL = typeof profile.photoURL === 'string' && /^https:\/\//i.test(profile.photoURL) ? profile.photoURL : ''
@@ -4002,6 +4002,11 @@ function openWorkspace(profile) {
   }
   hasAudinooProfile = true
   profileUid = profile.uid
+  settingsProfileCache = { ...profile }
+  settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1, ...(profile.preferences || {}) }
+  applyWorkspaceTheme(settingsPreferences.theme)
+  applyWorkspacePlaybackRate(settingsPreferences.playbackRate)
+  notificationControl.hidden = settingsPreferences.announcements === false
   studioWorkspacePage.hidden = false
   libraryWorkspacePage.hidden = true
   modelWorkspacePage.hidden = true
@@ -4310,6 +4315,7 @@ document.addEventListener('click', (event) => {
 
 document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListener('click', (event) => {
   event.preventDefault()
+  if (link !== settingsNavButton) workspaceSettingsPage.hidden = true
   const destination = link.getAttribute('href')
   if (destination === '#workspace-pricing' && workspacePricingPage.hidden) {
     pricingPreviousDestination = workspaceSidebar.querySelector('.workspace-nav.is-active')?.getAttribute('href') || '#studio'
