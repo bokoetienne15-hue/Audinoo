@@ -4,8 +4,7 @@ import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
 import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
-import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
-import { auth, authPersistenceReady, db, googleProvider, storage } from './firebase.js'
+import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
 const app = document.querySelector('#app')
 
@@ -1114,17 +1113,25 @@ workspaceSettingsPage.querySelector('#settings-photo-input').addEventListener('c
   const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp'
   const button = workspaceSettingsPage.querySelector('.settings-photo-button')
   button.classList.add('is-uploading')
-  status.textContent = 'Envoi de ta photo vers Firebase Storage…'
+  status.textContent = 'Envoi de ta photo vers Cloudflare R2…'
   try {
-    const imageRef = storageRef(storage, 'avatars/' + user.uid + '/profile.' + extension)
-    await uploadBytes(imageRef, file, { contentType: file.type, cacheControl: 'public,max-age=3600' })
-    const photoURL = await getDownloadURL(imageRef)
+    const idToken = await user.getIdToken()
+    const uploadResponse = await fetch('/api/profile-photo', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + idToken, 'content-type': file.type },
+      body: file
+    })
+    const uploadResult = await uploadResponse.json().catch(() => ({}))
+    if (!uploadResponse.ok || typeof uploadResult.photoURL !== 'string') {
+      throw new Error(uploadResult.error || 'profile-photo-upload-failed')
+    }
+    const photoURL = uploadResult.photoURL + '&v=' + Date.now()
     await updateDoc(doc(db, 'users', user.uid), { photoURL, updatedAt: serverTimestamp() })
     settingsProfileCache = { ...settingsProfileCache, photoURL }
     renderProfileAvatar(workspaceSettingsPage.querySelector('#settings-profile-avatar'), settingsProfileCache)
     renderProfileAvatar(workspaceAvatar, settingsProfileCache)
     renderProfileAvatar(headerAvatar, settingsProfileCache)
-    status.textContent = 'Photo de profil enregistrée dans Firebase. Elle sera conservée après reconnexion.'
+    status.textContent = 'Photo de profil enregistrée sur Cloudflare. Elle sera conservée après reconnexion.'
   } catch (error) {
     status.textContent = 'Impossible d’enregistrer la photo : ' + exactErrorDetails(error)
   } finally {
