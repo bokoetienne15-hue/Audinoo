@@ -92,6 +92,306 @@ service cloud.firestore {
           )
         )
         && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['photoURL'])
+          || (
+            request.resource.data.photoURL is string
+            && request.resource.data.photoURL.size() <= 2048
+            && request.resource.data.photoURL.matches('^https://firebasestorage\\.googleapis\\.com/.*
+            request.resource.data.preferences is map
+            && request.resource.data.preferences.keys().hasOnly(['theme', 'announcements', 'playbackRate'])
+            && request.resource.data.preferences.theme in ['dark', 'light', 'system']
+            && request.resource.data.preferences.announcements is bool
+            && request.resource.data.preferences.playbackRate in [0.75, 1, 1.25, 1.5, 2]
+            && request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+            && request.resource.data.updatedAt == request.time
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /usernames/{username} {
+      // A direct read is public only to check whether a chosen pseudo is available.
+      // Listing the registry remains forbidden.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && validUsername(username)
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == username;
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username != username;
+    }
+
+    match /modelSuggestions/{suggestionId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.modelName is string
+        && request.resource.data.modelName.size() >= 2
+        && request.resource.data.modelName.size() <= 80
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 10
+        && request.resource.data.reason.size() <= 1200
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.audience == 'all');
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 2
+        && request.resource.data.message.size() <= 600
+        && request.resource.data.audience == 'all'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    match /notificationReads/{readId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.keys().hasAll(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.notificationId is string
+        && request.resource.data.notificationId.size() > 0
+        && request.resource.data.readAt == request.time
+        && get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all';
+      allow update, delete: if false;
+    }
+
+    match /visitorSessions/{sessionId} {
+      // Anonymous visits contain no account identifier or network metadata.
+      // One write-only session record is created by the browser per tab session.
+      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
+        && request.resource.data.keys().hasAll(['createdAt'])
+        && request.resource.data.createdAt == request.time
+        && sessionId.matches('^[0-9a-f-]{36}$');
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Collection-group reads expose per-user generation records only to verified admins.
+    match /{path=**}/generations/{generationId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow get: if signedIn() && settingId == 'credits';
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && settingId == 'credits'
+        && request.resource.data.keys().hasOnly(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.enabled is bool
+        && (
+          (request.resource.data.enabled == true
+            && request.resource.data.activeCampaignId is string
+            && request.resource.data.activeCampaignId.size() > 0)
+          || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
+        )
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+            && request.resource.data.country is string
+            && request.resource.data.country.size() > 0
+            && request.resource.data.country.size() <= 100
+            && request.resource.data.updatedAt == request.time
+          )
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+          || request.resource.data.updatedAt == request.time
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['username'])
+          || (
+            validUsername(request.resource.data.username)
+            && request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+            && request.resource.data.updatedAt == request.time
+            && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == userId
+          )
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['preferences'])
+          || (
+            request.resource.data.preferences is map
+            && request.resource.data.preferences.keys().hasOnly(['theme', 'announcements', 'playbackRate'])
+            && request.resource.data.preferences.theme in ['dark', 'light', 'system']
+            && request.resource.data.preferences.announcements is bool
+            && request.resource.data.preferences.playbackRate in [0.75, 1, 1.25, 1.5, 2]
+            && request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+            && request.resource.data.updatedAt == request.time
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /usernames/{username} {
+      // A direct read is public only to check whether a chosen pseudo is available.
+      // Listing the registry remains forbidden.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && validUsername(username)
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == username;
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username != username;
+    }
+
+    match /modelSuggestions/{suggestionId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId', 'email', 'modelName', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.modelName is string
+        && request.resource.data.modelName.size() >= 2
+        && request.resource.data.modelName.size() <= 80
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 10
+        && request.resource.data.reason.size() <= 1200
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.audience == 'all');
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'title', 'message', 'audience', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 2
+        && request.resource.data.message.size() <= 600
+        && request.resource.data.audience == 'all'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    match /notificationReads/{readId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.keys().hasAll(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.notificationId is string
+        && request.resource.data.notificationId.size() > 0
+        && request.resource.data.readAt == request.time
+        && get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all';
+      allow update, delete: if false;
+    }
+
+    match /visitorSessions/{sessionId} {
+      // Anonymous visits contain no account identifier or network metadata.
+      // One write-only session record is created by the browser per tab session.
+      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
+        && request.resource.data.keys().hasAll(['createdAt'])
+        && request.resource.data.createdAt == request.time
+        && sessionId.matches('^[0-9a-f-]{36}$');
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Collection-group reads expose per-user generation records only to verified admins.
+    match /{path=**}/generations/{generationId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow get: if signedIn() && settingId == 'credits';
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && settingId == 'credits'
+        && request.resource.data.keys().hasOnly(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.enabled is bool
+        && (
+          (request.resource.data.enabled == true
+            && request.resource.data.activeCampaignId is string
+            && request.resource.data.activeCampaignId.size() > 0)
+          || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
+        )
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+            && request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+            && request.resource.data.updatedAt == request.time
+          )
+        )
+        && (
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['preferences'])
           || (
             request.resource.data.preferences is map
