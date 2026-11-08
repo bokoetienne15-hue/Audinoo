@@ -568,7 +568,7 @@ const homeWorkspacePage = document.createElement('section')
 homeWorkspacePage.className = 'workspace-content workspace-home-page'
 homeWorkspacePage.id = 'home-page'
 homeWorkspacePage.hidden = true
-homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">CRÉEZ. ÉCOUTEZ. PARTAGEZ.</p><h1>La musique générée <span>par l’IA</span> à portée de main</h1><p>Découvrez les chansons originales sélectionnées et publiées par Audinoo. Explorez, écoutez, vibrez !</p><button type="button" class="home-explore-button" id="home-explore-music"><span aria-hidden="true">▶</span> Explorer la musique</button></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div><div class="home-hero-note"><svg viewBox="0 0 64 64" fill="none"><path d="M39 9v34.5a9.5 9.5 0 1 1-5-8.4V18l22-5v26.5a9.5 9.5 0 1 1-5-8.4V9l-12 3" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div><section class="home-music-section" id="home-music-section" hidden><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>🔥 Musique populaire</h2><p>Les dernières chansons publiées par Audinoo</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons sélectionnées et publiées par Audinoo apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><img class="home-player-cover" alt=""><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré par Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
+homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>Des idées uniques.<br><span>Des sons qui te ressemblent.</span></h1><p>Écoute les créations originales générées par les membres sur Audinoo. Chaque morceau publié ici vient de la créativité de notre communauté.</p></div><div class="home-hero-art" aria-label="Audinoo, plateforme de création musicale"><div class="home-hero-glow"></div><div class="home-brand-lockup"><svg class="home-brand-symbol" viewBox="0 0 96 96" role="img" aria-label="Symbole audio Audinoo"><defs><linearGradient id="audinoo-mark-gradient" x1="12" y1="10" x2="84" y2="86" gradientUnits="userSpaceOnUse"><stop stop-color="#d88bff"/><stop offset=".52" stop-color="#a24dff"/><stop offset="1" stop-color="#ed62c5"/></linearGradient></defs><path d="M48 8 87 78H9L48 8Z" fill="none" stroke="url(#audinoo-mark-gradient)" stroke-width="5" stroke-linejoin="round"/><path d="M23 62h8l5-15 8 27 8-39 8 27 5-10h8" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="8" r="4" fill="#f1b7ff"/></svg><strong>Audinoo</strong><small>audinoo.com</small></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire</h2><p>Les dernières créations publiées par la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons sélectionnées et publiées par Audinoo apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><img class="home-player-cover" alt=""><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré sur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
 workspaceLayout.append(homeWorkspacePage)
 
 const homeMusicCategories = ['Tout','Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre']
@@ -621,7 +621,7 @@ function renderHomeTracks() {
     const artist = document.createElement('small')
     const rawDuration = track.duration
     const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
-    artist.textContent = 'Généré par Audinoo · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
+    artist.textContent = 'Généré sur Audinoo · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
     details.append(title, artist)
     const play = document.createElement('button')
     play.type = 'button'
@@ -682,10 +682,6 @@ homePlayerAudio.addEventListener('ended', () => {
   if (next < homePublishedTracks.length) void playHomeTrack(next)
 })
 homeSearchInput.addEventListener('input', renderHomeTracks)
-homeWorkspacePage.querySelector('#home-explore-music').addEventListener('click', () => {
-  homeMusicSection.hidden = false
-  homeMusicSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-})
 homeWorkspacePage.querySelector('#home-see-all').addEventListener('click', () => {
   homeActiveCategory = 'Tout'
   homeSearchInput.value = ''
@@ -694,23 +690,26 @@ homeWorkspacePage.querySelector('#home-see-all').addEventListener('click', () =>
 })
 async function loadPublishedHome(force = false) {
   if (homeTracksLoaded && !force) return
-  const section = homeMusicSection
-  section.hidden = true
   homeNoMusic.hidden = true
+  homeMusicSection.hidden = false
+  renderHomeCategories()
   try {
-    const response = await fetch('/api/public-tracks', { cache: 'no-store' })
+    // Netlify deploy previews are static builds: read the public catalogue from the live Cloudflare API.
+    const apiOrigin = window.location.hostname.endsWith('.netlify.app') ? 'https://audinoo.com' : window.location.origin
+    const response = await fetch(apiOrigin + '/api/public-tracks', { cache: 'no-store' })
     if (!response.ok) throw new Error('public-tracks-unavailable')
     const body = await response.json()
-    homePublishedTracks = Array.isArray(body.tracks) ? body.tracks : []
+    homePublishedTracks = (Array.isArray(body.tracks) ? body.tracks : []).map(track => ({
+      ...track,
+      audioUrl: typeof track.audioUrl === 'string' && track.audioUrl.startsWith('/') ? apiOrigin + track.audioUrl : track.audioUrl
+    }))
     homeTracksLoaded = true
-    if (!homePublishedTracks.length) { homeNoMusic.hidden = false; return }
-    section.hidden = false
-    renderHomeCategories()
+    if (!homePublishedTracks.length) { homeNoMusic.hidden = false; homeNoMusic.querySelector('h2').textContent = 'Les premières chansons arrivent bientôt'; homeNoMusic.querySelector('p').textContent = 'Les morceaux apparaîtront ici dès qu’une chanson sera publiée depuis l’administration.'; return }
     renderHomeTracks()
   } catch (error) {
     homeNoMusic.hidden = false
-    homeNoMusic.querySelector('h2').textContent = 'Impossible de charger les chansons'
-    homeNoMusic.querySelector('p').textContent = 'Vérifie ta connexion puis reviens actualiser l’accueil.'
+    homeNoMusic.querySelector('h2').textContent = 'Le catalogue est momentanément indisponible'
+    homeNoMusic.querySelector('p').textContent = 'Les catégories restent accessibles. Réessaie dans quelques instants.'
     console.error('[Audinoo public home]', error)
   }
 }
