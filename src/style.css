@@ -2088,3 +2088,33 @@ button.is-generating:disabled {
     max-width:100%;
   }
 }
+
+
+/* Garder la photo inclinée tout en supprimant uniquement le cadre de présentation */
+.workspace-home-page .home-hero-art{
+  display:block !important;
+  right:3%;
+  width:29%;
+  height:118%;
+}
+.workspace-home-page .home-hero-artwork{
+  display:block;
+  width:76%;
+  height:94%;
+  object-fit:cover;
+  transform:translate(-50%,-50%) rotate(-8deg);
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero-art{
+    display:block !important;
+    right:1%;
+    width:28%;
+    height:116%;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:88%;
+    height:88%;
+    object-fit:contain;
+    transform:translate(-50%,-50%) rotate(-8deg);
+  }
+}
