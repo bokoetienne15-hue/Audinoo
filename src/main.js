@@ -595,10 +595,48 @@ const homePlayerToggle = homeWorkspacePage.querySelector('#home-player-toggle')
 const homePlayerTitle = homeWorkspacePage.querySelector('.home-player-title')
 const homePlayerCover = homeWorkspacePage.querySelector('.home-player-cover')
 const homeCoverPalettes = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
+function homePaletteForTrack(track, index = 0) {
+  const identity = String(track?.id || track?.audioUrl || track?.title || '')
+  return homeCoverPalettes[(Math.max(0, index) + identity.length) % homeCoverPalettes.length]
+}
 function setHomeFallbackCover(node, palette) {
   node.classList.add('is-missing')
   node.dataset.palette = homeCoverPalettes.includes(palette) ? palette : 'violet'
   node.textContent = '♫'
+}
+async function shareHomeTrack(track) {
+  const title = track?.title || 'Une création musicale'
+  const url = 'https://audinoo.com/#home'
+  const message = title + ' — Découvre cette chanson créée avec Audinoo. À ton tour de créer ta musique sur Audinoo : ' + url
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: title + ' | Audinoo', text: message, url })
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message)
+      toast.textContent = 'Lien de partage copié. Tu peux maintenant l’envoyer à tes amis.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 3200)
+    } else {
+      const field = document.createElement('textarea')
+      field.value = message
+      field.setAttribute('readonly', '')
+      field.style.position = 'fixed'
+      field.style.opacity = '0'
+      document.body.append(field)
+      field.select()
+      const copied = document.execCommand('copy')
+      field.remove()
+      toast.textContent = copied ? 'Lien de partage copié.' : message
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 4500)
+    }
+  } catch (error) {
+    if (error?.name !== 'AbortError') {
+      toast.textContent = 'Impossible de partager ce morceau pour le moment.'
+      toast.classList.add('show')
+      window.setTimeout(() => toast.classList.remove('show'), 3200)
+    }
+  }
 }
 function renderHomeCategories() {
   replaceNodeChildren(homeCategoryList, ...homeMusicCategories.map(category => {
@@ -624,16 +662,16 @@ function renderHomeTracks() {
     row.dataset.trackId = track.id
     const cover = document.createElement('div')
     cover.className = 'home-track-cover'
-    cover.dataset.palette = homeCoverPalettes.includes(track.coverPalette) ? track.coverPalette : 'violet'
+    cover.dataset.palette = homePaletteForTrack(track, index)
     cover.setAttribute('aria-hidden', 'true')
     if (track.imageUrl) {
       const image = document.createElement('img')
       image.src = track.imageUrl
       image.alt = ''
       image.loading = 'lazy'
-      image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(cover, track.coverPalette) }, { once: true })
+      image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(cover, homePaletteForTrack(track, index)) }, { once: true })
       cover.append(image)
-    } else setHomeFallbackCover(cover, track.coverPalette)
+    } else setHomeFallbackCover(cover, homePaletteForTrack(track, index))
     const details = document.createElement('div')
     details.className = 'home-track-details'
     const title = document.createElement('strong')
@@ -660,9 +698,30 @@ function renderHomeTracks() {
     more.type = 'button'
     more.className = 'home-track-more'
     more.textContent = '⋮'
-    more.setAttribute('aria-label', 'Options bientôt disponibles pour ' + title.textContent)
-    more.title = 'Options bientôt disponibles'
-    row.append(cover, details, play, like, more)
+    more.setAttribute('aria-label', 'Ouvrir les options de partage pour ' + title.textContent)
+    more.setAttribute('aria-expanded', 'false')
+    more.title = 'Plus d’options'
+    const shareMenu = document.createElement('div')
+    shareMenu.className = 'home-track-share-menu'
+    shareMenu.hidden = true
+    const shareButton = document.createElement('button')
+    shareButton.type = 'button'
+    shareButton.className = 'home-track-share-action'
+    shareButton.textContent = '↗  Partager'
+    shareButton.addEventListener('click', () => {
+      shareMenu.hidden = true
+      more.setAttribute('aria-expanded', 'false')
+      void shareHomeTrack(track)
+    })
+    shareMenu.append(shareButton)
+    more.addEventListener('click', () => {
+      const opening = shareMenu.hidden
+      document.querySelectorAll('.home-track-share-menu').forEach(menu => { menu.hidden = true })
+      document.querySelectorAll('.home-track-more[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'))
+      shareMenu.hidden = !opening
+      more.setAttribute('aria-expanded', String(opening))
+    })
+    row.append(cover, details, play, like, more, shareMenu)
     return row
   }))
   if (!visible.length) {
@@ -705,14 +764,14 @@ async function playHomeTrack(index) {
       homePlayerTitle.textContent = track.title || 'Création Audinoo'
       homePlayerCover.replaceChildren()
       homePlayerCover.classList.remove('is-missing')
-      homePlayerCover.dataset.palette = homeCoverPalettes.includes(track.coverPalette) ? track.coverPalette : 'violet'
+      homePlayerCover.dataset.palette = homePaletteForTrack(track, index)
       if (track.imageUrl) {
         const image = document.createElement('img')
         image.src = track.imageUrl
         image.alt = ''
-        image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(homePlayerCover, track.coverPalette) }, { once: true })
+        image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(homePlayerCover, homePaletteForTrack(track, index)) }, { once: true })
         homePlayerCover.append(image)
-      } else setHomeFallbackCover(homePlayerCover, track.coverPalette)
+      } else setHomeFallbackCover(homePlayerCover, homePaletteForTrack(track, index))
       homeMiniPlayer.hidden = false
     }
     await homePlayerAudio.play()
