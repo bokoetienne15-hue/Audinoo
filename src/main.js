@@ -587,9 +587,9 @@ let homeTracksLoaded = false
 // Données fictives réservées au Deploy Preview pour valider le rendu avant les vraies publications.
 const isHomeDemoPreview = window.location.hostname.startsWith('deploy-preview-') && window.location.hostname.endsWith('--audinoo.netlify.app')
 const homeDemoTracks = [
-  { id: 'demo-minuit-cotonou', title: 'Minuit à Cotonou', creatorName: 'Kendy Flow', genre: 'Afrobeat', duration: '2:34', imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true },
-  { id: 'demo-dans-ma-tete', title: 'Dans ma tête', creatorName: 'Lyna K.', genre: 'R&B', duration: '2:48', imageUrl: 'https://images.pexels.com/photos/7192878/pexels-photo-7192878.jpeg?cs=srgb&dl=pexels-bence-szemerey-337043-7192878.jpg&fm=jpg', demo: true },
-  { id: 'demo-on-avance', title: 'On avance', creatorName: 'Mello B.', genre: 'Hip-Hop', duration: '2:41', imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true }
+  { id: 'demo-minuit-cotonou', title: 'Minuit à Cotonou', creatorName: 'Kendy Flow', genre: 'Afrobeat', duration: '2:34', likesCount: 8, playCount: 24, likedByMe: false, imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true },
+  { id: 'demo-dans-ma-tete', title: 'Dans ma tête', creatorName: 'Lyna K.', genre: 'R&B', duration: '2:48', likesCount: 5, playCount: 18, likedByMe: false, imageUrl: 'https://images.pexels.com/photos/7192878/pexels-photo-7192878.jpeg?cs=srgb&dl=pexels-bence-szemerey-337043-7192878.jpg&fm=jpg', demo: true },
+  { id: 'demo-on-avance', title: 'On avance', creatorName: 'Mello B.', genre: 'Hip-Hop', duration: '2:41', likesCount: 3, playCount: 11, likedByMe: false, imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true }
 ]
 const homeTrackList = homeWorkspacePage.querySelector('#home-track-list')
 const homeCategoryList = homeWorkspacePage.querySelector('#home-category-list')
@@ -644,17 +644,20 @@ function renderHomeTracks() {
     play.setAttribute('aria-label', 'Écouter ' + title.textContent)
     play.textContent = homeActiveTrackIndex === index && !homePlayerAudio.paused ? 'Ⅱ' : '▶'
     play.addEventListener('click', () => playHomeTrack(index))
+    const like = document.createElement('button')
+    like.type = 'button'
+    like.className = 'home-track-like' + (track.likedByMe ? ' is-liked' : '')
+    like.setAttribute('aria-label', (track.likedByMe ? 'Retirer le like de ' : 'Aimer ') + title.textContent)
+    like.setAttribute('aria-pressed', String(Boolean(track.likedByMe)))
+    like.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.7 4.7 0 0 1 12 6.1a4.7 4.7 0 0 1 8.8 2.6Z"/></svg><small>' + Math.max(0, Number(track.likesCount || 0)) + '</small>'
+    like.addEventListener('click', () => toggleHomeTrackLike(track, like))
     const more = document.createElement('button')
     more.type = 'button'
     more.className = 'home-track-more'
     more.textContent = '⋮'
-    more.setAttribute('aria-label', 'Plus d’options pour ' + title.textContent)
-    more.addEventListener('click', () => {
-      toast.textContent = 'Les options de cette chanson seront bientôt disponibles.'
-      toast.classList.add('show')
-      window.setTimeout(() => toast.classList.remove('show'), 3000)
-    })
-    row.append(cover, details, play, more)
+    more.setAttribute('aria-label', 'Options bientôt disponibles pour ' + title.textContent)
+    more.title = 'Options bientôt disponibles'
+    row.append(cover, details, play, like, more)
     return row
   }))
   if (!visible.length) {
@@ -662,6 +665,34 @@ function renderHomeTracks() {
     empty.className = 'home-filter-empty'
     empty.textContent = query ? 'Aucune chanson ne correspond à ta recherche.' : 'Aucune chanson publiée dans cette catégorie pour le moment.'
     homeTrackList.append(empty)
+  }
+}
+function sortHomePublishedTracks() {
+  const activeId = homePublishedTracks[homeActiveTrackIndex]?.id
+  homePublishedTracks.sort((a, b) => (Number(b.likesCount || 0) * 3 + Number(b.playCount || 0)) - (Number(a.likesCount || 0) * 3 + Number(a.playCount || 0)))
+  if (activeId) homeActiveTrackIndex = homePublishedTracks.findIndex(track => track.id === activeId)
+}
+async function toggleHomeTrackLike(track, button) {
+  if (button.disabled) return
+  button.disabled = true
+  const nextLiked = !track.likedByMe
+  try {
+    let result
+    if (track.demo) {
+      track.likedByMe = nextLiked
+      track.likesCount = Math.max(0, Number(track.likesCount || 0) + (nextLiked ? 1 : -1))
+      result = { likedByMe: track.likedByMe, likesCount: track.likesCount, playCount: track.playCount || 0 }
+    } else {
+      result = await callAudinooApi('/api/tracks/engagement', { method: 'POST', body: JSON.stringify({ trackId: track.id, action: nextLiked ? 'like' : 'unlike' }) })
+      Object.assign(track, result)
+    }
+    sortHomePublishedTracks()
+    renderHomeTracks()
+  } catch (error) {
+    toast.textContent = error.message === 'invalid-session' || error.message === 'authentication-required' ? 'Connecte-toi pour aimer une chanson.' : 'Impossible d’enregistrer ton like. Réessaie.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3200)
+    button.disabled = false
   }
 }
 async function playHomeTrack(index) {
@@ -696,7 +727,20 @@ homePlayerToggle.addEventListener('click', async () => {
     try { await homePlayerAudio.play() } catch { /* Le navigateur peut bloquer la lecture */ }
   } else homePlayerAudio.pause()
 })
-homePlayerAudio.addEventListener('play', () => { homePlayerToggle.textContent = 'Ⅱ'; homePlayerToggle.setAttribute('aria-label','Mettre en pause'); renderHomeTracks() })
+homePlayerAudio.addEventListener('play', () => {
+  homePlayerToggle.textContent = 'Ⅱ'
+  homePlayerToggle.setAttribute('aria-label','Mettre en pause')
+  const track = homePublishedTracks[homeActiveTrackIndex]
+  if (track && !track.demo && !track._playCountPending) {
+    track._playCountPending = true
+    callAudinooApi('/api/tracks/engagement', { method: 'POST', body: JSON.stringify({ trackId: track.id, action: 'play' }) }).then(result => {
+      Object.assign(track, result)
+      sortHomePublishedTracks()
+      renderHomeTracks()
+    }).catch(() => {}).finally(() => { track._playCountPending = false })
+  }
+  renderHomeTracks()
+})
 homePlayerAudio.addEventListener('pause', () => { homePlayerToggle.textContent = '▶'; homePlayerToggle.setAttribute('aria-label','Lire la chanson'); renderHomeTracks() })
 homePlayerAudio.addEventListener('ended', () => {
   const next = homeActiveTrackIndex + 1
@@ -724,7 +768,8 @@ async function loadPublishedHome(force = false) {
   try {
     // Netlify deploy previews are static builds: read the public catalogue from the live Cloudflare API.
     const apiOrigin = window.location.hostname.endsWith('.netlify.app') ? 'https://audinoo.com' : window.location.origin
-    const response = await fetch(apiOrigin + '/api/public-tracks', { cache: 'no-store' })
+    const viewerToken = auth.currentUser ? await auth.currentUser.getIdToken() : ''
+    const response = await fetch(apiOrigin + '/api/public-tracks', { cache: 'no-store', headers: viewerToken ? { authorization: 'Bearer ' + viewerToken } : {} })
     if (!response.ok) throw new Error('public-tracks-unavailable')
     const body = await response.json()
     homePublishedTracks = (Array.isArray(body.tracks) ? body.tracks : []).map(track => ({
