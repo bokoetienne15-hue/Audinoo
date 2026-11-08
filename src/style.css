@@ -2846,20 +2846,20 @@ button.is-generating:disabled {
   .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{order:3;flex-basis:100%;width:100%;max-width:none}
 }
 
-/* Inline community discovery note above the credit balance */
+/* Plain white discovery sentence above the credits card in the studio sidebar */
 .community-listen-notice {
-  position: relative; display: block; margin: 0 0 13px; padding: 0 20px 0 0;
-  color: rgba(238, 234, 246, .82); font-size: 11px; line-height: 1.5;
-  background: none; border: 0; box-shadow: none; border-radius: 0;
+  position: relative; display: block; margin: 0 0 10px; padding: 0 18px 0 0;
+  color: #fff; font-size: 11px; line-height: 1.5;
+  background: transparent; border: 0; box-shadow: none; border-radius: 0;
 }
 .community-listen-notice[hidden] { display: none !important; }
-.community-listen-notice p { display: block; margin: 0; }
-.community-listen-link { display: inline; margin-left: 2px; color: #c9a8f3; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
-.community-listen-link:hover { color: #e2ccff; }
+.community-listen-notice p { display: block; margin: 0; color: #fff; }
+.community-listen-link { display: inline; margin-left: 2px; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.community-listen-link:hover { color: #e6e6e6; }
 .community-listen-dismiss {
-  position: absolute; top: -4px; right: 0; display: grid; place-items: center;
+  position: absolute; top: -3px; right: 0; display: grid; place-items: center;
   width: 16px; height: 16px; margin: 0; padding: 0;
-  border: 0; border-radius: 0; color: #17151c; background: transparent;
+  border: 0; border-radius: 0; color: #000; background: transparent;
   font-size: 17px; line-height: 1; cursor: pointer;
 }
 .community-listen-dismiss:hover { color: #000; }
