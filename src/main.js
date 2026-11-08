@@ -1470,6 +1470,10 @@ function renderAdminGenerationsTable() {
       title.textContent = item.title || item.tracks?.[0]?.title || 'Création sans titre'
       const meta = document.createElement('p')
       meta.textContent = [owner?.displayName || owner?.username || owner?.email || 'Membre Audinoo', adminDateLabel(item.createdAt)].join(' · ')
+      const ownerDetails = document.createElement('small')
+      ownerDetails.className = 'admin-generation-owner-details'
+      ownerDetails.textContent = [owner?.email, owner?.country || owner?.countryCode, item.taskId ? 'ID ' + item.taskId : ''].filter(Boolean).join(' · ')
+      titleBlock.append(ownerDetails)
       const state = document.createElement('span')
       state.className = 'admin-state-pill'
       const stateValue = String(item.status || 'PENDING').toUpperCase()
@@ -1488,9 +1492,25 @@ function renderAdminGenerationsTable() {
         trackCount++
         const row = document.createElement('div')
         row.className = 'admin-generation-review-track'
+        const trackCover = document.createElement('div')
+        trackCover.className = 'admin-generation-track-cover'
+        trackCover.dataset.palette = ['violet','ocean','sunset','electric','rose','lime'][trackCount % 6]
+        if (track.imageUrl) {
+          const trackImage = document.createElement('img')
+          trackImage.src = track.imageUrl
+          trackImage.alt = ''
+          trackImage.loading = 'lazy'
+          trackImage.addEventListener('error', () => trackImage.remove(), { once: true })
+          trackCover.append(trackImage)
+        } else trackCover.textContent = '♫'
+        const trackInfo = document.createElement('div')
+        trackInfo.className = 'admin-generation-track-info'
         const trackTitle = document.createElement('strong')
         trackTitle.textContent = track.title || item.title || 'Variante musicale'
-        row.append(trackTitle)
+        const trackMeta = document.createElement('small')
+        trackMeta.textContent = [track.duration || '', track.model || track.modelName || '', track.genre || item.genre || ''].filter(Boolean).join(' · ') || 'Variante musicale générée sur Audinoo'
+        trackInfo.append(trackTitle, trackMeta)
+        row.append(trackCover, trackInfo)
         if (track.audioUrl) {
           const controls = document.createElement('div')
           controls.className = 'admin-generation-review-controls'
