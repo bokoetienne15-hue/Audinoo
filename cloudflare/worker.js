@@ -670,7 +670,7 @@ async function publicTracks(request, db) {
   // This avoids requiring a composite Firestore index for published + publishedAt.
   const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true).slice(0, 40)
-  return response(200, { tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', genre: d.genre || 'Autre', duration: d.duration || null, audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) })
+  return new Response(JSON.stringify({ tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', genre: d.genre || 'Autre', duration: d.duration || null, audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) }), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } })
 }
 async function publicAudio(request, env, db) {
   const id = new URL(request.url).searchParams.get('id')
@@ -679,7 +679,7 @@ async function publicAudio(request, env, db) {
   if (!snap.exists || snap.data.published !== true || !snap.data.r2Key) return response(404, { error: 'track-not-found' })
   const object = await env.AUDIO_BUCKET?.get(snap.data.r2Key)
   if (!object) return response(404, { error: 'track-not-found' })
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes' } })
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes', 'access-control-allow-origin': '*' } })
 }
 async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
