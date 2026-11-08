@@ -2758,3 +2758,90 @@ button.is-generating:disabled {
     height:64px!important;min-height:64px!important;max-height:64px!important;
   }
 }
+
+/* Admin > Générations : présentation catalogue inspirée de l'accueil musical, avec outils de publication conservés. */
+.admin-section-view[data-admin-panel="generations"] .admin-generation-cards{display:grid;gap:16px}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-day{display:grid;gap:10px}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-day>h3{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:12px 2px 4px;color:var(--workspace-text,#f7f4ff);font-size:15px;font-weight:800
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-day>h3 span{
+  color:var(--workspace-muted,#a59caf);font-size:11px;font-weight:500
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-card{
+  gap:13px;padding:15px;border:1px solid rgba(160,145,195,.2);border-radius:17px;
+  background:linear-gradient(145deg,rgba(33,25,58,.96),rgba(15,16,31,.98));
+  box-shadow:0 9px 24px rgba(0,0,0,.16);color:#f7f4ff
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-heading{
+  grid-template-columns:64px minmax(0,1fr) auto;gap:12px
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-cover{
+  width:64px;height:64px;min-width:64px;border-radius:11px
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-title h4{color:#fff;font-size:14px}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-title p,
+.admin-section-view[data-admin-panel="generations"] .admin-generation-owner-details{
+  display:block;margin:3px 0 0;color:#aaa2bc;font-size:10px;line-height:1.5;overflow-wrap:anywhere
+}
+.admin-section-view[data-admin-panel="generations"] .admin-state-pill{padding:5px 9px;border-radius:20px}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-track{
+  display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:10px 12px;
+  padding:12px 0 0;border-top:1px solid rgba(160,145,195,.16)
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover{
+  position:relative;display:grid;place-items:center;grid-row:span 2;
+  width:64px;height:64px;min-width:64px;overflow:hidden;border-radius:10px;
+  color:#fff;font-size:22px;background:linear-gradient(135deg,#ffe36b,#d77ae8 48%,#6748c9)
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover[data-palette="ocean"]{background:linear-gradient(135deg,#fff06a,#42d6c4 48%,#4268e8)}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover[data-palette="sunset"]{background:linear-gradient(135deg,#ffe36e,#ff9b59 42%,#ee5a91)}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover[data-palette="electric"]{background:linear-gradient(135deg,#ffe76a,#ff7e8a 45%,#7b54e8)}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover[data-palette="rose"]{background:linear-gradient(135deg,#fff078,#ff9bc2 45%,#a64be0)}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover[data-palette="lime"]{background:linear-gradient(135deg,#f7ee65,#8bdc78 48%,#16a6a0)}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-info{display:grid;gap:4px;min-width:0}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-info strong{
+  overflow:hidden;color:#f7f4ff;font-size:12px;text-overflow:ellipsis;white-space:nowrap
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-track-info small{
+  color:#aaa2bc;font-size:10px;overflow-wrap:anywhere
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls{
+  grid-column:2;display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:8px
+}
+.admin-section-view[data-admin-panel="generations"] .admin-listen-button{
+  min-height:38px;padding:8px 14px;border:0;border-radius:20px;color:#fff;
+  background:linear-gradient(110deg,#812cff,#c82de2);font-weight:800
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{
+  flex:1 1 180px;width:min(100%,260px);min-width:150px
+}
+.admin-section-view[data-admin-panel="generations"] .admin-publish-genre{color:#c7bfd5}
+.admin-section-view[data-admin-panel="generations"] .admin-publish-genre select{
+  color:#fff;background:#171329;border-color:rgba(186,151,255,.25)
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls .admin-publish-button{
+  min-height:38px;padding:8px 14px;border:0;border-radius:20px;color:#fff;
+  background:linear-gradient(110deg,#812cff,#c82de2);font-weight:800
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls .admin-publish-button.is-published{
+  background:linear-gradient(110deg,#16865b,#24a879)
+}
+.admin-section-view[data-admin-panel="generations"] .admin-generation-review-note,
+.admin-section-view[data-admin-panel="generations"] .admin-generation-empty{
+  border-color:rgba(160,145,195,.24);color:#aaa2bc;background:rgba(25,21,43,.7)
+}
+@media(max-width:760px){
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-heading{grid-template-columns:56px minmax(0,1fr);gap:10px}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-cover{width:56px;height:56px;min-width:56px}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-heading .admin-state-pill{grid-column:2}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-track{grid-template-columns:56px minmax(0,1fr)}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-track-cover{width:56px;height:56px;min-width:56px}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls{grid-column:2;justify-content:flex-start}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls .admin-publish-button{flex:1 1 auto}
+  .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{order:3;flex-basis:100%;width:100%;max-width:none}
+}
