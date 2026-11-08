@@ -660,15 +660,53 @@ async function publishTrack(request, env, db, user) {
   if (!source) return response(404, { error: 'audio-not-found-or-not-archived' })
   const publicKey = 'public/' + id + '.audio'
   await env.AUDIO_BUCKET.put(publicKey, source.body, { httpMetadata: { contentType: source.httpMetadata?.contentType || 'audio/mpeg', cacheControl: 'public, max-age=3600' }, customMetadata: { publishedTrackId: id } })
-  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: publicKey, published: true, publishedAt: new Date() })
+  const allowedGenres = new Set(['Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre'])
+  const genre = allowedGenres.has(String(body.genre || '')) ? String(body.genre) : 'Autre'
+  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', genre, duration: track.duration || track.durationSeconds || null, r2Key: publicKey, published: true, publishedAt: new Date(), likesCount: 0, playCount: 0 })
   return response(200, { published: true, id })
 }
-async function publicTracks(request, db) {
-  // Sort on the single indexed timestamp field, then filter published tracks in code.
-  // This avoids requiring a composite Firestore index for published + publishedAt.
+async function publicTracks(request, db, user = null) {
   const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
-  const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true).slice(0, 40)
-  return response(200, { tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) })
+  const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true)
+  const liked = user ? await Promise.all(tracks.map(track => db.get('publishedTracks/' + track.id + '/likes/' + user.uid))) : []
+  const enriched = tracks.map((track, index) => ({
+    id: track.id, title: track.title, imageUrl: track.imageUrl || '', genre: track.genre || 'Autre', duration: track.duration || null,
+    likesCount: Math.max(0, Number(track.likesCount || 0)), playCount: Math.max(0, Number(track.playCount || 0)),
+    likedByMe: user ? liked[index].exists : false,
+    audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
+  }))
+  enriched.sort((a, b) => (b.likesCount * 3 + b.playCount) - (a.likesCount * 3 + a.playCount) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+  return new Response(JSON.stringify({ tracks: enriched.slice(0, 40) }), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } })
+}
+async function trackEngagement(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const body = await request.json().catch(() => ({}))
+  const id = String(body.trackId || '')
+  const action = String(body.action || '')
+  if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id) || !['like','unlike','play'].includes(action)) return response(400, { error: 'invalid-engagement' })
+  const trackPath = 'publishedTracks/' + id
+  const likePath = trackPath + '/likes/' + user.uid
+  return await db.runTransaction(async tx => {
+    const [track, like] = await Promise.all([tx.get(db.doc(trackPath)), tx.get(db.doc(likePath))])
+    if (!track.exists || track.data().published !== true) return { error: 'track-not-found' }
+    let likesCount = Math.max(0, Number(track.data().likesCount || 0))
+    let playCount = Math.max(0, Number(track.data().playCount || 0))
+    let likedByMe = like.exists
+    if (action === 'like' && !like.exists) {
+      tx.create(db.doc(likePath), { uid: user.uid, createdAt: SERVER_TIMESTAMP })
+      likesCount++
+      likedByMe = true
+    } else if (action === 'unlike' && like.exists) {
+      tx.delete(db.doc(likePath))
+      likesCount = Math.max(0, likesCount - 1)
+      likedByMe = false
+    } else if (action === 'play') {
+      playCount++
+    }
+    if (action !== 'unlike' || like.exists) tx.update(db.doc(trackPath), { likesCount, playCount })
+    else if (action === 'play') tx.update(db.doc(trackPath), { playCount })
+    return { likedByMe, likesCount, playCount }
+  }).then(result => result.error ? response(404, { error: result.error }) : response(200, result))
 }
 async function publicAudio(request, env, db) {
   const id = new URL(request.url).searchParams.get('id')
@@ -677,7 +715,7 @@ async function publicAudio(request, env, db) {
   if (!snap.exists || snap.data.published !== true || !snap.data.r2Key) return response(404, { error: 'track-not-found' })
   const object = await env.AUDIO_BUCKET?.get(snap.data.r2Key)
   if (!object) return response(404, { error: 'track-not-found' })
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes' } })
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'audio/mpeg', 'cache-control': 'public, max-age=3600', 'accept-ranges': 'bytes', 'access-control-allow-origin': '*' } })
 }
 async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
@@ -743,7 +781,7 @@ export default {
     }
 
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
-    if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); return await publicTracks(request, db) }
+    if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); let viewer = null; try { viewer = await userFrom(request, env) } catch {} return await publicTracks(request, db, viewer) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
     if (url.pathname === '/api/suno-callback') {
       if (request.method !== 'POST') return response(405,{error:'method-not-allowed'})
@@ -802,6 +840,7 @@ export default {
       if (url.pathname === '/api/admin/revenue') return await adminRevenue(request,db,user)
       if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
       if (url.pathname === '/api/admin/visitors/reset') return await adminResetVisitors(request,db,user)
+      if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {

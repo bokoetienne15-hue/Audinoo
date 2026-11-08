@@ -568,8 +568,199 @@ const homeWorkspacePage = document.createElement('section')
 homeWorkspacePage.className = 'workspace-content workspace-home-page'
 homeWorkspacePage.id = 'home-page'
 homeWorkspacePage.hidden = true
-homeWorkspacePage.innerHTML = '<p class="workspace-kicker">DÉCOUVRIR AUDINOO</p><h1>Accueil</h1><p class="workspace-intro">Retrouve ici les chansons sélectionnées et publiées par Audinoo.</p><section class="workspace-home-empty"><span class="workspace-home-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span><h2>Les premières chansons arrivent bientôt.</h2><p>Les créations publiées par Audinoo apparaîtront ici. Reviens découvrir les nouveautés musicales de la communauté.</p></section>'
 workspaceLayout.append(homeWorkspacePage)
+homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>La musique créée par la communauté.<br><span>À écouter sans limite.</span></h1><p>Retrouve ici les chansons générées sur Audinoo par les créateurs de la communauté. Explore les styles, découvre de nouveaux talents et lance l’écoute de tes morceaux préférés.</p></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire 🔥</h2><p>Les morceaux générés sur Audinoo et publiés dans la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons publiées dans la communauté apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><img class="home-player-cover" alt=""><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré sur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
+
+const homeHeroArt = homeWorkspacePage.querySelector('.home-hero-art')
+const homeHeroArtwork = document.createElement('img')
+homeHeroArtwork.className = 'home-hero-artwork'
+homeHeroArtwork.src = windSilhouette1
+homeHeroArtwork.alt = ''
+homeHeroArtwork.setAttribute('aria-hidden', 'true')
+homeHeroArt.prepend(homeHeroArtwork)
+
+const homeMusicCategories = ['Tout','Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre']
+let homePublishedTracks = []
+let homeActiveCategory = 'Tout'
+let homeActiveTrackIndex = -1
+let homeTracksLoaded = false
+const homeTrackList = homeWorkspacePage.querySelector('#home-track-list')
+const homeCategoryList = homeWorkspacePage.querySelector('#home-category-list')
+const homeMusicSection = homeWorkspacePage.querySelector('#home-music-section')
+const homeNoMusic = homeWorkspacePage.querySelector('#home-no-music')
+const homeSearchInput = homeWorkspacePage.querySelector('#home-track-search')
+const homeMiniPlayer = homeWorkspacePage.querySelector('#home-mini-player')
+const homePlayerAudio = homeWorkspacePage.querySelector('#home-player-audio')
+const homePlayerToggle = homeWorkspacePage.querySelector('#home-player-toggle')
+const homePlayerTitle = homeWorkspacePage.querySelector('.home-player-title')
+const homePlayerCover = homeWorkspacePage.querySelector('.home-player-cover')
+function renderHomeCategories() {
+  replaceNodeChildren(homeCategoryList, ...homeMusicCategories.map(category => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'home-category-chip' + (homeActiveCategory === category ? ' is-active' : '')
+    button.textContent = category
+    button.setAttribute('aria-pressed', String(homeActiveCategory === category))
+    button.addEventListener('click', () => { homeActiveCategory = category; renderHomeCategories(); renderHomeTracks() })
+    return button
+  }))
+}
+function renderHomeTracks() {
+  const query = (homeSearchInput?.value || '').trim().toLocaleLowerCase('fr')
+  const visible = homePublishedTracks.filter(track => {
+    const categoryMatch = homeActiveCategory === 'Tout' || (track.genre || 'Autre') === homeActiveCategory
+    return categoryMatch && (!query || String(track.title || '').toLocaleLowerCase('fr').includes(query))
+  })
+  replaceNodeChildren(homeTrackList, ...visible.map(track => {
+    const index = homePublishedTracks.indexOf(track)
+    const row = document.createElement('article')
+    row.className = 'home-track-row'
+    row.dataset.trackId = track.id
+    const cover = document.createElement('img')
+    cover.className = 'home-track-cover'
+    cover.alt = ''
+    cover.loading = 'lazy'
+    cover.src = track.imageUrl || '/favicon.ico'
+    cover.addEventListener('error', () => { cover.classList.add('is-missing'); cover.removeAttribute('src') }, { once: true })
+    const details = document.createElement('div')
+    details.className = 'home-track-details'
+    const title = document.createElement('strong')
+    title.textContent = track.title || 'Création Audinoo'
+    const artist = document.createElement('small')
+    const rawDuration = track.duration
+    const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
+    artist.textContent = (track.creatorName || track.username ? 'Par ' + (track.creatorName || track.username) : 'Généré sur Audinoo') + ' · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
+    details.append(title, artist)
+    const play = document.createElement('button')
+    play.type = 'button'
+    play.className = 'home-track-play'
+    play.setAttribute('aria-label', 'Écouter ' + title.textContent)
+    play.textContent = homeActiveTrackIndex === index && !homePlayerAudio.paused ? 'Ⅱ' : '▶'
+    play.addEventListener('click', () => playHomeTrack(index))
+    const like = document.createElement('button')
+    like.type = 'button'
+    like.className = 'home-track-like' + (track.likedByMe ? ' is-liked' : '')
+    like.setAttribute('aria-label', (track.likedByMe ? 'Retirer le like de ' : 'Aimer ') + title.textContent)
+    like.setAttribute('aria-pressed', String(Boolean(track.likedByMe)))
+    like.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.7 4.7 0 0 1 12 6.1a4.7 4.7 0 0 1 8.8 2.6Z"/></svg><small>' + Math.max(0, Number(track.likesCount || 0)) + '</small>'
+    like.addEventListener('click', () => toggleHomeTrackLike(track, like))
+    const more = document.createElement('button')
+    more.type = 'button'
+    more.className = 'home-track-more'
+    more.textContent = '⋮'
+    more.setAttribute('aria-label', 'Options bientôt disponibles pour ' + title.textContent)
+    more.title = 'Options bientôt disponibles'
+    row.append(cover, details, play, like, more)
+    return row
+  }))
+  if (!visible.length) {
+    const empty = document.createElement('p')
+    empty.className = 'home-filter-empty'
+    empty.textContent = query ? 'Aucune chanson ne correspond à ta recherche.' : 'Aucune chanson publiée dans cette catégorie pour le moment.'
+    homeTrackList.append(empty)
+  }
+}
+function sortHomePublishedTracks() {
+  const activeId = homePublishedTracks[homeActiveTrackIndex]?.id
+  homePublishedTracks.sort((a, b) => (Number(b.likesCount || 0) * 3 + Number(b.playCount || 0)) - (Number(a.likesCount || 0) * 3 + Number(a.playCount || 0)))
+  if (activeId) homeActiveTrackIndex = homePublishedTracks.findIndex(track => track.id === activeId)
+}
+async function toggleHomeTrackLike(track, button) {
+  if (button.disabled) return
+  button.disabled = true
+  const nextLiked = !track.likedByMe
+  try {
+    let result
+    result = await callAudinooApi('/api/tracks/engagement', { method: 'POST', body: JSON.stringify({ trackId: track.id, action: nextLiked ? 'like' : 'unlike' }) })
+    Object.assign(track, result)
+    sortHomePublishedTracks()
+    renderHomeTracks()
+  } catch (error) {
+    toast.textContent = error.message === 'invalid-session' || error.message === 'authentication-required' ? 'Connecte-toi pour aimer une chanson.' : 'Impossible d’enregistrer ton like. Réessaie.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3200)
+    button.disabled = false
+  }
+}
+async function playHomeTrack(index) {
+  const track = homePublishedTracks[index]
+  if (!track?.audioUrl) return
+  if (homeActiveTrackIndex === index && !homePlayerAudio.paused) { homePlayerAudio.pause(); return }
+  try {
+    if (homeActiveTrackIndex !== index) {
+      homeActiveTrackIndex = index
+      homePlayerAudio.src = track.audioUrl
+      homePlayerTitle.textContent = track.title || 'Création Audinoo'
+      homePlayerCover.src = track.imageUrl || '/favicon.ico'
+      homePlayerCover.alt = track.title || 'Pochette de la chanson'
+      homeMiniPlayer.hidden = false
+    }
+    await homePlayerAudio.play()
+    renderHomeTracks()
+  } catch (error) {
+    toast.textContent = 'Lecture impossible pour cette chanson. Réessaie.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3500)
+  }
+}
+homePlayerToggle.addEventListener('click', async () => {
+  if (homePlayerAudio.paused) {
+    try { await homePlayerAudio.play() } catch { /* Le navigateur peut bloquer la lecture */ }
+  } else homePlayerAudio.pause()
+})
+homePlayerAudio.addEventListener('play', () => {
+  homePlayerToggle.textContent = 'Ⅱ'
+  homePlayerToggle.setAttribute('aria-label','Mettre en pause')
+  const track = homePublishedTracks[homeActiveTrackIndex]
+  if (track && !track._playCountPending) {
+    track._playCountPending = true
+    callAudinooApi('/api/tracks/engagement', { method: 'POST', body: JSON.stringify({ trackId: track.id, action: 'play' }) }).then(result => {
+      Object.assign(track, result)
+      sortHomePublishedTracks()
+      renderHomeTracks()
+    }).catch(() => {}).finally(() => { track._playCountPending = false })
+  }
+  renderHomeTracks()
+})
+homePlayerAudio.addEventListener('pause', () => { homePlayerToggle.textContent = '▶'; homePlayerToggle.setAttribute('aria-label','Lire la chanson'); renderHomeTracks() })
+homePlayerAudio.addEventListener('ended', () => {
+  const next = homeActiveTrackIndex + 1
+  if (next < homePublishedTracks.length) void playHomeTrack(next)
+})
+homeSearchInput.addEventListener('input', renderHomeTracks)
+homeWorkspacePage.querySelector('#home-see-all').addEventListener('click', () => {
+  homeActiveCategory = 'Tout'
+  homeSearchInput.value = ''
+  renderHomeCategories()
+  renderHomeTracks()
+})
+async function loadPublishedHome(force = false) {
+  if (homeTracksLoaded && !force) return
+  homeNoMusic.hidden = true
+  homeMusicSection.hidden = false
+  renderHomeCategories()
+  try {
+    // Netlify deploy previews are static builds: read the public catalogue from the live Cloudflare API.
+    const apiOrigin = window.location.hostname.endsWith('.netlify.app') ? 'https://audinoo.com' : window.location.origin
+    const viewerToken = auth.currentUser ? await auth.currentUser.getIdToken() : ''
+    const response = await fetch(apiOrigin + '/api/public-tracks', { cache: 'no-store', headers: viewerToken ? { authorization: 'Bearer ' + viewerToken } : {} })
+    if (!response.ok) throw new Error('public-tracks-unavailable')
+    const body = await response.json()
+    homePublishedTracks = (Array.isArray(body.tracks) ? body.tracks : []).map(track => ({
+      ...track,
+      audioUrl: typeof track.audioUrl === 'string' && track.audioUrl.startsWith('/') ? apiOrigin + track.audioUrl : track.audioUrl
+    }))
+    homeTracksLoaded = true
+    if (!homePublishedTracks.length) { homeNoMusic.hidden = false; homeNoMusic.querySelector('h2').textContent = 'Les premières chansons arrivent bientôt'; homeNoMusic.querySelector('p').textContent = 'Les morceaux apparaîtront ici dès qu’une chanson sera publiée depuis l’administration.'; return }
+    renderHomeTracks()
+  } catch (error) {
+    homeNoMusic.hidden = false
+    homeNoMusic.querySelector('h2').textContent = 'Le catalogue est momentanément indisponible'
+    homeNoMusic.querySelector('p').textContent = 'Les catégories restent accessibles. Réessaie dans quelques instants.'
+    console.error('[Audinoo public home]', error)
+  }
+}
+
 const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
@@ -1267,11 +1458,24 @@ function renderAdminGenerationsTable() {
           publish.type = 'button'
           publish.className = 'admin-publish-button'
           publish.textContent = 'Publier sur l’accueil'
+          const genreLabel = document.createElement('label')
+          genreLabel.className = 'admin-publish-genre'
+          genreLabel.textContent = 'Catégorie'
+          const genreSelect = document.createElement('select')
+          genreSelect.setAttribute('aria-label', 'Catégorie musicale de la chanson')
+          ;['Autre','Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock'].forEach(genre => {
+            const option = document.createElement('option')
+            option.value = genre
+            option.textContent = genre
+            genreSelect.append(option)
+          })
+          genreLabel.append(genreSelect)
+          
           publish.addEventListener('click', async () => {
             publish.disabled = true
             publish.textContent = 'Publication…'
             try {
-              await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex }) })
+              await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex, genre: genreSelect.value }) })
               publish.textContent = '✓ Publiée'
               publish.classList.add('is-published')
               status.textContent = 'La chanson est maintenant publiée sur l’accueil.'
@@ -1282,7 +1486,7 @@ function renderAdminGenerationsTable() {
               console.error('[Audinoo publication]', error)
             }
           })
-          controls.append(listen, audio, publish)
+          controls.append(listen, audio, genreLabel, publish)
           row.append(controls)
         } else {
           const unavailable = document.createElement('small')
@@ -3775,6 +3979,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     workspaceSupportPage.hidden = true
     workspacePricingPage.hidden = true
     homeWorkspacePage.hidden = false
+    void loadPublishedHome(true)
     workspaceModelChoice.classList.remove('is-active')
   } else if (destination === '#studio') {
     homeWorkspacePage.hidden = true
