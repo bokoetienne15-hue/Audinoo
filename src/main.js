@@ -1038,7 +1038,7 @@ workspaceSettingsPage.querySelector('#settings-profile-form').addEventListener('
     renderProfileAvatar(workspaceAvatar, settingsProfileCache)
     renderProfileAvatar(headerAvatar, settingsProfileCache)
     workspaceSettingsPage.querySelector('#settings-profile-name').textContent = displayName
-    workspaceSettingsPage.querySelector('#settings-profile-avatar').textContent = displayName.charAt(0).toUpperCase()
+    renderProfileAvatar(workspaceSettingsPage.querySelector('#settings-profile-avatar'), settingsProfileCache)
     status.textContent = 'Profil mis à jour dans Firebase.'
   } catch (error) {
     status.textContent = 'Modification refusée : ' + exactErrorDetails(error)
