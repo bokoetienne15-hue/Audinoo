@@ -2001,3 +2001,22 @@ button.is-generating:disabled {
     opacity:.86;
   }
 }
+
+
+/* Ajustement final : réduire nettement la largeur de la photo inclinée */
+.workspace-home-page .home-hero-art{
+  right:3%;
+  width:24%;
+}
+.workspace-home-page .home-hero-artwork{
+  width:58%;
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero-art{
+    right:1%;
+    width:22%;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:65%;
+  }
+}
