@@ -1931,3 +1931,73 @@ button.is-generating:disabled {
     opacity:.82;
   }
 }
+
+
+/* Accueil musical : visuel rectangulaire étroit, non rogné et sans carte */
+.workspace-home-page .home-hero{
+  min-height:190px;
+  padding:26px 32px;
+}
+.workspace-home-page .home-hero-copy{
+  width:70%;
+  max-width:680px;
+}
+.workspace-home-page .home-hero-art{
+  right:3%;
+  width:29%;
+  height:118%;
+  top:50%;
+  transform:translateY(-50%);
+  overflow:visible;
+}
+.workspace-home-page .home-hero-artwork{
+  inset:50% auto auto 50%;
+  display:block;
+  width:76%;
+  height:94%;
+  max-width:none;
+  aspect-ratio:3 / 4;
+  object-fit:contain;
+  object-position:center;
+  border:0;
+  border-radius:0;
+  outline:0;
+  box-shadow:none;
+  clip-path:none;
+  -webkit-mask-image:none;
+  mask-image:none;
+  transform:translate(-50%,-50%) rotate(-15deg);
+  transform-origin:center;
+  opacity:.9;
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero{
+    min-height:178px;
+    padding:19px 15px;
+  }
+  .workspace-home-page .home-hero-copy{
+    width:74%;
+    max-width:74%;
+  }
+  .workspace-home-page .home-hero h1{
+    font-size:23px;
+    line-height:1.18;
+  }
+  .workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+    font-size:10px;
+    line-height:1.48;
+  }
+  .workspace-home-page .home-hero-art{
+    right:0;
+    width:28%;
+    height:116%;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:88%;
+    height:88%;
+    aspect-ratio:3 / 4;
+    object-fit:contain;
+    transform:translate(-50%,-50%) rotate(-16deg);
+    opacity:.86;
+  }
+}
