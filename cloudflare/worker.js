@@ -506,7 +506,14 @@ async function adminGenerations(request, db, user) {
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   // Avoid an orderBy index dependency: retrieve the collection group, then sort in memory.
   // This also includes older generation documents that may not have a createdAt field.
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  const [rows, publishedRows] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 }),
+    db.runQuery({ from: [{ collectionId: 'publishedTracks' }], limit: 1000 })
+  ])
+  const publishedIds = new Set((publishedRows || []).filter(row => row.document)
+    .map(row => fromFields(row.document.fields || {}))
+    .filter(track => track.published === true)
+    .map(track => String(track.id || '')))
   const generations = (rows || []).filter(row => row.document?.name?.includes('/documents/users/'))
     .map(row => {
       const d = fromFields(row.document.fields || {})
@@ -517,8 +524,11 @@ async function adminGenerations(request, db, user) {
       return {
         uid, taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt,
         tracks: (Array.isArray(d.tracks) ? d.tracks : []).map((t, i) => ({
-          title: t.title || d.title || 'Création Audinoo', imageUrl: t.imageUrl || '',
+          title: t.title || d.title || 'Création Audinoo',
+          imageUrl: t.imageUrl || t.image_url || t.sourceImageUrl || t.coverUrl || t.cover_url || '',
           archived: !!t.r2Key, trackIndex: i,
+          published: publishedIds.has(taskId + '-' + i),
+          publishedTrackId: publishedIds.has(taskId + '-' + i) ? taskId + '-' + i : '',
           audioUrl: (t.r2Key || /^https?:\/\//i.test(t.audioUrl || ''))
             ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(taskId) + '&track=' + i : ''
         }))
@@ -662,15 +672,43 @@ async function publishTrack(request, env, db, user) {
   await env.AUDIO_BUCKET.put(publicKey, source.body, { httpMetadata: { contentType: source.httpMetadata?.contentType || 'audio/mpeg', cacheControl: 'public, max-age=3600' }, customMetadata: { publishedTrackId: id } })
   const allowedGenres = new Set(['Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre'])
   const genre = allowedGenres.has(String(body.genre || '')) ? String(body.genre) : 'Autre'
-  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', genre, duration: track.duration || track.durationSeconds || null, r2Key: publicKey, published: true, publishedAt: new Date(), likesCount: 0, playCount: 0 })
-  return response(200, { published: true, id })
+  const existing = await db.get('publishedTracks/' + id)
+  const palettes = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
+  const paletteSeed = track.id || track.audioUrl || id
+  const coverPalette = existing.data?.coverPalette || palettes[(index + (String(paletteSeed).length % palettes.length)) % palettes.length]
+  const imageUrl = track.imageUrl || track.image_url || track.sourceImageUrl || track.coverUrl || track.cover_url || existing.data?.imageUrl || ''
+  await db.set('publishedTracks/' + id, {
+    id, uid, taskId, trackIndex: index,
+    title: track.title || snap.data.title || 'Création Audinoo',
+    imageUrl, coverPalette, genre,
+    duration: track.duration || track.durationSeconds || null,
+    r2Key: publicKey, published: true,
+    publishedAt: existing.data?.publishedAt || new Date(),
+    likesCount: Math.max(0, Number(existing.data?.likesCount || 0)),
+    playCount: Math.max(0, Number(existing.data?.playCount || 0))
+  })
+  return response(200, { published: true, id, coverPalette })
+}
+async function unpublishTrack(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const id = String(body.trackId || '')
+  if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) return response(400, { error: 'invalid-track' })
+  const path = 'publishedTracks/' + id
+  const track = await db.get(path)
+  if (!track.exists) return response(404, { error: 'track-not-found' })
+  if (track.data.published !== true) return response(409, { error: 'track-already-unpublished' })
+  await db.set(path, { published: false, unpublishedAt: new Date(), unpublishedBy: user.uid }, true)
+  return response(200, { unpublished: true, id })
 }
 async function publicTracks(request, db, user = null) {
   const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true)
   const liked = user ? await Promise.all(tracks.map(track => db.get('publishedTracks/' + track.id + '/likes/' + user.uid))) : []
   const enriched = tracks.map((track, index) => ({
-    id: track.id, title: track.title, imageUrl: track.imageUrl || '', genre: track.genre || 'Autre', duration: track.duration || null,
+    id: track.id, title: track.title, imageUrl: track.imageUrl || '',
+    coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
     likesCount: Math.max(0, Number(track.likesCount || 0)), playCount: Math.max(0, Number(track.playCount || 0)),
     likedByMe: user ? liked[index].exists : false,
     audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
@@ -842,6 +880,7 @@ export default {
       if (url.pathname === '/api/admin/visitors/reset') return await adminResetVisitors(request,db,user)
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
+      if (url.pathname === '/api/admin/unpublish') return await unpublishTrack(request,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
       const status = e.message === 'firebase-admin-not-configured' || e.message === 'fedapay-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
