@@ -2118,3 +2118,82 @@ button.is-generating:disabled {
     transform:translate(-50%,-50%) rotate(-8deg);
   }
 }
+
+
+/* Photo agrandie et fondue derrière une partie du texte du hero */
+.workspace-home-page .home-hero{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+.workspace-home-page .home-hero-copy{
+  position:relative;
+  z-index:2;
+  width:76%;
+  max-width:760px;
+}
+.workspace-home-page .home-hero-art{
+  display:block !important;
+  position:absolute;
+  z-index:1;
+  top:50%;
+  right:0;
+  width:54%;
+  height:150%;
+  transform:translateY(-50%);
+  overflow:visible;
+  pointer-events:none;
+}
+.workspace-home-page .home-hero-artwork{
+  display:block;
+  position:absolute;
+  inset:50% auto auto 50%;
+  width:100%;
+  height:124%;
+  max-width:none;
+  object-fit:cover;
+  object-position:center 42%;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  transform:translate(-50%,-50%) rotate(-13deg) scale(1.04);
+  transform-origin:center;
+  opacity:.43;
+  filter:saturate(.94) contrast(1.12);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.22) 20%,#000 48%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.22) 20%,#000 48%);
+}
+.workspace-home-page .home-hero h1,
+.workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+  position:relative;
+  z-index:2;
+  text-shadow:0 2px 14px rgba(7,7,16,.9);
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero{
+    min-height:205px;
+    padding:20px 15px 18px;
+  }
+  .workspace-home-page .home-hero-copy{
+    width:86%;
+    max-width:86%;
+  }
+  .workspace-home-page .home-hero-art{
+    right:-13%;
+    width:66%;
+    height:138%;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:108%;
+    height:116%;
+    object-position:58% center;
+    transform:translate(-50%,-50%) rotate(-13deg) scale(1.03);
+    opacity:.31;
+    -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 18%,#000 58%);
+    mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 18%,#000 58%);
+  }
+  .workspace-home-page .home-hero h1,
+  .workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+    text-shadow:0 2px 12px rgba(7,7,16,.96);
+  }
+}
