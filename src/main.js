@@ -584,6 +584,13 @@ let homePublishedTracks = []
 let homeActiveCategory = 'Tout'
 let homeActiveTrackIndex = -1
 let homeTracksLoaded = false
+// Données fictives réservées au Deploy Preview pour valider le rendu avant les vraies publications.
+const isHomeDemoPreview = /^deploy-preview-\\d+--audinoo\\.netlify\\.app$/.test(window.location.hostname)
+const homeDemoTracks = [
+  { id: 'demo-minuit-cotonou', title: 'Minuit à Cotonou', creatorName: 'Kendy Flow', genre: 'Afrobeat', duration: '2:34', imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true },
+  { id: 'demo-dans-ma-tete', title: 'Dans ma tête', creatorName: 'Lyna K.', genre: 'R&B', duration: '2:48', imageUrl: 'https://images.pexels.com/photos/7192878/pexels-photo-7192878.jpeg?cs=srgb&dl=pexels-bence-szemerey-337043-7192878.jpg&fm=jpg', demo: true },
+  { id: 'demo-on-avance', title: 'On avance', creatorName: 'Mello B.', genre: 'Hip-Hop', duration: '2:41', imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true }
+]
 const homeTrackList = homeWorkspacePage.querySelector('#home-track-list')
 const homeCategoryList = homeWorkspacePage.querySelector('#home-category-list')
 const homeMusicSection = homeWorkspacePage.querySelector('#home-music-section')
@@ -629,7 +636,7 @@ function renderHomeTracks() {
     const artist = document.createElement('small')
     const rawDuration = track.duration
     const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
-    artist.textContent = 'Généré sur Audinoo · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
+    artist.textContent = (track.creatorName || track.username ? 'Par ' + (track.creatorName || track.username) : 'Généré sur Audinoo') + ' · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
     details.append(title, artist)
     const play = document.createElement('button')
     play.type = 'button'
@@ -659,6 +666,12 @@ function renderHomeTracks() {
 }
 async function playHomeTrack(index) {
   const track = homePublishedTracks[index]
+  if (track?.demo) {
+    toast.textContent = 'Aperçu fictif : la lecture sera active avec les chansons réellement publiées.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 3200)
+    return
+  }
   if (!track?.audioUrl) return
   if (homeActiveTrackIndex === index && !homePlayerAudio.paused) { homePlayerAudio.pause(); return }
   try {
@@ -701,6 +714,13 @@ async function loadPublishedHome(force = false) {
   homeNoMusic.hidden = true
   homeMusicSection.hidden = false
   renderHomeCategories()
+  if (isHomeDemoPreview) {
+    homePublishedTracks = homeDemoTracks
+    homeTracksLoaded = true
+    homeWorkspacePage.querySelector('.home-section-heading p').textContent = 'Aperçu fictif : voici exactement comment les chansons publiées seront présentées.'
+    renderHomeTracks()
+    return
+  }
   try {
     // Netlify deploy previews are static builds: read the public catalogue from the live Cloudflare API.
     const apiOrigin = window.location.hostname.endsWith('.netlify.app') ? 'https://audinoo.com' : window.location.origin
