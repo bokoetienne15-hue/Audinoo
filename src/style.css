@@ -2197,3 +2197,36 @@ button.is-generating:disabled {
     text-shadow:0 2px 12px rgba(7,7,16,.96);
   }
 }
+
+
+/* Ajustement demandé : photo un peu réduite et aucune case blanche autour du visuel */
+.workspace-home-page .home-hero{
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  outline:0 !important;
+}
+.workspace-home-page .home-hero-art{
+  width:46% !important;
+  right:1% !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  outline:0 !important;
+}
+.workspace-home-page .home-hero-artwork{
+  width:88% !important;
+  height:116% !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  outline:0 !important;
+  opacity:.4 !important;
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero-art{width:54% !important;right:-7% !important}
+  .workspace-home-page .home-hero-artwork{width:96% !important;height:108% !important;opacity:.32 !important}
+}
