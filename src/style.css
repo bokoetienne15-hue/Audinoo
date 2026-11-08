@@ -2848,8 +2848,7 @@ button.is-generating:disabled {
 
 /* Inline community discovery note above the credit balance */
 .community-listen-notice {
-  display: flex; align-items: flex-start; gap: 5px;
-  margin: 0 0 13px; padding: 0;
+  position: relative; display: block; margin: 0 0 13px; padding: 0 20px 0 0;
   color: rgba(238, 234, 246, .82); font-size: 11px; line-height: 1.5;
   background: none; border: 0; box-shadow: none; border-radius: 0;
 }
@@ -2858,9 +2857,9 @@ button.is-generating:disabled {
 .community-listen-link { display: inline; margin-left: 2px; color: #c9a8f3; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .community-listen-link:hover { color: #e2ccff; }
 .community-listen-dismiss {
-  flex: 0 0 13px; display: inline-grid; place-items: center;
-  width: 13px; height: 15px; margin: -1px 0 0; padding: 0;
-  border: 0; border-radius: 0; color: #ef626c; background: transparent;
+  position: absolute; top: -4px; right: 0; display: grid; place-items: center;
+  width: 16px; height: 16px; margin: 0; padding: 0;
+  border: 0; border-radius: 0; color: #17151c; background: transparent;
   font-size: 17px; line-height: 1; cursor: pointer;
 }
-.community-listen-dismiss:hover { color: #ff9299; }
+.community-listen-dismiss:hover { color: #000; }
