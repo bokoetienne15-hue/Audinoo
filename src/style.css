@@ -1783,3 +1783,18 @@ button.is-generating:disabled {
  .home-track-details strong{line-height:1.4}
  .home-track-details small{line-height:1.55}
 }
+
+
+/* Bannière d'accueil : visuel photo issu du hero public, sans vignette-logo ni cadre */
+.workspace-home-page .home-hero{position:relative;isolation:isolate;display:flex;align-items:center;min-height:320px;padding:clamp(28px,5vw,54px);overflow:hidden;border:0;border-radius:22px;background:linear-gradient(90deg,rgba(7,7,16,.96) 0%,rgba(7,7,16,.83) 48%,rgba(7,7,16,.25) 100%),linear-gradient(0deg,rgba(7,7,16,.28),rgba(7,7,16,.1))}
+.workspace-home-page .home-hero-copy{position:relative;z-index:2;max-width:720px;width:100%}
+.workspace-home-page .home-eyebrow{margin:0 0 20px;padding:0;border:0;background:none;border-radius:0;color:#d49aff;font-size:11px;line-height:1.6;letter-spacing:2px;font-weight:800}
+.workspace-home-page .home-hero h1{max-width:700px;margin:0 0 18px;font-size:clamp(31px,4.8vw,52px);line-height:1.13;letter-spacing:-1.35px;text-shadow:0 2px 22px rgba(0,0,0,.38)}
+.workspace-home-page .home-hero h1 span{display:inline;color:#d49aff}
+.workspace-home-page .home-hero-copy>p:not(.home-eyebrow){max-width:590px;margin:0;color:#eee9f7;font-size:15px;line-height:1.85;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+.workspace-home-page .home-hero-art{position:absolute;inset:0;z-index:0;width:100%;height:100%;right:auto;top:0;transform:none;display:block;opacity:1;pointer-events:none}
+.workspace-home-page .home-hero-artwork{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%;opacity:.72;filter:saturate(.9) contrast(1.08)}
+.workspace-home-page .home-hero-glow{position:absolute;inset:auto 4% -35% auto;width:340px;height:240px;border-radius:50%;background:#8b35e9;filter:blur(90px);opacity:.35}
+.workspace-home-page .home-section-heading h2{display:flex;align-items:center;gap:8px;font-size:21px}
+.workspace-home-page .home-section-heading p{margin-top:8px;line-height:1.65}
+@media(max-width:650px){.workspace-home-page .home-hero{min-height:285px;padding:27px 21px;border-radius:18px;background:linear-gradient(90deg,rgba(7,7,16,.95),rgba(7,7,16,.68)),linear-gradient(0deg,rgba(7,7,16,.2),rgba(7,7,16,.1))}.workspace-home-page .home-hero-copy{max-width:100%;width:100%}.workspace-home-page .home-eyebrow{font-size:9px;letter-spacing:1.45px;margin-bottom:16px}.workspace-home-page .home-hero h1{max-width:100%;font-size:29px;line-height:1.22;letter-spacing:-.7px;margin-bottom:14px}.workspace-home-page .home-hero-copy>p:not(.home-eyebrow){max-width:100%;font-size:12px;line-height:1.75}.workspace-home-page .home-hero-artwork{object-position:58% center;opacity:.58}.workspace-home-page .home-section-heading h2{font-size:18px}}
