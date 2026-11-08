@@ -3777,7 +3777,11 @@ function openProfile(profile, { requireCountry = false } = {}) {
 
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
-  if (communityNotice) communityNotice.hidden = false
+  if (communityNotice) {
+    let dismissed = false
+    try { dismissed = localStorage.getItem(`audinoo-community-notice-dismissed-${profile.uid}`) === '1' } catch (_) {}
+    communityNotice.hidden = dismissed
+  }
   hasAudinooProfile = true
   profileUid = profile.uid
   studioWorkspacePage.hidden = false
@@ -4174,6 +4178,9 @@ document.querySelector('#community-listen-button')?.addEventListener('click', (e
 document.querySelector('#community-listen-dismiss')?.addEventListener('click', () => {
   const notice = document.querySelector('#community-listen-notice')
   if (notice) notice.hidden = true
+  if (profileUid) {
+    try { localStorage.setItem(`audinoo-community-notice-dismissed-${profileUid}`, '1') } catch (_) {}
+  }
 })
 
 workspaceSidebar.addEventListener('click', (event) => {
