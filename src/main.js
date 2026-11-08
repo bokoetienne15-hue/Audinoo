@@ -1003,7 +1003,6 @@ async function loadWorkspaceSettings(user) {
     profileStatus.textContent = 'Chargement impossible : ' + exactErrorDetails(error)
   }
 }
-settingsNavButton.addEventListener('click', showSettingsPage)
 workspaceSettingsPage.querySelector('#settings-profile-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   const user = auth.currentUser
@@ -1208,6 +1207,7 @@ sidebarToolsSection.className = 'workspace-sidebar-section workspace-tools-secti
 sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" id="workspace-settings-nav" type="button"><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><a class="workspace-nav workspace-tool-button" href="#support"><span aria-hidden="true">ⓘ</span> Aide &amp; Support</a>'
 workspaceSidebar.insertBefore(sidebarToolsSection, sidebarFooter)
 const settingsNavButton = workspaceSidebar.querySelector('#workspace-settings-nav')
+settingsNavButton.addEventListener('click', showSettingsPage)
 const adminSidebarButton = document.createElement('a')
 adminSidebarButton.className = 'workspace-nav workspace-admin-nav'
 adminSidebarButton.href = '#admin'
