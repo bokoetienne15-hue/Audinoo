@@ -2020,3 +2020,37 @@ button.is-generating:disabled {
     width:65%;
   }
 }
+
+
+/* Correction ciblée : réduire les cartes de morceaux, pas la photo de la bannière */
+.workspace-home-page .home-hero-art{width:29%}
+.workspace-home-page .home-hero-artwork{width:76%}
+.workspace-home-page .home-track-row{
+  width:84%;
+  max-width:820px;
+  margin:0 auto 10px;
+  min-height:86px;
+  padding:12px 16px;
+  grid-template-columns:60px minmax(0,1fr) 40px 24px;
+  gap:14px;
+  border:1px solid rgba(160,150,190,.16);
+  border-radius:13px;
+  background:rgba(19,17,36,.58);
+}
+.workspace-home-page .home-track-cover{
+  width:60px;
+  height:60px;
+  border-radius:9px;
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero-art{width:28%}
+  .workspace-home-page .home-hero-artwork{width:88%}
+  .workspace-home-page .home-track-row{
+    width:92%;
+    min-height:82px;
+    padding:10px 11px;
+    grid-template-columns:56px minmax(0,1fr) 36px 20px;
+    gap:9px;
+  }
+  .workspace-home-page .home-track-cover{width:56px;height:56px}
+}
