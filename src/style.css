@@ -2846,18 +2846,21 @@ button.is-generating:disabled {
   .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{order:3;flex-basis:100%;width:100%;max-width:none}
 }
 
-/* Discrete community discovery link above the credit balance */
+/* Inline community discovery note above the credit balance */
 .community-listen-notice {
-  position: relative; margin: 0 0 13px; padding: 0 24px 0 0;
+  display: flex; align-items: flex-start; gap: 5px;
+  margin: 0 0 13px; padding: 0;
   color: rgba(238, 234, 246, .82); font-size: 11px; line-height: 1.5;
+  background: none; border: 0; box-shadow: none; border-radius: 0;
 }
 .community-listen-notice[hidden] { display: none !important; }
-.community-listen-notice p { margin: 0 0 3px; }
-.community-listen-link { color: #c9a8f3; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; }
+.community-listen-notice p { display: block; margin: 0; }
+.community-listen-link { display: inline; margin-left: 2px; color: #c9a8f3; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .community-listen-link:hover { color: #e2ccff; }
 .community-listen-dismiss {
-  position: absolute; top: -5px; right: 0; display: grid; place-items: center;
-  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
-  color: #ef626c; background: transparent; font-size: 20px; line-height: 1; cursor: pointer;
+  flex: 0 0 13px; display: inline-grid; place-items: center;
+  width: 13px; height: 15px; margin: -1px 0 0; padding: 0;
+  border: 0; border-radius: 0; color: #ef626c; background: transparent;
+  font-size: 17px; line-height: 1; cursor: pointer;
 }
 .community-listen-dismiss:hover { color: #ff9299; }
