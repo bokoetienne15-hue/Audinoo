@@ -2304,3 +2304,56 @@ button.is-generating:disabled {
     opacity:.32 !important;
   }
 }
+
+
+/* Aperçu des chansons publiées : pochettes 64 × 64, comme sur la maquette */
+.workspace-home-page .home-track-row{
+  grid-template-columns:64px minmax(0,1fr) 40px 24px;
+  min-height:88px;
+  gap:15px;
+  padding:11px 7px;
+}
+.workspace-home-page .home-track-cover{
+  display:block;
+  width:64px;
+  height:64px;
+  min-width:64px;
+  border-radius:9px;
+  object-fit:cover;
+  background:#171329;
+  box-shadow:0 5px 16px rgba(0,0,0,.22);
+}
+.workspace-home-page .home-track-details{
+  min-width:0;
+  gap:6px;
+}
+.workspace-home-page .home-track-details strong{
+  font-size:13px;
+  line-height:1.4;
+}
+.workspace-home-page .home-track-details small{
+  font-size:10px;
+  line-height:1.5;
+}
+.workspace-home-page .home-track-play{
+  width:36px;
+  height:36px;
+  border:1px solid rgba(191,151,255,.12);
+  background:rgba(126,74,190,.16);
+}
+@media(max-width:650px){
+  .workspace-home-page .home-track-row{
+    grid-template-columns:64px minmax(0,1fr) 36px 20px;
+    min-height:84px;
+    gap:10px;
+    padding:10px 2px;
+  }
+  .workspace-home-page .home-track-cover{
+    width:64px;
+    height:64px;
+    min-width:64px;
+    border-radius:8px;
+  }
+  .workspace-home-page .home-track-details strong{font-size:12px}
+  .workspace-home-page .home-track-details small{font-size:9px}
+}
