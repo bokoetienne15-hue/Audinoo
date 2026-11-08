@@ -1417,7 +1417,7 @@ function renderAdminGenerationsTable() {
           genreLabel.textContent = 'Catégorie'
           const genreSelect = document.createElement('select')
           genreSelect.setAttribute('aria-label', 'Catégorie musicale de la chanson')
-          ;['Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre'].forEach(genre => {
+          ;['Autre','Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock'].forEach(genre => {
             const option = document.createElement('option')
             option.value = genre
             option.textContent = genre
