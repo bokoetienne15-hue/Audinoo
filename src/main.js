@@ -4078,13 +4078,6 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
     pricingPreviousDestination = workspaceSidebar.querySelector('.workspace-nav.is-active')?.getAttribute('href') || '#studio'
   }
   if (destination === '#home') {
-    if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) {
-      toast.textContent = 'La rubrique Accueil sera bientôt disponible.'
-      toast.classList.add('show')
-      window.setTimeout(() => toast.classList.remove('show'), 3600)
-      setWorkspaceSidebarOpen(false)
-      return
-    }
     studioWorkspacePage.hidden = true
     libraryWorkspacePage.hidden = true
     modelWorkspacePage.hidden = true
