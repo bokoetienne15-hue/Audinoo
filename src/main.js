@@ -4,7 +4,8 @@ import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
 import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
-import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+import { auth, authPersistenceReady, db, googleProvider, storage } from './firebase.js'
 
 const app = document.querySelector('#app')
 
@@ -881,7 +882,7 @@ workspaceSettingsPage.innerHTML = `
   <div class="settings-layout">
     <section class="settings-card settings-account-card">
       <div class="settings-card-heading"><span class="settings-icon">♙</span><div><h2>Mon compte</h2><p>Les informations de ton profil Audinoo.</p></div></div>
-      <div class="settings-profile-identity"><span class="settings-profile-avatar" id="settings-profile-avatar">A</span><div><strong id="settings-profile-name">Mon profil</strong><small id="settings-profile-email"></small></div></div>
+      <div class="settings-profile-identity"><span class="settings-profile-avatar" id="settings-profile-avatar">A</span><div><strong id="settings-profile-name">Mon profil</strong><small id="settings-profile-email"></small><label class="settings-photo-button" for="settings-photo-input">＋ Ajouter une photo</label><input id="settings-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden><small class="settings-photo-hint">JPG, PNG ou WebP · 5 Mo maximum</small></div></div>
       <form id="settings-profile-form" class="settings-form">
         <label>Nom affiché<input id="settings-display-name" name="displayName" maxlength="60" required placeholder="Ton nom"></label>
         <label>Nom d’utilisateur<input id="settings-username" name="username" maxlength="32" required placeholder="@ton_pseudo"><small>Commence par @ et utilise des lettres minuscules, chiffres et _.</small></label>
@@ -995,6 +996,7 @@ async function loadWorkspaceSettings(user) {
     workspaceSettingsPage.querySelector('#settings-theme').value = settingsPreferences.theme
     workspaceSettingsPage.querySelector('#settings-announcements').checked = settingsPreferences.announcements !== false
     workspaceSettingsPage.querySelector('#settings-playback-rate').value = String(settingsPreferences.playbackRate || 1)
+    syncPasswordResetAvailability(user)
     applyWorkspaceTheme(settingsPreferences.theme)
     applyWorkspacePlaybackRate(settingsPreferences.playbackRate)
     notificationControl.hidden = settingsPreferences.announcements === false
@@ -1065,19 +1067,70 @@ workspaceSettingsPage.querySelector('#settings-playback-rate').addEventListener(
   try { await saveWorkspacePreferences({ playbackRate: Number(event.target.value) }, status) }
   catch { event.target.value = String(previous); applyWorkspacePlaybackRate(previous) }
 })
-workspaceSettingsPage.querySelector('#settings-password-reset').addEventListener('click', async (event) => {
+const passwordResetButton = workspaceSettingsPage.querySelector('#settings-password-reset')
+function syncPasswordResetAvailability(user) {
+  const hasPasswordProvider = Boolean(user?.providerData?.some((provider) => provider.providerId === 'password'))
+  passwordResetButton.disabled = !hasPasswordProvider
+  passwordResetButton.textContent = hasPasswordProvider ? 'Réinitialiser' : 'Compte Google'
+  workspaceSettingsPage.querySelector('#settings-security-status').textContent = hasPasswordProvider
+    ? ''
+    : 'Ce compte utilise Google pour se connecter. Son mot de passe se gère dans les paramètres de sécurité Google.'
+}
+passwordResetButton.addEventListener('click', async (event) => {
   const button = event.currentTarget
   const status = workspaceSettingsPage.querySelector('#settings-security-status')
   const user = auth.currentUser
   if (!user?.email) { status.textContent = 'Aucune adresse e-mail associée à ce compte.'; return }
+  if (!user.providerData?.some((provider) => provider.providerId === 'password')) {
+    status.textContent = 'Ce compte se connecte avec Google. Modifie son mot de passe depuis ton compte Google.'
+    return
+  }
   button.disabled = true
   status.textContent = 'Envoi du lien sécurisé…'
   try {
     await sendPasswordResetEmail(auth, user.email)
-    status.textContent = 'Lien de réinitialisation envoyé à ' + user.email + '. Vérifie aussi tes courriers indésirables.'
+    status.textContent = 'Firebase a accepté la demande et envoyé le lien à ' + user.email + '. Vérifie ta boîte de réception et, si nécessaire, les spams.'
   } catch (error) {
     status.textContent = 'Envoi impossible : ' + exactErrorDetails(error)
   } finally { button.disabled = false }
+})
+workspaceSettingsPage.querySelector('#settings-photo-input').addEventListener('change', async (event) => {
+  const input = event.currentTarget
+  const file = input.files?.[0]
+  const user = auth.currentUser
+  const status = workspaceSettingsPage.querySelector('#settings-profile-status')
+  if (!file || !user) return
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    status.textContent = 'Format non accepté. Choisis une image JPG, PNG ou WebP.'
+    input.value = ''
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    status.textContent = 'Cette image dépasse la limite de 5 Mo.'
+    input.value = ''
+    return
+  }
+  const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp'
+  const button = workspaceSettingsPage.querySelector('.settings-photo-button')
+  button.classList.add('is-uploading')
+  status.textContent = 'Envoi de ta photo vers Firebase Storage…'
+  try {
+    const imageRef = storageRef(storage, 'avatars/' + user.uid + '/profile.' + extension)
+    await uploadBytes(imageRef, file, { contentType: file.type, cacheControl: 'public,max-age=3600' })
+    const photoURL = await getDownloadURL(imageRef)
+    await updateDoc(doc(db, 'users', user.uid), { photoURL, updatedAt: serverTimestamp() })
+    settingsProfileCache = { ...settingsProfileCache, photoURL }
+    renderProfileAvatar(workspaceSettingsPage.querySelector('#settings-profile-avatar'), settingsProfileCache)
+    renderProfileAvatar(workspaceAvatar, settingsProfileCache)
+    renderProfileAvatar(headerAvatar, settingsProfileCache)
+    status.textContent = 'Photo de profil enregistrée dans Firebase. Elle sera conservée après reconnexion.'
+  } catch (error) {
+    status.textContent = 'Impossible d’enregistrer la photo : ' + exactErrorDetails(error)
+  } finally {
+    button.classList.remove('is-uploading')
+    input.value = ''
+  }
 })
 
 workspaceModelChoice.addEventListener('click', () => {
