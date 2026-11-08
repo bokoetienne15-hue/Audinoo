@@ -2230,3 +2230,77 @@ button.is-generating:disabled {
   .workspace-home-page .home-hero-art{width:54% !important;right:-7% !important}
   .workspace-home-page .home-hero-artwork{width:96% !important;height:108% !important;opacity:.32 !important}
 }
+
+/* Hero communauté : contenu posé directement sur la page, sans carte englobante */
+.workspace-home-page .home-hero{
+  display:flex !important;
+  position:relative !important;
+  isolation:isolate;
+  min-height:270px !important;
+  margin:0 !important;
+  padding:30px 0 24px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+.workspace-home-page .home-hero-copy{
+  position:relative !important;
+  z-index:2 !important;
+  width:76% !important;
+  max-width:760px !important;
+}
+.workspace-home-page .home-hero-art{
+  display:block !important;
+  position:absolute !important;
+  z-index:1 !important;
+  top:50% !important;
+  right:1% !important;
+  width:46% !important;
+  height:150% !important;
+  transform:translateY(-50%) !important;
+  border:0 !important;
+  border-radius:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+  pointer-events:none !important;
+}
+.workspace-home-page .home-hero-artwork{
+  border:0 !important;
+  border-radius:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  opacity:.4 !important;
+}
+.workspace-home-page .home-hero h1,
+.workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+  position:relative;
+  z-index:2;
+  text-shadow:0 2px 14px rgba(7,7,16,.9);
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero{
+    min-height:220px !important;
+    padding:20px 0 16px !important;
+    background:transparent !important;
+  }
+  .workspace-home-page .home-hero-copy{
+    width:86% !important;
+    max-width:86% !important;
+  }
+  .workspace-home-page .home-hero-art{
+    right:-7% !important;
+    width:54% !important;
+    height:138% !important;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:96% !important;
+    height:108% !important;
+    opacity:.32 !important;
+  }
+}
