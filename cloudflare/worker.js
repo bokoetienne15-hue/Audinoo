@@ -790,6 +790,49 @@ async function library(request, env, db, user) {
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   return response(200, { generations })
 }
+async function profilePhoto(request, env, user, url) {
+  const uidPattern = /^[A-Za-z0-9_-]{1,128}$/
+  if (request.method === 'GET') {
+    const uid = url.searchParams.get('uid') || ''
+    if (!uidPattern.test(uid)) return response(400, { error: 'invalid-user' })
+    if (!env.AUDIO_BUCKET) return response(503, { error: 'profile-storage-not-configured' })
+    const object = await env.AUDIO_BUCKET.get('avatars/' + uid + '/profile')
+    if (!object) return response(404, { error: 'profile-photo-not-found' })
+    return new Response(object.body, {
+      headers: {
+        'content-type': object.httpMetadata?.contentType || 'application/octet-stream',
+        'cache-control': 'public, max-age=300',
+        'x-content-type-options': 'nosniff',
+        'content-length': String(object.size || '')
+      }
+    })
+  }
+  if (!user) return response(401, { error: 'authentication-required' })
+  if (!env.AUDIO_BUCKET) return response(503, { error: 'profile-storage-not-configured' })
+  if (request.method === 'DELETE') {
+    await env.AUDIO_BUCKET.delete('avatars/' + user.uid + '/profile')
+    return response(200, { deleted: true })
+  }
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const contentType = (request.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) return response(415, { error: 'unsupported-image-type' })
+  const declaredSize = Number(request.headers.get('content-length') || 0)
+  if (declaredSize > 5 * 1024 * 1024) return response(413, { error: 'image-too-large' })
+  const bytes = await request.arrayBuffer()
+  if (!bytes.byteLength || bytes.byteLength > 5 * 1024 * 1024) return response(413, { error: 'image-too-large-or-empty' })
+  const view = new Uint8Array(bytes)
+  const isJpeg = contentType === 'image/jpeg' && view[0] === 0xff && view[1] === 0xd8 && view[2] === 0xff
+  const isPng = contentType === 'image/png' && view[0] === 0x89 && view[1] === 0x50 && view[2] === 0x4e && view[3] === 0x47
+  const isWebp = contentType === 'image/webp' && String.fromCharCode(...view.slice(0, 4)) === 'RIFF' && String.fromCharCode(...view.slice(8, 12)) === 'WEBP'
+  if (!isJpeg && !isPng && !isWebp) return response(415, { error: 'invalid-image-content' })
+  await env.AUDIO_BUCKET.put('avatars/' + user.uid + '/profile', bytes, {
+    httpMetadata: { contentType, cacheControl: 'public, max-age=300' },
+    customMetadata: { uid: user.uid, purpose: 'profile-photo' }
+  })
+  const photoURL = new URL('/api/profile-photo?uid=' + encodeURIComponent(user.uid), request.url).toString()
+  return response(200, { photoURL })
+}
+
 export default {
   async scheduled(controller, env) {
     if (!env.AUDIO_BUCKET) return
@@ -821,6 +864,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
     if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); let viewer = null; try { viewer = await userFrom(request, env) } catch {} return await publicTracks(request, db, viewer) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
+    if (url.pathname === '/api/profile-photo' && request.method === 'GET') return await profilePhoto(request, env, null, url)
     if (url.pathname === '/api/suno-callback') {
       if (request.method !== 'POST') return response(405,{error:'method-not-allowed'})
       let payload
@@ -853,6 +897,7 @@ export default {
       user = await userFrom(request,env)
       if (!user) return response(401,{error:'authentication-required'})
       const db = new FirestoreRest(env)
+      if (url.pathname === '/api/profile-photo') return await profilePhoto(request, env, user, url)
       if (url.pathname === '/api/credits/purchase') return await createCreditPayment(request,env,db,user)
       if (url.pathname === '/api/tracks/purchase') return await createTrackPurchase(request,env,db,user)
       if (url.pathname === '/api/tracks/confirm') {
