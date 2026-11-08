@@ -961,6 +961,17 @@ const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
 workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div><strong id="workspace-mobile-credit-count">0 crédit gratuit</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div>'
 document.querySelector('.workspace-content').prepend(workspaceMobileCredit)
+const communityNotice = document.querySelector('#community-listen-notice')
+const syncCommunityNoticePlacement = () => {
+  if (!communityNotice) return
+  if (window.matchMedia('(max-width: 760px)').matches) {
+    workspaceMobileCredit.before(communityNotice)
+  } else {
+    document.querySelector('.workspace-side-note')?.before(communityNotice)
+  }
+}
+syncCommunityNoticePlacement()
+window.addEventListener('resize', syncCommunityNoticePlacement)
 const workspaceMobileCreditCount = workspaceMobileCredit.querySelector('#workspace-mobile-credit-count')
 const workspaceMobileCreditCaption = workspaceMobileCredit.querySelector('#workspace-mobile-credit-caption')
 const workspaceCreditPanel = document.createElement('section')
