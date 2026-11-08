@@ -4027,7 +4027,8 @@ function renderProfileAvatar(element, profile) {
 async function syncGoogleProfilePhoto(user, profile) {
   const isGoogleAccount = user?.providerData?.some((provider) => provider.providerId === 'google.com')
   const googlePhotoURL = isGoogleAccount && typeof user.photoURL === 'string' && /^https:\/\//i.test(user.photoURL) ? user.photoURL : ''
-  if (!googlePhotoURL || profile.photoURL === googlePhotoURL) return profile
+  // Keep a photo explicitly chosen by the user; only import Google's photo when the profile has none.
+  if (!googlePhotoURL || profile.photoURL) return profile
   await updateDoc(doc(db, 'users', user.uid), { photoURL: googlePhotoURL, updatedAt: serverTimestamp() })
   return { ...profile, photoURL: googlePhotoURL }
 }
