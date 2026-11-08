@@ -569,7 +569,7 @@ homeWorkspacePage.className = 'workspace-content workspace-home-page'
 homeWorkspacePage.id = 'home-page'
 homeWorkspacePage.hidden = true
 workspaceLayout.append(homeWorkspacePage)
-homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>La musique créée par la communauté.<br><span>À écouter sans limite.</span></h1><p>Retrouve ici les chansons générées sur Audinoo par les créateurs de la communauté. Explore les styles, découvre de nouveaux talents et lance l’écoute de tes morceaux préférés.</p></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire 🔥</h2><p>Les morceaux générés sur Audinoo et publiés dans la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons publiées dans la communauté apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><img class="home-player-cover" alt=""><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré sur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
+homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>La musique créée par la communauté.<br><span>À écouter sans limite.</span></h1><p>Retrouve ici les chansons générées sur Audinoo par les créateurs de la communauté. Explore les styles, découvre de nouveaux talents et lance l’écoute de tes morceaux préférés.</p></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire 🔥</h2><p>Les morceaux générés sur Audinoo et publiés dans la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons publiées dans la communauté apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><div class="home-player-cover" aria-hidden="true">♫</div><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré sur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
 
 const homeHeroArt = homeWorkspacePage.querySelector('.home-hero-art')
 const homeHeroArtwork = document.createElement('img')
@@ -594,6 +594,12 @@ const homePlayerAudio = homeWorkspacePage.querySelector('#home-player-audio')
 const homePlayerToggle = homeWorkspacePage.querySelector('#home-player-toggle')
 const homePlayerTitle = homeWorkspacePage.querySelector('.home-player-title')
 const homePlayerCover = homeWorkspacePage.querySelector('.home-player-cover')
+const homeCoverPalettes = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
+function setHomeFallbackCover(node, palette) {
+  node.classList.add('is-missing')
+  node.dataset.palette = homeCoverPalettes.includes(palette) ? palette : 'violet'
+  node.textContent = '♫'
+}
 function renderHomeCategories() {
   replaceNodeChildren(homeCategoryList, ...homeMusicCategories.map(category => {
     const button = document.createElement('button')
@@ -616,12 +622,18 @@ function renderHomeTracks() {
     const row = document.createElement('article')
     row.className = 'home-track-row'
     row.dataset.trackId = track.id
-    const cover = document.createElement('img')
+    const cover = document.createElement('div')
     cover.className = 'home-track-cover'
-    cover.alt = ''
-    cover.loading = 'lazy'
-    cover.src = track.imageUrl || '/favicon.ico'
-    cover.addEventListener('error', () => { cover.classList.add('is-missing'); cover.removeAttribute('src') }, { once: true })
+    cover.dataset.palette = homeCoverPalettes.includes(track.coverPalette) ? track.coverPalette : 'violet'
+    cover.setAttribute('aria-hidden', 'true')
+    if (track.imageUrl) {
+      const image = document.createElement('img')
+      image.src = track.imageUrl
+      image.alt = ''
+      image.loading = 'lazy'
+      image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(cover, track.coverPalette) }, { once: true })
+      cover.append(image)
+    } else setHomeFallbackCover(cover, track.coverPalette)
     const details = document.createElement('div')
     details.className = 'home-track-details'
     const title = document.createElement('strong')
@@ -691,8 +703,16 @@ async function playHomeTrack(index) {
       homeActiveTrackIndex = index
       homePlayerAudio.src = track.audioUrl
       homePlayerTitle.textContent = track.title || 'Création Audinoo'
-      homePlayerCover.src = track.imageUrl || '/favicon.ico'
-      homePlayerCover.alt = track.title || 'Pochette de la chanson'
+      homePlayerCover.replaceChildren()
+      homePlayerCover.classList.remove('is-missing')
+      homePlayerCover.dataset.palette = homeCoverPalettes.includes(track.coverPalette) ? track.coverPalette : 'violet'
+      if (track.imageUrl) {
+        const image = document.createElement('img')
+        image.src = track.imageUrl
+        image.alt = ''
+        image.addEventListener('error', () => { image.remove(); setHomeFallbackCover(homePlayerCover, track.coverPalette) }, { once: true })
+        homePlayerCover.append(image)
+      } else setHomeFallbackCover(homePlayerCover, track.coverPalette)
       homeMiniPlayer.hidden = false
     }
     await homePlayerAudio.play()
@@ -1457,7 +1477,8 @@ function renderAdminGenerationsTable() {
           const publish = document.createElement('button')
           publish.type = 'button'
           publish.className = 'admin-publish-button'
-          publish.textContent = 'Publier sur l’accueil'
+          publish.textContent = track.published ? 'Retirer de l’accueil' : 'Publier sur l’accueil'
+          if (track.published) publish.classList.add('is-published')
           const genreLabel = document.createElement('label')
           genreLabel.className = 'admin-publish-genre'
           genreLabel.textContent = 'Catégorie'
@@ -1473,18 +1494,31 @@ function renderAdminGenerationsTable() {
           
           publish.addEventListener('click', async () => {
             publish.disabled = true
-            publish.textContent = 'Publication…'
+            const wasPublished = track.published === true
+            publish.textContent = wasPublished ? 'Retrait…' : 'Publication…'
             try {
-              await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex, genre: genreSelect.value }) })
-              publish.textContent = '✓ Publiée'
-              publish.classList.add('is-published')
-              status.textContent = 'La chanson est maintenant publiée sur l’accueil.'
+              if (wasPublished) {
+                await callAudinooApi('/api/admin/unpublish', { method: 'POST', body: JSON.stringify({ trackId: track.publishedTrackId || item.taskId + '-' + track.trackIndex }) })
+                track.published = false
+                publish.textContent = 'Publier sur l’accueil'
+                publish.classList.remove('is-published')
+                status.textContent = 'La chanson a été retirée de l’accueil. Elle reste dans la bibliothèque du créateur.'
+              } else {
+                const result = await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex, genre: genreSelect.value }) })
+                track.published = true
+                track.publishedTrackId = result.id || item.taskId + '-' + track.trackIndex
+                publish.textContent = 'Retirer de l’accueil'
+                publish.classList.add('is-published')
+                status.textContent = 'La chanson est maintenant publiée sur l’accueil.'
+              }
             } catch (error) {
               publish.disabled = false
-              publish.textContent = 'Réessayer'
-              status.textContent = 'Publication impossible : ' + error.message
+              publish.textContent = wasPublished ? 'Réessayer le retrait' : 'Réessayer la publication'
+              status.textContent = 'Modification impossible : ' + error.message
               console.error('[Audinoo publication]', error)
+              return
             }
+            publish.disabled = false
           })
           controls.append(listen, audio, genreLabel, publish)
           row.append(controls)
