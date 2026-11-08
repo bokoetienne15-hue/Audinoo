@@ -1582,10 +1582,16 @@ button.is-generating:disabled {
 .library-playback-parking .library-generation-entry{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
 .library-mini-player button,.library-full-player button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 
-/* Sur mobile, le panneau de navigation doit toujours passer au-dessus du mini-lecteur fixe. */
+/* Sur mobile, le tiroir de navigation doit recouvrir les mini-lecteurs fixes. */
 @media(max-width:760px){
-  .workspace-layout .workspace-sidebar{z-index:1001!important}
-  .library-mini-player{z-index:999!important}
+  .workspace-layout .workspace-sidebar{
+    position:relative!important;
+    z-index:10030!important;
+  }
+  .library-mini-player,
+  .workspace-home-page .home-mini-player{
+    z-index:999!important;
+  }
   .library-full-player{z-index:998!important}
 }
 
