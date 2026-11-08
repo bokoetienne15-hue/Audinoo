@@ -585,7 +585,7 @@ let homeActiveCategory = 'Tout'
 let homeActiveTrackIndex = -1
 let homeTracksLoaded = false
 // Données fictives réservées au Deploy Preview pour valider le rendu avant les vraies publications.
-const isHomeDemoPreview = /^deploy-preview-\\d+--audinoo\\.netlify\\.app$/.test(window.location.hostname)
+const isHomeDemoPreview = window.location.hostname.startsWith('deploy-preview-') && window.location.hostname.endsWith('--audinoo.netlify.app')
 const homeDemoTracks = [
   { id: 'demo-minuit-cotonou', title: 'Minuit à Cotonou', creatorName: 'Kendy Flow', genre: 'Afrobeat', duration: '2:34', imageUrl: 'https://images.pexels.com/photos/15865135/pexels-photo-15865135.jpeg?cs=srgb&dl=pexels-danikprihodko-15865135.jpg&fm=jpg', demo: true },
   { id: 'demo-dans-ma-tete', title: 'Dans ma tête', creatorName: 'Lyna K.', genre: 'R&B', duration: '2:48', imageUrl: 'https://images.pexels.com/photos/7192878/pexels-photo-7192878.jpeg?cs=srgb&dl=pexels-bence-szemerey-337043-7192878.jpg&fm=jpg', demo: true },
