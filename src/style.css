@@ -2846,23 +2846,18 @@ button.is-generating:disabled {
   .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{order:3;flex-basis:100%;width:100%;max-width:none}
 }
 
-/* Studio invitation to discover community music */
+/* Discrete community discovery link above the credit balance */
 .community-listen-notice {
-  position: relative; display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 18px; margin: 0 0 34px; padding: 19px 54px 19px 21px;
-  border: 1px solid rgba(177, 145, 218, .22); border-radius: 17px;
-  background: linear-gradient(115deg, rgba(66, 48, 91, .62), rgba(37, 35, 62, .72));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .14);
+  position: relative; margin: 0 0 13px; padding: 0 24px 0 0;
+  color: rgba(238, 234, 246, .82); font-size: 11px; line-height: 1.5;
 }
 .community-listen-notice[hidden] { display: none !important; }
-.community-listen-copy { min-width: 0; }
-.community-listen-eyebrow { display: block; margin-bottom: 7px; color: #c8a8f2; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
-.community-listen-copy p { max-width: 590px; margin: 0 0 13px; color: #f0edf6; font-size: 13px; line-height: 1.6; }
-.community-listen-button { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px; border: 1px solid rgba(207, 175, 255, .28); border-radius: 999px; color: #fff; background: rgba(139, 91, 196, .25); font-size: 11px; font-weight: 700; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
-.community-listen-button:hover { background: rgba(151, 98, 216, .4); border-color: rgba(218, 187, 255, .55); }
-.community-listen-dismiss { position: absolute; top: 10px; right: 12px; display: grid; place-items: center; width: 29px; height: 29px; border: 0; border-radius: 50%; color: #d8d1e4; background: rgba(255,255,255,.07); font-size: 21px; line-height: 1; cursor: pointer; }
-.community-listen-dismiss:hover { color: #fff; background: rgba(255,255,255,.14); }
-@media (max-width: 640px) {
-  .community-listen-notice { margin-bottom: 27px; padding: 16px 46px 16px 16px; border-radius: 14px; }
-  .community-listen-copy p { font-size: 12px; }
+.community-listen-notice p { margin: 0 0 3px; }
+.community-listen-link { color: #c9a8f3; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; }
+.community-listen-link:hover { color: #e2ccff; }
+.community-listen-dismiss {
+  position: absolute; top: -5px; right: 0; display: grid; place-items: center;
+  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
+  color: #ef626c; background: transparent; font-size: 20px; line-height: 1; cursor: pointer;
 }
+.community-listen-dismiss:hover { color: #ff9299; }
