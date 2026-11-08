@@ -660,7 +660,9 @@ async function publishTrack(request, env, db, user) {
   if (!source) return response(404, { error: 'audio-not-found-or-not-archived' })
   const publicKey = 'public/' + id + '.audio'
   await env.AUDIO_BUCKET.put(publicKey, source.body, { httpMetadata: { contentType: source.httpMetadata?.contentType || 'audio/mpeg', cacheControl: 'public, max-age=3600' }, customMetadata: { publishedTrackId: id } })
-  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', r2Key: publicKey, published: true, publishedAt: new Date() })
+  const allowedGenres = new Set(['Pop','Afrobeat','Hip-Hop','R&B','Gospel','Électro','Rock','Autre'])
+  const genre = allowedGenres.has(String(body.genre || '')) ? String(body.genre) : 'Autre'
+  await db.set('publishedTracks/' + id, { id, uid, taskId, trackIndex: index, title: track.title || snap.data.title || 'Création Audinoo', imageUrl: track.imageUrl || '', genre, duration: track.duration || track.durationSeconds || null, r2Key: publicKey, published: true, publishedAt: new Date() })
   return response(200, { published: true, id })
 }
 async function publicTracks(request, db) {
@@ -668,7 +670,7 @@ async function publicTracks(request, db) {
   // This avoids requiring a composite Firestore index for published + publishedAt.
   const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true).slice(0, 40)
-  return response(200, { tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) })
+  return response(200, { tracks: tracks.map(d => ({ id: d.id, title: d.title, imageUrl: d.imageUrl || '', genre: d.genre || 'Autre', duration: d.duration || null, audioUrl: '/api/public-audio?id=' + encodeURIComponent(d.id) })) })
 }
 async function publicAudio(request, env, db) {
   const id = new URL(request.url).searchParams.get('id')
