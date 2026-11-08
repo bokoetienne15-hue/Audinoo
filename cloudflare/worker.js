@@ -803,7 +803,6 @@ async function profilePhoto(request, env, user, url) {
         'content-type': object.httpMetadata?.contentType || 'application/octet-stream',
         'cache-control': 'public, max-age=300',
         'x-content-type-options': 'nosniff',
-        'content-length': String(object.size || '')
       }
     })
   }
@@ -934,6 +933,7 @@ export default {
         const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
         return response(status, { error: allowedPaymentErrors.has(e.message) ? e.message : 'payment-processing-failed' })
       }
+      if (url.pathname === '/api/profile-photo') return response(status, { error: status === 401 ? 'invalid-session' : 'profile-photo-operation-failed' })
       if (url.pathname.startsWith('/api/tracks/')) {
         const allowedTrackPaymentErrors = new Set([
           'fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable',
