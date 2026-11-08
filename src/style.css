@@ -2854,15 +2854,15 @@ button.is-generating:disabled {
 }
 .community-listen-notice[hidden] { display: none !important; }
 .community-listen-notice p { display: block; margin: 0; color: #fff; }
-.community-listen-link { display: inline; margin-left: 2px; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
-.community-listen-link:hover { color: #e6e6e6; }
+.community-listen-link { display: inline; margin-left: 2px; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: normal; overflow-wrap: anywhere; }
+.community-listen-link:hover { color: #fff; }
 .community-listen-dismiss {
   position: absolute; top: -3px; right: 0; display: grid; place-items: center;
   width: 16px; height: 16px; margin: 0; padding: 0;
-  border: 0; border-radius: 0; color: #000; background: transparent;
+  border: 0; border-radius: 0; color: #c9b7e8; background: transparent;
   font-size: 17px; line-height: 1; cursor: pointer;
 }
-.community-listen-dismiss:hover { color: #000; }
+.community-listen-dismiss:hover { color: #fff; }
 @media (max-width: 760px) {
   .workspace-mobile-credit { margin-top: 0; }
 }
