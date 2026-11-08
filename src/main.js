@@ -915,7 +915,6 @@ workspaceSettingsPage.innerHTML = `
     </section>
   </div>`
 workspaceLayout.append(workspaceSettingsPage)
-const settingsNavButton = workspaceSidebar.querySelector('#workspace-settings-nav')
 let settingsProfileCache = null
 let settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1 }
 let settingsThemeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null
@@ -1208,6 +1207,7 @@ const sidebarToolsSection = document.createElement('section')
 sidebarToolsSection.className = 'workspace-sidebar-section workspace-tools-section'
 sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" id="workspace-settings-nav" type="button"><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><a class="workspace-nav workspace-tool-button" href="#support"><span aria-hidden="true">ⓘ</span> Aide &amp; Support</a>'
 workspaceSidebar.insertBefore(sidebarToolsSection, sidebarFooter)
+const settingsNavButton = workspaceSidebar.querySelector('#workspace-settings-nav')
 const adminSidebarButton = document.createElement('a')
 adminSidebarButton.className = 'workspace-nav workspace-admin-nav'
 adminSidebarButton.href = '#admin'
