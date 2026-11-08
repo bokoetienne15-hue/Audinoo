@@ -2916,3 +2916,11 @@ button.is-generating:disabled {
 .settings-switch-row small,.settings-security-row small{color:#9f96ad;font-size:10px;line-height:1.5}
 .settings-switch-row input{width:42px;height:23px;flex:0 0 42px;accent-color:#a35de5;cursor:pointer}
 @media(max-width:760px){.settings-layout{grid-template-columns:minmax(0,1fr);gap:12px}.settings-card{padding:16px;border-radius:15px}.workspace-settings-page{padding-bottom:28px}}
+
+
+/* Ajout de photo de profil dans les paramètres. */
+.settings-photo-button{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:7px;padding:7px 11px;border:1px solid rgba(181,146,230,.35);border-radius:9px;background:rgba(139,78,224,.16);color:#dfc6ff;font-size:11px;font-weight:750;cursor:pointer;transition:background .18s,border-color .18s}
+.settings-photo-button:hover{background:rgba(139,78,224,.28);border-color:#a66bea}
+.settings-photo-button.is-uploading{opacity:.6;pointer-events:none}
+.settings-photo-hint{display:block;margin-top:5px;color:#958ba7;font-size:9px}
+.workspace.is-light .settings-photo-button{color:#66359c;background:#f4edff;border-color:#e2d2f7}
