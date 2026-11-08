@@ -2,7 +2,7 @@ import './style.css'
 import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
-import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
@@ -869,6 +869,217 @@ modelPicker.append(
   modelPicker.querySelector('.model-page-footer')
 )
 workspaceLayout.append(modelWorkspacePage)
+
+const workspaceSettingsPage = document.createElement('section')
+workspaceSettingsPage.className = 'workspace-content workspace-settings-page'
+workspaceSettingsPage.id = 'settings-page'
+workspaceSettingsPage.hidden = true
+workspaceSettingsPage.innerHTML = `
+  <div class="settings-hero">
+    <div><p class="workspace-kicker">TON ESPACE AUDINOO</p><h1>Paramètres</h1><p class="workspace-intro">Gère ton compte et personnalise ton expérience.</p></div>
+  </div>
+  <div class="settings-layout">
+    <section class="settings-card settings-account-card">
+      <div class="settings-card-heading"><span class="settings-icon">♙</span><div><h2>Mon compte</h2><p>Les informations de ton profil Audinoo.</p></div></div>
+      <div class="settings-profile-identity"><span class="settings-profile-avatar" id="settings-profile-avatar">A</span><div><strong id="settings-profile-name">Mon profil</strong><small id="settings-profile-email"></small></div></div>
+      <form id="settings-profile-form" class="settings-form">
+        <label>Nom affiché<input id="settings-display-name" name="displayName" maxlength="60" required placeholder="Ton nom"></label>
+        <label>Nom d’utilisateur<input id="settings-username" name="username" maxlength="32" required placeholder="@ton_pseudo"><small>Commence par @ et utilise des lettres minuscules, chiffres et _.</small></label>
+        <div class="settings-readonly-grid"><div><span>Adresse e-mail</span><strong id="settings-email-value">—</strong></div><div><span>Pays</span><strong id="settings-country-value">—</strong></div></div>
+        <button class="settings-primary-button" type="submit" id="settings-profile-save">Enregistrer mon profil</button>
+        <p class="settings-status" id="settings-profile-status" role="status"></p>
+      </form>
+    </section>
+    <section class="settings-card">
+      <div class="settings-card-heading"><span class="settings-icon">◐</span><div><h2>Apparence</h2><p>Choisis le thème de ton espace.</p></div></div>
+      <label class="settings-field">Thème de l’application<select id="settings-theme"><option value="dark">Sombre</option><option value="light">Clair</option><option value="system">Selon mon appareil</option></select></label>
+      <p class="settings-hint">Ce choix est enregistré sur ton compte et sera restauré à ta prochaine connexion.</p>
+      <p class="settings-status" id="settings-theme-status" role="status"></p>
+    </section>
+    <section class="settings-card">
+      <div class="settings-card-heading"><span class="settings-icon">♧</span><div><h2>Notifications</h2><p>Choisis les notifications visibles dans ton espace.</p></div></div>
+      <label class="settings-switch-row"><span><strong>Annonces Audinoo</strong><small>Afficher les actualités et annonces publiées dans ton espace.</small></span><input id="settings-announcements" type="checkbox" role="switch"></label>
+      <p class="settings-status" id="settings-notifications-status" role="status"></p>
+    </section>
+    <section class="settings-card">
+      <div class="settings-card-heading"><span class="settings-icon">♫</span><div><h2>Préférences audio</h2><p>Personnalise la lecture de tes chansons.</p></div></div>
+      <label class="settings-field">Vitesse de lecture<select id="settings-playback-rate"><option value="0.75">0,75× · Lent</option><option value="1">1× · Normal</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2× · Rapide</option></select></label>
+      <p class="settings-hint">La vitesse choisie s’applique aux lecteurs audio d’Audinoo.</p>
+      <p class="settings-status" id="settings-audio-status" role="status"></p>
+    </section>
+    <section class="settings-card">
+      <div class="settings-card-heading"><span class="settings-icon">⌑</span><div><h2>Sécurité et confidentialité</h2><p>Protège l’accès à ton compte.</p></div></div>
+      <div class="settings-security-row"><div><strong>Mot de passe</strong><small>Reçois un lien sécurisé pour choisir un nouveau mot de passe.</small></div><button class="settings-secondary-button" id="settings-password-reset" type="button">Réinitialiser</button></div>
+      <p class="settings-status" id="settings-security-status" role="status"></p>
+      <p class="settings-hint">Ton mot de passe n’est jamais enregistré dans les paramètres Audinoo. La réinitialisation est gérée de façon sécurisée par Firebase.</p>
+    </section>
+  </div>`
+workspaceLayout.append(workspaceSettingsPage)
+const settingsNavButton = workspaceSidebar.querySelector('#workspace-settings-nav')
+let settingsProfileCache = null
+let settingsPreferences = { theme: 'dark', announcements: true, playbackRate: 1 }
+let settingsThemeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null
+function applyWorkspaceTheme(theme) {
+  const resolvedTheme = theme === 'system' ? (settingsThemeMedia?.matches ? 'light' : 'dark') : theme
+  workspace.classList.toggle('is-light', resolvedTheme === 'light')
+  workspaceDarkMode.checked = resolvedTheme === 'dark'
+}
+function applyWorkspacePlaybackRate(rate) {
+  const normalizedRate = Number(rate)
+  const safeRate = [0.75, 1, 1.25, 1.5, 2].includes(normalizedRate) ? normalizedRate : 1
+  document.querySelectorAll('audio').forEach((audio) => { audio.playbackRate = safeRate })
+}
+document.addEventListener('play', (event) => {
+  if (event.target instanceof HTMLAudioElement) event.target.playbackRate = Number(settingsPreferences.playbackRate || 1)
+}, true)
+settingsThemeMedia?.addEventListener?.('change', () => {
+  if (settingsPreferences.theme === 'system') applyWorkspaceTheme('system')
+})
+function showSettingsPage() {
+  const user = auth.currentUser
+  if (!user) return
+  studioWorkspacePage.hidden = true
+  libraryWorkspacePage.hidden = true
+  modelWorkspacePage.hidden = true
+  adminWorkspacePage.hidden = true
+  workspaceSettingsPage.hidden = false
+  workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link === settingsNavButton))
+  workspaceModelChoice.classList.remove('is-active')
+  setWorkspaceSidebarOpen(false)
+  window.history.replaceState(null, '', '#settings')
+  void loadWorkspaceSettings(user)
+}
+async function saveWorkspacePreferences(patch, statusElement) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Session expirée. Reconnecte-toi.')
+  const next = { ...settingsPreferences, ...patch }
+  statusElement.textContent = 'Enregistrement dans ton compte…'
+  try {
+    await updateDoc(doc(db, 'users', user.uid), { preferences: next, updatedAt: serverTimestamp() })
+    settingsPreferences = next
+    settingsProfileCache = { ...(settingsProfileCache || {}), preferences: next }
+    statusElement.textContent = 'Enregistré. Ce réglage sera conservé après reconnexion.'
+    return true
+  } catch (error) {
+    statusElement.textContent = 'Enregistrement impossible : ' + exactErrorDetails(error)
+    throw error
+  }
+}
+async function loadWorkspaceSettings(user) {
+  const profileStatus = workspaceSettingsPage.querySelector('#settings-profile-status')
+  profileStatus.textContent = 'Chargement de ton profil…'
+  try {
+    const snapshot = await getDoc(doc(db, 'users', user.uid))
+    if (!snapshot.exists() || auth.currentUser?.uid !== user.uid) throw new Error('Profil introuvable.')
+    settingsProfileCache = { ...snapshot.data(), uid: user.uid }
+    settingsPreferences = { theme: 'dark', announcements: true, playbackRate: 1, ...(settingsProfileCache.preferences || {}) }
+    const profile = settingsProfileCache
+    const avatar = workspaceSettingsPage.querySelector('#settings-profile-avatar')
+    const photoURL = typeof profile.photoURL === 'string' && /^https:\/\//i.test(profile.photoURL) ? profile.photoURL : ''
+    avatar.replaceChildren()
+    avatar.classList.toggle('has-profile-photo', Boolean(photoURL))
+    if (photoURL) {
+      const image = document.createElement('img')
+      image.src = photoURL
+      image.alt = 'Photo de profil'
+      image.referrerPolicy = 'no-referrer'
+      image.onerror = () => { avatar.classList.remove('has-profile-photo'); avatar.textContent = (profile.displayName || profile.username || 'A').charAt(0).toUpperCase() }
+      avatar.append(image)
+    } else avatar.textContent = (profile.displayName || profile.username || 'A').charAt(0).toUpperCase()
+    workspaceSettingsPage.querySelector('#settings-profile-name').textContent = profile.displayName || profile.username || 'Mon profil'
+    workspaceSettingsPage.querySelector('#settings-profile-email').textContent = user.email || 'Adresse non renseignée'
+    workspaceSettingsPage.querySelector('#settings-display-name').value = profile.displayName || ''
+    workspaceSettingsPage.querySelector('#settings-username').value = profile.username || ''
+    workspaceSettingsPage.querySelector('#settings-email-value').textContent = user.email || '—'
+    workspaceSettingsPage.querySelector('#settings-country-value').textContent = profile.country || 'Non renseigné'
+    workspaceSettingsPage.querySelector('#settings-theme').value = settingsPreferences.theme
+    workspaceSettingsPage.querySelector('#settings-announcements').checked = settingsPreferences.announcements !== false
+    workspaceSettingsPage.querySelector('#settings-playback-rate').value = String(settingsPreferences.playbackRate || 1)
+    applyWorkspaceTheme(settingsPreferences.theme)
+    applyWorkspacePlaybackRate(settingsPreferences.playbackRate)
+    notificationControl.hidden = settingsPreferences.announcements === false
+    profileStatus.textContent = 'Profil chargé depuis Firebase.'
+  } catch (error) {
+    profileStatus.textContent = 'Chargement impossible : ' + exactErrorDetails(error)
+  }
+}
+settingsNavButton.addEventListener('click', showSettingsPage)
+workspaceSettingsPage.querySelector('#settings-profile-form').addEventListener('submit', async (event) => {
+  event.preventDefault()
+  const user = auth.currentUser
+  if (!user || !settingsProfileCache) return
+  const saveButton = workspaceSettingsPage.querySelector('#settings-profile-save')
+  const status = workspaceSettingsPage.querySelector('#settings-profile-status')
+  const displayName = workspaceSettingsPage.querySelector('#settings-display-name').value.trim()
+  const username = workspaceSettingsPage.querySelector('#settings-username').value.trim().toLowerCase()
+  const previousUsername = settingsProfileCache.username
+  if (displayName.length < 2 || displayName.length > 60) { status.textContent = 'Le nom affiché doit contenir entre 2 et 60 caractères.'; return }
+  if (!/^@[a-z0-9]+(?:_[a-z0-9]+)+$/.test(username) || username.length < 5 || username.length > 32) { status.textContent = 'Pseudo invalide. Exemple : @createur_audinoo.'; return }
+  saveButton.disabled = true
+  status.textContent = 'Vérification et enregistrement du profil…'
+  try {
+    const profileRef = doc(db, 'users', user.uid)
+    await runTransaction(db, async (transaction) => {
+      const profileSnapshot = await transaction.get(profileRef)
+      if (!profileSnapshot.exists()) throw new Error('Profil introuvable.')
+      const currentUsername = profileSnapshot.data().username
+      if (username !== currentUsername) {
+        const nextUsernameRef = doc(db, 'usernames', username)
+        const nextUsernameSnapshot = await transaction.get(nextUsernameRef)
+        if (nextUsernameSnapshot.exists()) throw new Error('Ce nom d’utilisateur est déjà pris.')
+        transaction.set(nextUsernameRef, { uid: user.uid, createdAt: serverTimestamp() })
+        if (currentUsername) transaction.delete(doc(db, 'usernames', currentUsername))
+      }
+      transaction.update(profileRef, { username, displayName, updatedAt: serverTimestamp() })
+    })
+    settingsProfileCache = { ...settingsProfileCache, username, displayName }
+    workspaceUsername.textContent = username
+    workspaceGreeting.textContent = displayName.split(' ')[0]
+    renderProfileAvatar(workspaceAvatar, settingsProfileCache)
+    renderProfileAvatar(headerAvatar, settingsProfileCache)
+    workspaceSettingsPage.querySelector('#settings-profile-name').textContent = displayName
+    workspaceSettingsPage.querySelector('#settings-profile-avatar').textContent = displayName.charAt(0).toUpperCase()
+    status.textContent = 'Profil mis à jour dans Firebase.'
+  } catch (error) {
+    status.textContent = 'Modification refusée : ' + exactErrorDetails(error)
+  } finally { saveButton.disabled = false }
+})
+workspaceSettingsPage.querySelector('#settings-theme').addEventListener('change', async (event) => {
+  const status = workspaceSettingsPage.querySelector('#settings-theme-status')
+  const previous = settingsPreferences.theme
+  applyWorkspaceTheme(event.target.value)
+  try { await saveWorkspacePreferences({ theme: event.target.value }, status) }
+  catch { event.target.value = previous; applyWorkspaceTheme(previous) }
+})
+workspaceSettingsPage.querySelector('#settings-announcements').addEventListener('change', async (event) => {
+  const status = workspaceSettingsPage.querySelector('#settings-notifications-status')
+  const previous = settingsPreferences.announcements !== false
+  notificationControl.hidden = !event.target.checked
+  try { await saveWorkspacePreferences({ announcements: event.target.checked }, status) }
+  catch { event.target.checked = previous; notificationControl.hidden = !previous }
+})
+workspaceSettingsPage.querySelector('#settings-playback-rate').addEventListener('change', async (event) => {
+  const status = workspaceSettingsPage.querySelector('#settings-audio-status')
+  const previous = settingsPreferences.playbackRate || 1
+  applyWorkspacePlaybackRate(event.target.value)
+  try { await saveWorkspacePreferences({ playbackRate: Number(event.target.value) }, status) }
+  catch { event.target.value = String(previous); applyWorkspacePlaybackRate(previous) }
+})
+workspaceSettingsPage.querySelector('#settings-password-reset').addEventListener('click', async (event) => {
+  const button = event.currentTarget
+  const status = workspaceSettingsPage.querySelector('#settings-security-status')
+  const user = auth.currentUser
+  if (!user?.email) { status.textContent = 'Aucune adresse e-mail associée à ce compte.'; return }
+  button.disabled = true
+  status.textContent = 'Envoi du lien sécurisé…'
+  try {
+    await sendPasswordResetEmail(auth, user.email)
+    status.textContent = 'Lien de réinitialisation envoyé à ' + user.email + '. Vérifie aussi tes courriers indésirables.'
+  } catch (error) {
+    status.textContent = 'Envoi impossible : ' + exactErrorDetails(error)
+  } finally { button.disabled = false }
+})
+
 workspaceModelChoice.addEventListener('click', () => {
   const currentUser = auth.currentUser
   const isVerifiedAdmin = Boolean(currentUser && verifiedAdminUid === currentUser.uid)
@@ -935,7 +1146,7 @@ modelSuggestionForm.addEventListener('submit', async (event) => {
 })
 const sidebarToolsSection = document.createElement('section')
 sidebarToolsSection.className = 'workspace-sidebar-section workspace-tools-section'
-sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" type="button" data-sidebar-message="Les paramètres seront bientôt disponibles."><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><a class="workspace-nav workspace-tool-button" href="#support"><span aria-hidden="true">ⓘ</span> Aide &amp; Support</a>'
+sidebarToolsSection.innerHTML = '<p class="workspace-sidebar-section-label">Outils</p><button class="workspace-nav workspace-tool-button" id="workspace-settings-nav" type="button"><span aria-hidden="true">⚙</span> Paramètres</button><label class="workspace-theme-control" for="workspace-dark-mode"><span class="workspace-theme-label"><span aria-hidden="true">☾</span> Mode sombre</span><input id="workspace-dark-mode" type="checkbox" role="switch" checked /></label><a class="workspace-nav workspace-tool-button" href="#support"><span aria-hidden="true">ⓘ</span> Aide &amp; Support</a>'
 workspaceSidebar.insertBefore(sidebarToolsSection, sidebarFooter)
 const adminSidebarButton = document.createElement('a')
 adminSidebarButton.className = 'workspace-nav workspace-admin-nav'
@@ -2126,10 +2337,17 @@ const workspaceDarkMode = workspaceSidebar.querySelector('#workspace-dark-mode')
 const savedWorkspaceTheme = readBrowserStorage('localStorage', 'audinoo-workspace-theme')
 workspaceDarkMode.checked = savedWorkspaceTheme !== 'light'
 workspace.classList.toggle('is-light', savedWorkspaceTheme === 'light')
-workspaceDarkMode.addEventListener('change', () => {
-  const isDarkMode = workspaceDarkMode.checked
-  workspace.classList.toggle('is-light', !isDarkMode)
-  writeBrowserStorage('localStorage', 'audinoo-workspace-theme', isDarkMode ? 'dark' : 'light')
+workspaceDarkMode.addEventListener('change', async () => {
+  const theme = workspaceDarkMode.checked ? 'dark' : 'light'
+  applyWorkspaceTheme(theme)
+  if (auth.currentUser) {
+    const status = workspaceSettingsPage.querySelector('#settings-theme-status')
+    try { await saveWorkspacePreferences({ theme }, status) } catch (_) {}
+    const themeSelect = workspaceSettingsPage.querySelector('#settings-theme')
+    if (themeSelect) themeSelect.value = theme
+  } else {
+    writeBrowserStorage('localStorage', 'audinoo-workspace-theme', theme)
+  }
 })
 const studioForm = document.querySelector('#studio-form')
 const studioPrompt = document.querySelector('#studio-prompt')
@@ -3787,6 +4005,7 @@ function openWorkspace(profile) {
   studioWorkspacePage.hidden = false
   libraryWorkspacePage.hidden = true
   modelWorkspacePage.hidden = true
+  workspaceSettingsPage.hidden = true
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#studio'))
   workspaceModelChoice.classList.remove('is-active')
   adminWorkspacePage.hidden = true
@@ -3809,6 +4028,7 @@ function openLanding() {
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
   adminWorkspacePage.hidden = true
+  workspaceSettingsPage.hidden = true
   workspace.hidden = true
   landingPage.hidden = false
   document.body.classList.remove('in-workspace')
@@ -4166,6 +4386,7 @@ document.querySelectorAll('.workspace-nav').forEach((link) => link.addEventListe
 libraryWorkspacePage.querySelector('.workspace-library-create').addEventListener('click', () => {
   libraryWorkspacePage.hidden = true
   modelWorkspacePage.hidden = true
+  workspaceSettingsPage.hidden = true
   studioWorkspacePage.hidden = false
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === '#studio'))
   workspaceModelChoice.classList.remove('is-active')
