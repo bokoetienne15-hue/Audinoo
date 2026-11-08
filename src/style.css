@@ -2846,10 +2846,10 @@ button.is-generating:disabled {
   .admin-section-view[data-admin-panel="generations"] .admin-generation-review-controls audio{order:3;flex-basis:100%;width:100%;max-width:none}
 }
 
-/* Plain white discovery sentence above the credits card in the studio sidebar */
+/* Plain discovery sentence directly above the mobile credits card */
 .community-listen-notice {
-  position: relative; display: block; margin: 0 0 10px; padding: 0 18px 0 0;
-  color: #fff; font-size: 11px; line-height: 1.5;
+  position: relative; display: block; margin: 0 0 7px; padding: 0 22px 0 0;
+  color: #fff; font-size: 11px; line-height: 1.45;
   background: transparent; border: 0; box-shadow: none; border-radius: 0;
 }
 .community-listen-notice[hidden] { display: none !important; }
@@ -2863,3 +2863,6 @@ button.is-generating:disabled {
   font-size: 17px; line-height: 1; cursor: pointer;
 }
 .community-listen-dismiss:hover { color: #000; }
+@media (max-width: 760px) {
+  .workspace-mobile-credit { margin-top: 0; }
+}
