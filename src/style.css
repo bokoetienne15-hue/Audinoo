@@ -2465,3 +2465,155 @@ button.is-generating:disabled {
   .workspace-home-page .home-track-like{width:32px;min-width:32px}
   .workspace-home-page .home-track-more{width:20px;min-width:20px}
 }
+
+
+/* Accueil communauté mobile : vraie largeur écran, sans gouttières ni contenu rogné */
+@media(max-width:760px){
+  .workspace-layout:has(.workspace-home-page:not([hidden])){
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+  .workspace-layout:has(.workspace-home-page:not([hidden]))>.workspace-home-page{
+    display:block;
+    box-sizing:border-box !important;
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:18px 20px 112px !important;
+    overflow:visible !important;
+  }
+  .workspace-home-page .home-hero{
+    box-sizing:border-box;
+    width:100%;
+    min-width:0;
+    min-height:0 !important;
+    padding:22px 0 18px !important;
+    margin:0 !important;
+  }
+  .workspace-home-page .home-hero-copy{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0;
+  }
+  .workspace-home-page .home-eyebrow{
+    max-width:100%;
+    overflow-wrap:anywhere;
+    font-size:9px;
+    letter-spacing:1.35px;
+    margin-bottom:13px;
+  }
+  .workspace-home-page .home-hero h1{
+    max-width:100%;
+    font-size:clamp(28px,7vw,32px) !important;
+    line-height:1.2 !important;
+    overflow-wrap:normal;
+  }
+  .workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+    max-width:100% !important;
+    font-size:12px !important;
+    line-height:1.65 !important;
+  }
+  .workspace-home-page .home-hero-art{
+    right:-8% !important;
+    width:52% !important;
+    height:125% !important;
+  }
+  .workspace-home-page .home-hero-artwork{
+    width:100% !important;
+    height:108% !important;
+    opacity:.26 !important;
+  }
+  .workspace-home-page .home-music-section{
+    width:100%;
+    min-width:0;
+    margin-top:18px !important;
+  }
+  .workspace-home-page .home-category-list{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    justify-content:flex-start;
+    align-items:center;
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+    gap:9px !important;
+    padding:6px 0 14px !important;
+    margin:0 !important;
+    overflow:visible !important;
+    white-space:normal !important;
+  }
+  .workspace-home-page .home-category-chip{
+    flex:0 0 auto !important;
+    min-height:38px;
+    padding:0 15px !important;
+    white-space:nowrap;
+  }
+  .workspace-home-page .home-section-heading{
+    width:100%;
+    box-sizing:border-box;
+    align-items:flex-start !important;
+    justify-content:space-between;
+    gap:10px !important;
+    margin:18px 0 16px !important;
+  }
+  .workspace-home-page .home-section-heading>div{
+    min-width:0;
+    flex:1 1 auto;
+  }
+  .workspace-home-page .home-section-heading h2{
+    font-size:19px !important;
+    line-height:1.35;
+  }
+  .workspace-home-page .home-section-heading p{
+    max-width:none !important;
+    font-size:12px;
+    line-height:1.6;
+  }
+  .workspace-home-page .home-section-heading>button{
+    flex:0 0 auto;
+    padding:5px 0;
+  }
+  .workspace-home-page .home-search{
+    width:100% !important;
+    max-width:none !important;
+    box-sizing:border-box;
+    margin:0 0 12px !important;
+  }
+  .workspace-home-page .home-track-list{
+    width:100% !important;
+    max-width:none !important;
+    min-width:0;
+  }
+  .workspace-home-page .home-track-row{
+    width:100% !important;
+    max-width:none !important;
+    box-sizing:border-box;
+    grid-template-columns:64px minmax(0,1fr) 34px 32px 20px !important;
+    gap:8px !important;
+    padding:10px 0 !important;
+  }
+  .workspace-home-page .home-track-details{
+    min-width:0;
+    overflow:hidden;
+  }
+  .workspace-home-page .home-track-details strong{
+    font-size:12px;
+  }
+  .workspace-home-page .home-track-details small{
+    font-size:10px;
+  }
+  .workspace-home-page .home-no-music{
+    width:100%;
+    box-sizing:border-box;
+    margin:18px 0 0 !important;
+  }
+  .workspace-home-page .home-mini-player{
+    width:100%;
+    box-sizing:border-box;
+    margin:18px 0 0 !important;
+  }
+}
