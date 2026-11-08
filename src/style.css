@@ -2848,21 +2848,22 @@ button.is-generating:disabled {
 
 /* Plain discovery sentence directly above the mobile credits card */
 .community-listen-notice {
-  position: relative; display: block; margin: 0 0 7px; padding: 0 22px 0 0;
-  color: #fff; font-size: 11px; line-height: 1.45;
-  background: transparent; border: 0; box-shadow: none; border-radius: 0;
+  position: relative; display: block; margin: 0 0 8px; padding: 9px 28px 9px 10px;
+  color: #24202d; font-size: 11px; line-height: 1.45;
+  background: #f7f5fb; border: 1px solid rgba(196, 180, 222, .72);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .12); border-radius: 9px;
 }
 .community-listen-notice[hidden] { display: none !important; }
-.community-listen-notice p { display: block; margin: 0; color: #fff; }
-.community-listen-link { display: inline; margin-left: 2px; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 700; white-space: normal; overflow-wrap: anywhere; }
-.community-listen-link:hover { color: #fff; }
+.community-listen-notice p { display: block; margin: 0; color: #24202d; }
+.community-listen-link { display: inline; margin-left: 2px; color: #49316c; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; font-weight: 750; white-space: normal; overflow-wrap: anywhere; }
+.community-listen-link:hover { color: #24143d; }
 .community-listen-dismiss {
-  position: absolute; top: -3px; right: 0; display: grid; place-items: center;
-  width: 16px; height: 16px; margin: 0; padding: 0;
-  border: 0; border-radius: 0; color: #c9b7e8; background: transparent;
-  font-size: 17px; line-height: 1; cursor: pointer;
+  position: absolute; top: 4px; right: 5px; display: grid; place-items: center;
+  width: 20px; height: 20px; margin: 0; padding: 0;
+  border: 0; border-radius: 6px; color: #49316c; background: rgba(73, 49, 108, .10);
+  font-size: 18px; font-weight: 700; line-height: 1; cursor: pointer;
 }
-.community-listen-dismiss:hover { color: #fff; }
+.community-listen-dismiss:hover { color: #24143d; background: rgba(73, 49, 108, .18); }
 @media (max-width: 760px) {
   .workspace-mobile-credit { margin-top: 0; }
 }
