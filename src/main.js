@@ -619,7 +619,9 @@ function renderHomeTracks() {
     const title = document.createElement('strong')
     title.textContent = track.title || 'Création Audinoo'
     const artist = document.createElement('small')
-    artist.textContent = 'Généré par Audinoo · ' + (track.genre || 'Autre')
+    const rawDuration = track.duration
+    const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
+    artist.textContent = 'Généré par Audinoo · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
     details.append(title, artist)
     const play = document.createElement('button')
     play.type = 'button'
