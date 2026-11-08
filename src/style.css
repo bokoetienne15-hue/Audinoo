@@ -2054,3 +2054,37 @@ button.is-generating:disabled {
   }
   .workspace-home-page .home-track-cover{width:56px;height:56px}
 }
+
+
+/* Présentation communauté : texte libre, sans carte ni image décorative */
+.workspace-home-page .home-hero{
+  min-height:0;
+  padding:24px 0 12px;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  background:transparent;
+  overflow:visible;
+}
+.workspace-home-page .home-hero-copy{
+  width:100%;
+  max-width:760px;
+}
+.workspace-home-page .home-hero-art{
+  display:none !important;
+}
+.workspace-home-page .home-hero h1,
+.workspace-home-page .home-hero-copy>p:not(.home-eyebrow){
+  text-shadow:none;
+}
+@media(max-width:650px){
+  .workspace-home-page .home-hero{
+    min-height:0;
+    padding:18px 0 8px;
+    background:transparent;
+  }
+  .workspace-home-page .home-hero-copy{
+    width:100%;
+    max-width:100%;
+  }
+}
