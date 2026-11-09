@@ -717,6 +717,7 @@ async function deleteGenerationTrack(request, env, db, user) {
   const track = snap.data?.tracks?.[index]
   if (!snap.exists || !track) return response(404, { error: 'track-not-found' })
   if (track.deleted === true) return response(200, { deleted: true })
+  if (snap.data.publicationReviewed === true && Number(snap.data.publishedTrackIndex) === index) return response(409, { error: 'track-is-approved' })
   const id = taskId + '-' + index
   const published = await db.get('publishedTracks/' + id)
   if (published.exists && published.data.published === true) return response(409, { error: 'track-is-published' })
