@@ -2924,3 +2924,56 @@ button.is-generating:disabled {
 .settings-photo-button.is-uploading{opacity:.6;pointer-events:none}
 .settings-photo-hint{display:block;margin-top:5px;color:#958ba7;font-size:9px}
 .workspace.is-light .settings-photo-button{color:#66359c;background:#f4edff;border-color:#e2d2f7}
+
+
+/* Espace de travail : réduire les grands vides verticaux pour accéder
+   plus rapidement au contenu des écrans, surtout sur mobile. */
+.workspace-content {
+  padding-top: 42px;
+  padding-bottom: 56px;
+}
+.workspace-intro {
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+.creation-mode {
+  margin-bottom: 12px;
+}
+.studio-form textarea {
+  min-height: 96px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+.studio-suggestions {
+  margin-top: 16px;
+}
+.workspace-empty {
+  margin-top: 30px;
+}
+@media (max-width: 760px) {
+  .workspace-content {
+    padding-top: 24px !important;
+    padding-bottom: 42px !important;
+  }
+  .workspace-content h1 {
+    font-size: clamp(34px, 8vw, 41px);
+    line-height: 1.08;
+  }
+  .workspace-intro {
+    margin-top: 9px;
+    margin-bottom: 16px;
+  }
+  .studio-form textarea {
+    min-height: 84px;
+    padding: 14px 16px;
+  }
+  .studio-form-footer {
+    gap: 10px;
+  }
+  .studio-suggestions {
+    margin-top: 14px;
+  }
+  .workspace-empty {
+    margin-top: 22px;
+  }
+}
