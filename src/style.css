@@ -2977,3 +2977,12 @@ button.is-generating:disabled {
     margin-top: 22px;
   }
 }
+
+
+/* Admin music moderation: pending and validated creation tabs */
+.admin-generation-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 12px}
+.admin-generation-tab{min-height:40px;padding:0 16px;border:1px solid var(--workspace-border,rgba(148,163,184,.24));border-radius:999px;background:var(--workspace-panel,rgba(255,255,255,.04));color:var(--workspace-muted,#929bad);font:700 12px 'DM Sans',sans-serif;cursor:pointer}
+.admin-generation-tab.is-active{border-color:rgba(168,85,247,.65);background:rgba(137,75,220,.18);color:var(--workspace-text,#fff)}
+.admin-generation-review-controls .admin-publish-button.is-reviewed-locked{background:rgba(148,163,184,.18);color:var(--workspace-muted,#aab2c0);cursor:not-allowed}
+.admin-generation-review-controls .admin-delete-variant{min-height:36px;padding:8px 12px;border-color:rgba(220,80,100,.35);color:#e58b9a;white-space:nowrap}
+@media(max-width:640px){.admin-generation-tabs{display:grid;grid-template-columns:1fr 1fr}.admin-generation-tab{padding:0 8px;font-size:11px}.admin-generation-review-controls .admin-delete-variant{width:100%}}
