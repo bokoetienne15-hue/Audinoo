@@ -510,22 +510,23 @@ async function adminGenerations(request, db, user) {
     db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 }),
     db.runQuery({ from: [{ collectionId: 'publishedTracks' }], limit: 1000 })
   ])
-  const publishedIds = new Set((publishedRows || []).filter(row => row.document)
-    .map(row => fromFields(row.document.fields || {}))
-    .filter(track => track.published === true)
-    .map(track => String(track.id || '')))
+  const publishedTrackRows = (publishedRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {}))
+  const publishedIds = new Set(publishedTrackRows.filter(track => track.published === true).map(track => String(track.id || '')))
+  const reviewedIds = new Set(publishedTrackRows.map(track => String(track.id || '')))
   const generations = (rows || []).filter(row => row.document?.name?.includes('/documents/users/'))
     .map(row => {
       const d = fromFields(row.document.fields || {})
       const parts = row.document.name.split('/documents/')[1].split('/')
       if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return null
       const uid = parts[1], taskId = d.taskId || parts[3]
+      const sourceTracks = Array.isArray(d.tracks) ? d.tracks : []
+      const legacyPublishedIndex = sourceTracks.findIndex((_, i) => reviewedIds.has(taskId + '-' + i))
       const createdAt = d.createdAt instanceof Date ? d.createdAt.toISOString() : typeof d.createdAt === 'string' ? d.createdAt : null
       return {
         uid, taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt,
-        reviewed: d.publicationReviewed === true,
-        publishedTrackIndex: Number.isInteger(d.publishedTrackIndex) ? d.publishedTrackIndex : null,
-        tracks: (Array.isArray(d.tracks) ? d.tracks : []).map((t, i) => ({
+        reviewed: d.publicationReviewed === true || legacyPublishedIndex >= 0,
+        publishedTrackIndex: Number.isInteger(d.publishedTrackIndex) ? d.publishedTrackIndex : legacyPublishedIndex >= 0 ? legacyPublishedIndex : null,
+        tracks: sourceTracks.map((t, i) => ({
           title: t.title || d.title || 'Création Audinoo',
           imageUrl: t.imageUrl || t.image_url || t.sourceImageUrl || t.coverUrl || t.cover_url || '',
           archived: !!t.r2Key, deleted: t.deleted === true, trackIndex: i,
