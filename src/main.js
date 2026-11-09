@@ -1655,6 +1655,16 @@ function renderAdminUsersTable() {
   }
 }
 let adminGenerationRecords = []
+let adminGenerationView = "pending"
+adminGenerationsSection.querySelectorAll("[data-generation-view]").forEach(button => button.addEventListener("click", () => {
+  adminGenerationView = button.dataset.generationView === "published" ? "published" : "pending"
+  adminGenerationsSection.querySelectorAll("[data-generation-view]").forEach(tab => {
+    const active = tab === button
+    tab.classList.toggle("is-active", active)
+    tab.setAttribute("aria-selected", String(active))
+  })
+  renderAdminGenerationsTable()
+}))
 let adminGenerationsRequestRunning = false
 async function loadAdminGenerations(silent = false) {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid || adminGenerationsRequestRunning) return
@@ -1701,7 +1711,8 @@ function renderAdminGenerationsTable() {
   const usersById = new Map(latestAdminUsers.map(user => [user.uid, user]))
   const records = adminGenerationRecords.filter(item => {
     const owner = usersById.get(item.uid)
-    return adminGenerationMatchesDay(item) && [item.title, item.status, owner?.displayName, owner?.username, owner?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term))
+    const belongsToView = adminGenerationView === "published" ? item.reviewed === true : item.reviewed !== true
+    return belongsToView && adminGenerationMatchesDay(item) && [item.title, item.status, owner?.displayName, owner?.username, owner?.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term))
   })
   const body = adminGenerationsSection.querySelector('#admin-generation-cards')
   const status = adminGenerationsSection.querySelector('#admin-audio-status')
@@ -1710,7 +1721,7 @@ function renderAdminGenerationsTable() {
   if (!records.length) {
     const empty = document.createElement('div')
     empty.className = 'admin-generation-empty'
-    empty.textContent = term || adminGenerationDateFilter.value ? 'Aucune chanson ne correspond à cette recherche.' : 'Aucune chanson enregistrée pour le moment.'
+    empty.textContent = term || adminGenerationDateFilter.value ? 'Aucune chanson ne correspond à cette recherche.' : adminGenerationView === 'published' ? 'Aucune création validée pour le moment.' : 'Aucune création en attente de vérification.'
     body.append(empty)
     status.textContent = 'Les créations apparaîtront ici dès qu’elles seront disponibles.'
     return
@@ -1766,7 +1777,7 @@ function renderAdminGenerationsTable() {
       top.append(cover, titleBlock, state)
       titleBlock.append(title, meta)
       card.append(top)
-      const tracks = Array.isArray(item.tracks) ? item.tracks : []
+      const tracks = (Array.isArray(item.tracks) ? item.tracks : []).filter(track => track.deleted !== true)
       if (!tracks.length) {
         const pending = document.createElement('p')
         pending.className = 'admin-generation-review-note'
