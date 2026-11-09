@@ -1867,7 +1867,13 @@ function renderAdminGenerationsTable() {
           })
           genreLabel.append(genreSelect)
           
+          if (item.reviewed && !track.published) {
+            publish.textContent = 'Variante non publiée'
+            publish.disabled = true
+            publish.classList.add('is-reviewed-locked')
+          }
           publish.addEventListener('click', async () => {
+            if (item.reviewed && !track.published) return
             publish.disabled = true
             const wasPublished = track.published === true
             publish.textContent = wasPublished ? 'Retrait…' : 'Publication…'
@@ -1882,9 +1888,13 @@ function renderAdminGenerationsTable() {
                 const result = await callAudinooApi('/api/admin/publish', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex, genre: genreSelect.value }) })
                 track.published = true
                 track.publishedTrackId = result.id || item.taskId + '-' + track.trackIndex
+                item.reviewed = true
+                item.publishedTrackIndex = track.trackIndex
                 publish.textContent = 'Retirer de l’accueil'
                 publish.classList.add('is-published')
-                status.textContent = 'La chanson est maintenant publiée sur l’accueil.'
+                status.textContent = 'Création validée : une variante est publiée. La création complète est déplacée dans « Publiées / validées ».'
+                renderAdminGenerationsTable()
+                return
               }
             } catch (error) {
               publish.disabled = false
@@ -1896,6 +1906,28 @@ function renderAdminGenerationsTable() {
             publish.disabled = false
           })
           controls.append(listen, audio, genreLabel, publish)
+          if (adminGenerationView === 'published' && !track.published && item.reviewed) {
+            const removeVariant = document.createElement('button')
+            removeVariant.type = 'button'
+            removeVariant.className = 'admin-refresh-button admin-delete-variant'
+            removeVariant.textContent = 'Supprimer cette variante'
+            removeVariant.addEventListener('click', async () => {
+              if (!window.confirm('Supprimer définitivement cette variante non publiée ? Cette action ne peut pas être annulée.')) return
+              removeVariant.disabled = true
+              removeVariant.textContent = 'Suppression…'
+              try {
+                await callAudinooApi('/api/admin/delete-generation-track', { method: 'POST', body: JSON.stringify({ uid: item.uid, taskId: item.taskId, trackIndex: track.trackIndex }) })
+                track.deleted = true
+                status.textContent = 'Variante supprimée.'
+                renderAdminGenerationsTable()
+              } catch (error) {
+                removeVariant.disabled = false
+                removeVariant.textContent = 'Réessayer la suppression'
+                status.textContent = 'Suppression impossible : ' + error.message
+              }
+            })
+            controls.append(removeVariant)
+          }
           row.append(controls)
         } else {
           const unavailable = document.createElement('small')
