@@ -228,7 +228,11 @@ service cloud.firestore {
       allow list: if false;
       allow create, update: if isAdmin()
         && settingId == 'credits'
-        && request.resource.data.keys().hasOnly(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasOnly([
+          'enabled', 'activeCampaignId', 'freeGenerationCount',
+          'freeGenerationReservations', 'freeGenerationCampaignId',
+          'freeOfferExhausted', 'freeOfferDisabledAt', 'updatedAt', 'updatedBy'
+        ])
         && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
         && request.resource.data.enabled is bool
         && (
@@ -237,6 +241,10 @@ service cloud.firestore {
             && request.resource.data.activeCampaignId.size() > 0)
           || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
         )
+        && (!('freeGenerationCount' in request.resource.data) || (request.resource.data.freeGenerationCount is int && request.resource.data.freeGenerationCount >= 0 && request.resource.data.freeGenerationCount <= 50))
+        && (!('freeGenerationReservations' in request.resource.data) || (request.resource.data.freeGenerationReservations is int && request.resource.data.freeGenerationReservations >= 0 && request.resource.data.freeGenerationReservations <= 50))
+        && (!('freeGenerationCampaignId' in request.resource.data) || request.resource.data.freeGenerationCampaignId == null || request.resource.data.freeGenerationCampaignId is string)
+        && (!('freeOfferExhausted' in request.resource.data) || request.resource.data.freeOfferExhausted is bool)
         && request.resource.data.updatedAt == request.time
         && request.resource.data.updatedBy == request.auth.uid;
       allow delete: if false;
