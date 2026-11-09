@@ -1867,13 +1867,13 @@ function renderAdminGenerationsTable() {
           })
           genreLabel.append(genreSelect)
           
-          if (item.reviewed && !track.published) {
+          if (item.reviewed && Number(item.publishedTrackIndex) !== track.trackIndex && !track.published) {
             publish.textContent = 'Variante non publiée'
             publish.disabled = true
             publish.classList.add('is-reviewed-locked')
           }
           publish.addEventListener('click', async () => {
-            if (item.reviewed && !track.published) return
+            if (item.reviewed && Number(item.publishedTrackIndex) !== track.trackIndex && !track.published) return
             publish.disabled = true
             const wasPublished = track.published === true
             publish.textContent = wasPublished ? 'Retrait…' : 'Publication…'
@@ -1906,7 +1906,7 @@ function renderAdminGenerationsTable() {
             publish.disabled = false
           })
           controls.append(listen, audio, genreLabel, publish)
-          if (adminGenerationView === 'published' && !track.published && item.reviewed) {
+          if (adminGenerationView === 'published' && !track.published && item.reviewed && Number(item.publishedTrackIndex) !== track.trackIndex) {
             const removeVariant = document.createElement('button')
             removeVariant.type = 'button'
             removeVariant.className = 'admin-refresh-button admin-delete-variant'
