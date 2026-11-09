@@ -937,9 +937,12 @@ settingsThemeMedia?.addEventListener?.('change', () => {
 function showSettingsPage() {
   const user = auth.currentUser
   if (!user) return
+  homeWorkspacePage.hidden = true
   studioWorkspacePage.hidden = true
   libraryWorkspacePage.hidden = true
   modelWorkspacePage.hidden = true
+  workspacePricingPage.hidden = true
+  workspaceSupportPage.hidden = true
   adminWorkspacePage.hidden = true
   workspaceSettingsPage.hidden = false
   workspaceSidebar.querySelectorAll('.workspace-nav').forEach((link) => link.classList.toggle('is-active', link === settingsNavButton))
