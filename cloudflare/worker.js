@@ -523,13 +523,15 @@ async function adminGenerations(request, db, user) {
       const createdAt = d.createdAt instanceof Date ? d.createdAt.toISOString() : typeof d.createdAt === 'string' ? d.createdAt : null
       return {
         uid, taskId, title: d.title || 'Création Audinoo', status: d.state || 'PENDING', createdAt,
+        reviewed: d.publicationReviewed === true,
+        publishedTrackIndex: Number.isInteger(d.publishedTrackIndex) ? d.publishedTrackIndex : null,
         tracks: (Array.isArray(d.tracks) ? d.tracks : []).map((t, i) => ({
           title: t.title || d.title || 'Création Audinoo',
           imageUrl: t.imageUrl || t.image_url || t.sourceImageUrl || t.coverUrl || t.cover_url || '',
-          archived: !!t.r2Key, trackIndex: i,
+          archived: !!t.r2Key, deleted: t.deleted === true, trackIndex: i,
           published: publishedIds.has(taskId + '-' + i),
           publishedTrackId: publishedIds.has(taskId + '-' + i) ? taskId + '-' + i : '',
-          audioUrl: (t.r2Key || /^https?:\/\//i.test(t.audioUrl || ''))
+          audioUrl: (t.deleted !== true && (t.r2Key || /^https?:\/\//i.test(t.audioUrl || '')))
             ? '/api/admin-audio?uid=' + encodeURIComponent(uid) + '&taskId=' + encodeURIComponent(taskId) + '&track=' + i : ''
         }))
       }
@@ -655,7 +657,8 @@ async function publishTrack(request, env, db, user) {
   const uid = String(body.uid || ''), taskId = String(body.taskId || ''), index = Number(body.trackIndex)
   if (!uid || uid.length > 128 || !/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-publish-request' })
   const path = 'users/' + uid + '/generations/' + taskId, snap = await db.get(path), track = snap.data?.tracks?.[index]
-  if (!snap.exists || !track) return response(409, { error: 'audio-not-available' })
+  if (!snap.exists || !track || track.deleted === true) return response(409, { error: 'audio-not-available' })
+  if (snap.data.publicationReviewed === true && Number(snap.data.publishedTrackIndex) !== index) return response(409, { error: 'generation-already-reviewed' })
   const id = taskId + '-' + index
   let source = track.r2Key ? await env.AUDIO_BUCKET?.get(track.r2Key) : null
   if (!source && /^https?:\/\//i.test(track.audioUrl || '')) {
@@ -687,7 +690,8 @@ async function publishTrack(request, env, db, user) {
     likesCount: Math.max(0, Number(existing.data?.likesCount || 0)),
     playCount: Math.max(0, Number(existing.data?.playCount || 0))
   })
-  return response(200, { published: true, id, coverPalette })
+  await db.set(path, { publicationReviewed: true, publishedTrackIndex: index, publicationReviewedAt: new Date(), publicationReviewedBy: user.uid }, true)
+  return response(200, { published: true, reviewed: true, id, coverPalette })
 }
 async function unpublishTrack(request, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
@@ -701,6 +705,25 @@ async function unpublishTrack(request, db, user) {
   if (track.data.published !== true) return response(409, { error: 'track-already-unpublished' })
   await db.set(path, { published: false, unpublishedAt: new Date(), unpublishedBy: user.uid }, true)
   return response(200, { unpublished: true, id })
+}
+async function deleteGenerationTrack(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const body = await request.json().catch(() => ({}))
+  const uid = String(body.uid || ''), taskId = String(body.taskId || ''), index = Number(body.trackIndex)
+  if (!uid || uid.length > 128 || !/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(index) || index < 0) return response(400, { error: 'invalid-delete-request' })
+  const path = 'users/' + uid + '/generations/' + taskId
+  const snap = await db.get(path)
+  const track = snap.data?.tracks?.[index]
+  if (!snap.exists || !track) return response(404, { error: 'track-not-found' })
+  if (track.deleted === true) return response(200, { deleted: true })
+  const id = taskId + '-' + index
+  const published = await db.get('publishedTracks/' + id)
+  if (published.exists && published.data.published === true) return response(409, { error: 'track-is-published' })
+  if (track.r2Key && env.AUDIO_BUCKET) await env.AUDIO_BUCKET.delete(track.r2Key)
+  const tracks = snap.data.tracks.map((item, i) => i === index ? { ...item, deleted: true, deletedAt: new Date(), deletedBy: user.uid, r2Key: null } : item)
+  await db.set(path, { tracks }, true)
+  return response(200, { deleted: true, id })
 }
 async function publicTracks(request, db, user = null) {
   const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
@@ -925,6 +948,7 @@ export default {
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       if (url.pathname === '/api/admin/unpublish') return await unpublishTrack(request,db,user)
+      if (url.pathname === '/api/admin/delete-generation-track') return await deleteGenerationTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
       const status = e.message === 'firebase-admin-not-configured' || e.message === 'fedapay-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
