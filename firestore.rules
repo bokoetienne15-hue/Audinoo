@@ -278,16 +278,21 @@ service cloud.firestore {
   }
 }
 )
-        && request.resource.data.source is string && request.resource.data.source.size() <= 60
-        && request.resource.data.medium is string && request.resource.data.medium.size() <= 60
-        && request.resource.data.campaign is string && request.resource.data.campaign.size() <= 100
+        && request.resource.data.source is string
+        && request.resource.data.source.size() <= 60
+        && request.resource.data.medium is string
+        && request.resource.data.medium.size() <= 60
+        && request.resource.data.campaign is string
+        && request.resource.data.campaign.size() <= 100
         && request.resource.data.event in [
           'landing_loaded', 'signup_clicked', 'signup_opened', 'signup_submitted',
           'google_signup_started', 'auth_account_created', 'profile_saved',
           'country_step_shown', 'signup_completed', 'signup_failed'
         ]
-        && request.resource.data.stage is string && request.resource.data.stage.size() <= 100
-        && request.resource.data.code is string && request.resource.data.code.size() <= 100
+        && request.resource.data.stage is string
+        && request.resource.data.stage.size() <= 100
+        && request.resource.data.code is string
+        && request.resource.data.code.size() <= 100
         && request.resource.data.browser in [
           'Facebook intégré', 'Instagram intégré', 'TikTok intégré',
           'Microsoft Edge', 'Samsung Internet', 'Chrome', 'Safari',
