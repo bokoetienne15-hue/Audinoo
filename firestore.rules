@@ -235,49 +235,8 @@ service cloud.firestore {
         ])
         && request.resource.data.createdAt == request.time
         && request.resource.data.sessionId is string
-        && request.resource.data.sessionId.matches('^[0-9a-f-]{36}    match /{path=**}/generations/{generationId} {
-      allow get, list: if isAdmin();
-      allow create, update, delete: if false;
-    }
-
-    match /admins/{userId} {
-      allow get: if signedIn() && request.auth.uid == userId;
-      allow list, create, update, delete: if false;
-    }
-
-    match /settings/{settingId} {
-      allow get: if signedIn() && settingId == 'credits';
-      allow list: if false;
-      allow create, update: if isAdmin()
-        && settingId == 'credits'
-        && request.resource.data.keys().hasOnly([
-          'enabled', 'activeCampaignId', 'freeGenerationCount',
-          'freeGenerationReservations', 'freeGenerationCampaignId',
-          'freeOfferExhausted', 'freeOfferDisabledAt', 'updatedAt', 'updatedBy'
-        ])
-        && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
-        && request.resource.data.enabled is bool
-        && (
-          (request.resource.data.enabled == true
-            && request.resource.data.activeCampaignId is string
-            && request.resource.data.activeCampaignId.size() > 0)
-          || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
-        )
-        && (!('freeGenerationCount' in request.resource.data) || (request.resource.data.freeGenerationCount is int && request.resource.data.freeGenerationCount >= 0 && request.resource.data.freeGenerationCount <= 50))
-        && (!('freeGenerationReservations' in request.resource.data) || (request.resource.data.freeGenerationReservations is int && request.resource.data.freeGenerationReservations >= 0 && request.resource.data.freeGenerationReservations <= 50))
-        && (!('freeGenerationCampaignId' in request.resource.data) || request.resource.data.freeGenerationCampaignId == null || request.resource.data.freeGenerationCampaignId is string)
-        && (!('freeOfferExhausted' in request.resource.data) || request.resource.data.freeOfferExhausted is bool)
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.updatedBy == request.auth.uid;
-      allow delete: if false;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-)
+        && request.resource.data.sessionId.size() == 36
+        && request.resource.data.sessionId.matches('^[0-9a-f-]+$')
         && request.resource.data.source is string
         && request.resource.data.source.size() <= 60
         && request.resource.data.medium is string
