@@ -2,7 +2,7 @@ import './style.css'
 import windSilhouette1 from './assets/wind-silhouette-1.png'
 import windSilhouette2 from './assets/wind-silhouette-2.png'
 import windSilhouette3 from './assets/wind-silhouette-3.png'
-import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, getRedirectResult, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth'
 import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, authPersistenceReady, db, googleProvider } from './firebase.js'
 
@@ -202,6 +202,7 @@ app.innerHTML = `
       <h2 id="auth-title">Bienvenue sur Audinoo</h2>
       <p class="auth-intro" id="auth-intro">Connecte-toi pour retrouver tes créations et continuer ton univers musical.</p>
       <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="assertive" hidden></p>
+      <p class="auth-browser-guidance" id="auth-browser-guidance" role="status" aria-live="polite" hidden></p>
       <button class="google-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"/><path fill="#34A853" d="M12 21.58c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.74 9.74 0 0 0 12 21.58Z"/><path fill="#FBBC05" d="M6.54 13.66A5.85 5.85 0 0 1 6.23 12c0-.58.1-1.14.31-1.66V7.81H3.3A9.73 9.73 0 0 0 2.26 12c0 1.52.36 2.96 1.04 4.19l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.31c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.31 14.63 2.42 12 2.42a9.74 9.74 0 0 0-8.7 5.39l3.24 2.53C7.31 8.03 9.46 6.31 12 6.31Z"/></svg><span>Continuer avec Google</span></button>
       <div class="auth-divider"><span>ou avec ton adresse e-mail</span></div>
       <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" name="username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" name="email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="new-password" minlength="8" required /><label class="signup-only" for="auth-password-confirm" hidden>Confirme ton mot de passe</label><input class="signup-only" id="auth-password-confirm" name="password-confirm" type="password" placeholder="Saisis le même mot de passe" autocomplete="new-password" minlength="8" hidden /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
@@ -3513,6 +3514,7 @@ async function loadUserLibrary() {
 const authTitle = document.querySelector('#auth-title')
 const authIntro = document.querySelector('#auth-intro')
 const authFeedback = document.querySelector('#auth-feedback')
+const authBrowserGuidance = document.querySelector('#auth-browser-guidance')
 const authSubmit = document.querySelector('#auth-submit')
 const authSwitch = document.querySelector('#auth-switch')
 const authForm = document.querySelector('#auth-form')
@@ -3759,11 +3761,14 @@ const openAuth = (mode) => {
   authIntro.textContent = isSignup ? 'Rejoins les créateurs qui transforment leurs idées en musique avec l’intelligence artificielle.' : 'Connecte-toi pour retrouver tes créations et continuer ton univers musical.'
   authFeedback.textContent = ''
   authFeedback.hidden = true
+  authBrowserGuidance.textContent = ''
+  authBrowserGuidance.hidden = true
   authSubmit.textContent = isSignup ? 'Créer mon compte' : 'Se connecter'
   authSwitch.innerHTML = isSignup ? 'Déjà un compte ? <button type="button" data-auth-switch="login">Se connecter</button>' : 'Pas encore de compte ? <button type="button" data-auth-switch="signup">S’inscrire</button>'
   signupOnlyFields.forEach((field) => { field.hidden = !isSignup })
-  authUsername.required = isSignup
-  authPasswordConfirm.required = isSignup
+  // The username is generated automatically at signup and can be changed later.
+  authUsername.required = false
+  authPasswordConfirm.required = false
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
@@ -3805,9 +3810,8 @@ function showAuthError(error, mode, operationStep = '') {
   const fallback = mode === 'signup'
     ? 'La création du compte a échoué. Vérifie les informations et réessaie.'
     : 'La connexion a échoué. Vérifie ton adresse e-mail, ton mot de passe et ta connexion Internet.'
-  const explanation = messages[code] || error.message || fallback
-  const step = operationStep ? ` Étape : ${operationStep}.` : ''
-  authFeedback.textContent = `${explanation}${step} (code : ${code}) Détail exact : ${exactErrorDetails(error)}`
+  const explanation = messages[code] || fallback
+  authFeedback.textContent = explanation
   authFeedback.hidden = false
   authOverlay.classList.add('open')
   authOverlay.setAttribute('aria-hidden', 'false')
@@ -4214,41 +4218,93 @@ authUsername.addEventListener('input', () => {
   renderUsernameSuggestions(authUsername.value)
   usernameCheckTimer = window.setTimeout(checkUsernameAvailability, 350)
 })
+async function completeGoogleSignIn(result, mode) {
+  const user = result.user
+  const name = user.displayName || user.email
+  const profileSnapshot = await getDoc(doc(db, 'users', user.uid))
+  if (mode === 'login' && !profileSnapshot.exists()) {
+    if (getAdditionalUserInfo(result)?.isNewUser) await deleteUser(user)
+    await signOut(auth)
+    const error = new Error('account-not-found')
+    error.code = 'account-not-found'
+    throw error
+  }
+
+  let profile = profileSnapshot.exists()
+    ? { ...profileSnapshot.data(), created: false }
+    : await createGoogleProfile(user)
+  profile = await syncGoogleProfilePhoto(user, profile)
+  hasAudinooProfile = true
+  closeAuth()
+  const savedProfile = { ...profile, uid: user.uid, displayName: user.displayName || profile.displayName || '' }
+  openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
+  toast.textContent = profile.created
+    ? `Compte Audinoo créé avec succès. Ton pseudo est ${profile.username}.`
+    : `Bon retour ${name} !`
+  toast.classList.add('show')
+  window.setTimeout(() => toast.classList.remove('show'), 3600)
+}
+
+function isEmbeddedSocialBrowser() {
+  return /FBAN|FBAV|Instagram|TikTok|BytedanceWebview|musical_ly/i.test(navigator.userAgent || '')
+}
+
+function isIOSDevice() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function openChromeForGoogleSignup() {
+  const target = new URL(window.location.href)
+  target.searchParams.set('signup', '1')
+  target.searchParams.set('google', '1')
+  const intentUrl = `intent://${target.host}${target.pathname}${target.search}${target.hash}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target.href)};end`
+  window.location.href = intentUrl
+}
+
 googleButton.addEventListener('click', async () => {
   const label = googleButton.querySelector('span')
   const defaultLabel = label.textContent
+
+  if (isEmbeddedSocialBrowser()) {
+    authBrowserGuidance.textContent = isIOSDevice()
+      ? 'Ouvre cette page dans Safari pour utiliser Google, ou inscris-toi avec ton e-mail ci-dessous.'
+      : /Android/i.test(navigator.userAgent || '')
+        ? 'Si Chrome ne s’ouvre pas, appuie sur les trois points ⋮ en haut, puis sur « Ouvrir dans le navigateur ». Ou inscris-toi avec ton e-mail ci-dessous.'
+        : 'Ouvre cette page dans ton navigateur habituel pour utiliser Google, ou inscris-toi avec ton e-mail ci-dessous.'
+    authBrowserGuidance.hidden = false
+    if (/Android/i.test(navigator.userAgent || '')) openChromeForGoogleSignup()
+    return
+  }
+
+  const currentUrl = new URL(window.location.href)
+  const useRedirect = currentUrl.searchParams.get('google') === '1'
   googleButton.disabled = true
   label.textContent = 'Connexion à Google...'
   authFlowInProgress = true
+  let redirectStarted = false
 
   try {
     await authPersistenceReady
-    const result = await signInWithPopup(auth, googleProvider)
-    const name = result.user.displayName || result.user.email
-    const profileSnapshot = await getDoc(doc(db, 'users', result.user.uid))
-    if (authMode === 'login' && !profileSnapshot.exists()) {
-      if (getAdditionalUserInfo(result)?.isNewUser) await deleteUser(result.user)
-      await signOut(auth)
-      throw new Error('account-not-found')
+    if (useRedirect) {
+      currentUrl.searchParams.delete('google')
+      window.history.replaceState({}, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`)
+      writeBrowserStorage('sessionStorage', 'audinoo-google-redirect-mode', authMode)
+      redirectStarted = true
+      await signInWithRedirect(auth, googleProvider)
+      return
     }
 
-    let profile = profileSnapshot.exists()
-      ? { ...profileSnapshot.data(), created: false }
-      : await createGoogleProfile(result.user)
-    profile = await syncGoogleProfilePhoto(result.user, profile)
-    hasAudinooProfile = true
-    closeAuth()
-    const savedProfile = { ...profile, uid: result.user.uid, displayName: result.user.displayName || profile.displayName || '' }
-    openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
-    toast.textContent = profile.created
-      ? `Compte Audinoo créé avec succès. Ton pseudo est ${profile.username}.`
-      : `Bon retour ${name} !`
-    toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 3600)
+    const result = await signInWithPopup(auth, googleProvider)
+    await completeGoogleSignIn(result, authMode)
   } catch (error) {
+    if (redirectStarted) {
+      try { window.sessionStorage.removeItem('audinoo-google-redirect-mode') } catch {}
+      redirectStarted = false
+    }
     showAuthError(error, authMode)
   } finally {
-    authFlowInProgress = false
+    if (!redirectStarted) authFlowInProgress = false
     googleButton.disabled = false
     label.textContent = defaultLabel
   }
@@ -4268,13 +4324,16 @@ authForm.addEventListener('submit', async (event) => {
   try {
     await authPersistenceReady
     if (submittingMode === 'signup') {
-      const username = normalizeUsername(authUsername.value)
-      if (!isValidUsername(username)) throw new Error('invalid-username')
       if (!/(?=.*[a-zA-Z])(?=.*\d).{8,}/.test(password)) throw new Error('weak-password-format')
-      if (password !== authPasswordConfirm.value) throw new Error('password-mismatch')
+      let username = ''
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        username = generatedUsername({ email })
+        authUsername.value = username
+        await checkUsernameAvailability()
+        if (usernameIsAvailable) break
+      }
+      if (!usernameIsAvailable) throw new Error('username-generation-failed')
       operationStep = 'vérification du nom d’utilisateur dans Firestore'
-      await checkUsernameAvailability()
-      if (!usernameIsAvailable) throw new Error('username-taken')
 
       operationStep = 'création du compte Firebase Auth'
       const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -4333,6 +4392,49 @@ authForm.addEventListener('submit', async (event) => {
     authSubmit.textContent = authMode === 'signup' ? 'Créer mon compte' : 'Se connecter'
   }
 })
+
+const initialAuthUrl = new URL(window.location.href)
+const initialSignupIntent = initialAuthUrl.searchParams.get('signup') === '1' || initialAuthUrl.searchParams.get('google') === '1'
+if (initialSignupIntent) {
+  openAuth('signup')
+  if (initialAuthUrl.searchParams.get('google') === '1') {
+    const embedded = isEmbeddedSocialBrowser()
+    authBrowserGuidance.textContent = embedded
+      ? (isIOSDevice()
+        ? 'Ouvre cette page dans Safari pour utiliser Google, ou inscris-toi avec ton e-mail ci-dessous.'
+        : 'Pour utiliser Google, appuie sur les trois points ⋮ en haut, puis sur « Ouvrir dans le navigateur ». Ou inscris-toi avec ton e-mail ci-dessous.')
+      : /iPhone|iPad|iPod/i.test(navigator.userAgent || '')
+        ? 'Tu es dans Safari ✅ Appuie sur Continuer avec Google.'
+        : /Chrome\//i.test(navigator.userAgent || '')
+          ? 'Tu es dans Chrome ✅ Appuie sur Continuer avec Google.'
+          : 'Tu es dans ton navigateur ✅ Appuie sur Continuer avec Google.'
+    authBrowserGuidance.hidden = false
+  }
+}
+
+const pendingGoogleRedirectMode = readBrowserStorage('sessionStorage', 'audinoo-google-redirect-mode')
+if (pendingGoogleRedirectMode) {
+  authFlowInProgress = true
+  void (async () => {
+    try {
+      await authPersistenceReady
+      const redirectResult = await getRedirectResult(auth)
+      if (redirectResult) {
+        await completeGoogleSignIn(redirectResult, pendingGoogleRedirectMode)
+      } else {
+        authFeedback.textContent = 'La connexion Google n’a pas abouti. Réessaie ou utilise ton adresse e-mail.'
+        authFeedback.hidden = false
+        authOverlay.classList.add('open')
+        authOverlay.setAttribute('aria-hidden', 'false')
+      }
+    } catch (error) {
+      showAuthError(error, pendingGoogleRedirectMode)
+    } finally {
+      try { window.sessionStorage.removeItem('audinoo-google-redirect-mode') } catch {}
+      authFlowInProgress = false
+    }
+  })()
+}
 
 onAuthStateChanged(auth, async (user) => {
   // The auth callback can run before the Firestore profile transaction has
