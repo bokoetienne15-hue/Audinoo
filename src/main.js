@@ -3965,6 +3965,9 @@ const openAuth = (mode) => {
 
 function showAuthError(error, mode, operationStep = '') {
   const messages = {
+    'display-name-required': 'Saisis ton nom et prénom ou ton prénom pour continuer.',
+    'password-confirmation-mismatch': 'Les deux mots de passe ne correspondent pas. Vérifie-les puis réessaie.',
+    'username-generation-failed': 'Audinoo n’a pas pu attribuer un identifiant unique. Réessaie.',
     'auth/invalid-email': 'Cette adresse e-mail n’est pas valide. Vérifie-la puis réessaie.',
     'auth/user-not-found': 'Aucun compte ne correspond à cette adresse e-mail. Vérifie l’adresse ou crée un compte.',
     'auth/wrong-password': 'Le mot de passe est incorrect. Vérifie-le puis réessaie.',
