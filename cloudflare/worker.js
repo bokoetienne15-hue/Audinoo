@@ -641,15 +641,27 @@ async function adminDeleteUser(request, env, db, user) {
   }
   return response(200, { deleted: true, firestoreDocuments: paths.length, mediaObjects: 'removed' })
 }
-async function adminResetVisitors(request, db, user) {
-  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+async function adminAcquisition(request, db, user) {
+  if (request.method !== 'GET' && request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  if (request.method === 'GET') {
+    const settings = await db.get('adminSettings/acquisition')
+    return response(200, { resetAt: settings.data?.resetAt || null })
+  }
   const body = await request.json().catch(() => ({}))
-  if (body.confirmation !== 'RESET VISITEURS') return response(400, { error: 'reset-confirmation-mismatch' })
-  const rows = firestoreRows(await db.runQuery({ from: [{ collectionId: 'visitorSessions' }], limit: 1000 }))
-  if (rows.length >= 1000) return response(409, { error: 'visitor-data-limit-reached' })
-  const count = await deleteFirestoreDocs(db, rows.map(row => firestoreDocPath(row.name)))
-  return response(200, { reset: true, deleted: count, limited: rows.length >= 1000 })
+  if (body.confirmation !== 'RESET ACQUISITION') return response(400, { error: 'acquisition-reset-confirmation-mismatch' })
+  const [visitorsRaw, eventsRaw] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'visitorSessions' }], limit: 1000 }),
+    db.runQuery({ from: [{ collectionId: 'acquisitionEvents' }], limit: 1000 })
+  ])
+  const visitors = firestoreRows(visitorsRaw)
+  const events = firestoreRows(eventsRaw)
+  if (visitors.length >= 1000 || events.length >= 1000) return response(409, { error: 'acquisition-data-limit-reached' })
+  const deletedVisitors = await deleteFirestoreDocs(db, visitors.map(row => firestoreDocPath(row.name)))
+  const deletedEvents = await deleteFirestoreDocs(db, events.map(row => firestoreDocPath(row.name)))
+  const resetAt = new Date()
+  await db.set('adminSettings/acquisition', { resetAt, updatedAt: SERVER_TIMESTAMP, updatedBy: user.uid }, true)
+  return response(200, { reset: true, resetAt: resetAt.toISOString(), deletedVisitors, deletedEvents })
 }
 async function publishTrack(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
@@ -946,7 +958,7 @@ export default {
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/revenue') return await adminRevenue(request,db,user)
       if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
-      if (url.pathname === '/api/admin/visitors/reset') return await adminResetVisitors(request,db,user)
+      if (url.pathname === '/api/admin/acquisition') return await adminAcquisition(request,db,user)
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       if (url.pathname === '/api/admin/unpublish') return await unpublishTrack(request,db,user)
@@ -969,7 +981,7 @@ export default {
         const error = allowedTrackPaymentErrors.has(e.message) ? e.message : 'track-purchase-failed'
         return response(status, { error })
       }
-      const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','visitor-data-limit-reached'])
+      const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','acquisition-data-limit-reached','acquisition-reset-confirmation-mismatch'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
       return response(status,{error:err})
     }
