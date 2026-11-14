@@ -1569,7 +1569,7 @@ function renderAdminAcquisition() {
   adminWorkspacePage.querySelector('#admin-acquisition-visits').textContent = adminNumber(totalVisits)
   adminWorkspacePage.querySelector('#admin-acquisition-clicks').textContent = adminNumber(totalClicks)
   adminWorkspacePage.querySelector('#admin-acquisition-rate').textContent = `${rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
-  const acquisitionAccountCount = latestAdminUsers.filter((user) => { const millis = user.createdAt?.toMillis?.() || (user.createdAt ? new Date(user.createdAt).getTime() : 0); return Number.isFinite(millis) && millis > 0 && (!adminAcquisitionResetAt || millis >= new Date(adminAcquisitionResetAt).getTime()) }).length
+  const acquisitionAccountCount = adminAcquisitionResetAt ? latestAdminUsers.filter((user) => { const millis = user.createdAt?.toMillis?.() || (user.createdAt ? new Date(user.createdAt).getTime() : 0); return Number.isFinite(millis) && millis > 0 && millis >= new Date(adminAcquisitionResetAt).getTime() }).length : latestAdminUsers.length
   adminWorkspacePage.querySelector('#admin-acquisition-accounts').textContent = adminNumber(acquisitionAccountCount)
   renderAdminAcquisitionEvents()
   const rows = adminWorkspacePage.querySelector('#admin-acquisition-rows')
@@ -2365,6 +2365,8 @@ async function downloadAdminReport(exportKind) {
 excelReportButton.addEventListener('click', () => downloadAdminReport('excel'))
 pdfReportButton.addEventListener('click', () => downloadAdminReport('pdf'))
 function startAdminStatsListeners(uid) {
+  stopAdminStatsListeners?.()
+  if (!uid || verifiedAdminUid !== uid) return
   void callAudinooApi('/api/admin/acquisition').then((result) => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     adminAcquisitionResetAt = result.resetAt || null
@@ -2372,8 +2374,6 @@ function startAdminStatsListeners(uid) {
   }).catch((error) => {
     console.warn('[Audinoo admin] Could not load acquisition reset date', error)
   })
-  stopAdminStatsListeners?.()
-  if (!uid || verifiedAdminUid !== uid) return
   adminStatsStatus.textContent = 'Chargement des statistiques en direct…'
   let latestUsers = null
   let latestVisitors = null
