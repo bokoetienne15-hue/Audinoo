@@ -2458,7 +2458,7 @@ async function recordSignupClick() {
   }
 }
 document.addEventListener('click', (event) => {
-  const signupTrigger = event.target.closest('[data-auth="signup"], [data-auth-switch="signup"]')
+  const signupTrigger = event.target.closest('[data-auth="signup"], [data-auth-switch="signup"], a[href="#signup"]')
   if (signupTrigger) void recordSignupClick()
 }, true)
 async function refreshAdminAccess(uid) {
