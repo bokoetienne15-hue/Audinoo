@@ -2992,3 +2992,10 @@ button.is-generating:disabled {
 .auth-browser-guidance { margin: 0 0 16px; padding: 12px 14px; border: 1px solid rgba(166, 121, 255, .42); border-radius: 10px; color: #f1eaff; background: rgba(100, 67, 150, .22); font-size: 12px; font-weight: 500; line-height: 1.6; }
 .auth-browser-guidance[hidden] { display: none; }
 .auth-divider { color: #e1dced; font-weight: 600; }
+
+/* Admin acquisition analytics */
+.admin-acquisition-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:22px 0; }
+.admin-acquisition-summary .admin-stat-card { min-width:0; }
+.admin-acquisition-sources { margin-top:18px; }
+@media (max-width:900px) { .admin-acquisition-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:520px) { .admin-acquisition-summary { grid-template-columns:1fr; } }

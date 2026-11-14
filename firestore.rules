@@ -202,14 +202,25 @@ service cloud.firestore {
     }
 
     match /visitorSessions/{sessionId} {
-      // Anonymous visits contain no account identifier or network metadata.
-      // One write-only session record is created by the browser per tab session.
-      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
-        && request.resource.data.keys().hasAll(['createdAt'])
+      // Anonymous acquisition data: source labels only, no names, emails, IPs or full referrer URLs.
+      allow create: if request.resource.data.keys().hasOnly(['createdAt', 'source', 'medium', 'campaign', 'signupClicked'])
+        && request.resource.data.keys().hasAll(['createdAt', 'source', 'medium', 'campaign', 'signupClicked'])
         && request.resource.data.createdAt == request.time
+        && request.resource.data.source is string
+        && request.resource.data.source.size() <= 60
+        && request.resource.data.medium is string
+        && request.resource.data.medium.size() <= 60
+        && request.resource.data.campaign is string
+        && request.resource.data.campaign.size() <= 100
+        && request.resource.data.signupClicked == false
         && sessionId.matches('^[0-9a-f-]{36}$');
       allow get, list: if isAdmin();
-      allow update, delete: if false;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['signupClicked', 'signupClickedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['signupClicked', 'signupClickedAt'])
+        && (!('signupClicked' in resource.data) || resource.data.signupClicked == false)
+        && request.resource.data.signupClicked == true
+        && request.resource.data.signupClickedAt == request.time;
+      allow delete: if false;
     }
 
     // Collection-group reads expose per-user generation records only to verified admins.
