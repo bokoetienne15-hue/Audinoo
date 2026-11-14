@@ -2312,40 +2312,50 @@ function getAcquisitionSource() {
   const taggedSource = (params.get('utm_source') || '').trim().toLowerCase()
   let raw = taggedSource
   if (!raw && document.referrer) {
-    try { raw = new URL(document.referrer).hostname.toLowerCase().replace(/^www\\./, '') } catch {}
+    try { raw = new URL(document.referrer).hostname.toLowerCase().replace(/^www\./, '') } catch {}
   }
+  const agent = navigator.userAgent || ''
+  if (!raw && /FBAN|FBAV|FB_IAB/i.test(agent)) raw = 'facebook'
+  if (!raw && /Instagram/i.test(agent)) raw = 'instagram'
+  if (!raw && /TikTok|BytedanceWebview|musical_ly/i.test(agent)) raw = 'tiktok'
   if (!raw) return 'direct'
-  if (/facebook|fb\\.com|fb\\.me/.test(raw)) return 'facebook'
+  if (/facebook|fb\.com|fb\.me/.test(raw)) return 'facebook'
   if (/instagram/.test(raw)) return 'instagram'
   if (/tiktok|bytedance/.test(raw)) return 'tiktok'
   if (/google|googleadservices|doubleclick/.test(raw)) return 'google'
-  if (/youtube|youtu\\.be/.test(raw)) return 'youtube'
-  if (/whatsapp|wa\\.me/.test(raw)) return 'whatsapp'
+  if (/youtube|youtu\.be/.test(raw)) return 'youtube'
+  if (/whatsapp|wa\.me/.test(raw)) return 'whatsapp'
   return raw.replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'direct'
 }
+let acquisitionVisitPromise = null
 async function recordAnonymousVisit() {
   if (auth.currentUser || /bot|crawler|spider|Google-InspectionTool|Googlebot|bingbot|facebookexternalhit|Twitterbot/i.test(navigator.userAgent)) return null
-  try {
-    let visitId = sessionStorage.getItem('audinoo-anonymous-visit-id')
-    if (!visitId) {
-      visitId = crypto.randomUUID()
-      sessionStorage.setItem('audinoo-anonymous-visit-id', visitId)
+  if (acquisitionVisitPromise) return acquisitionVisitPromise
+  acquisitionVisitPromise = (async () => {
+    try {
+      let visitId = sessionStorage.getItem('audinoo-anonymous-visit-id')
+      if (!visitId) {
+        visitId = crypto.randomUUID()
+        sessionStorage.setItem('audinoo-anonymous-visit-id', visitId)
+      }
+      if (sessionStorage.getItem('audinoo-anonymous-visit-recorded') === 'true') return visitId
+      const params = new URLSearchParams(window.location.search)
+      await setDoc(doc(db, 'visitorSessions', visitId), {
+        createdAt: serverTimestamp(),
+        source: getAcquisitionSource(),
+        medium: (params.get('utm_medium') || '').slice(0, 60),
+        campaign: (params.get('utm_campaign') || '').slice(0, 100),
+        signupClicked: false
+      })
+      sessionStorage.setItem('audinoo-anonymous-visit-recorded', 'true')
+      return visitId
+    } catch (error) {
+      console.warn('[Audinoo analytics] Could not record anonymous visit', error)
+      return null
     }
-    if (sessionStorage.getItem('audinoo-anonymous-visit-recorded') === 'true') return visitId
-    const params = new URLSearchParams(window.location.search)
-    await setDoc(doc(db, 'visitorSessions', visitId), {
-      createdAt: serverTimestamp(),
-      source: getAcquisitionSource(),
-      medium: (params.get('utm_medium') || '').slice(0, 60),
-      campaign: (params.get('utm_campaign') || '').slice(0, 100),
-      signupClicked: false
-    })
-    sessionStorage.setItem('audinoo-anonymous-visit-recorded', 'true')
-    return visitId
-  } catch (error) {
-    console.warn('[Audinoo analytics] Could not record anonymous visit', error)
-    return null
-  }
+  })()
+  try { return await acquisitionVisitPromise }
+  finally { acquisitionVisitPromise = null }
 }
 async function recordSignupClick() {
   if (sessionStorage.getItem('audinoo-signup-click-recorded') === 'true') return
