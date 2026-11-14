@@ -1345,6 +1345,7 @@ const adminPeriodFilter = adminWorkspacePage.querySelector('#admin-period-filter
 const adminCountryFilter = adminWorkspacePage.querySelector('#admin-country-filter')
 let latestAdminUsers = []
 let latestAdminVisitors = []
+let latestAdminAcquisitionEvents = []
 let latestAdminGenerations = []
 const adminPeriods = {
   day: { count: 30, unit: 'day', label: '30 derniers jours' },
@@ -1462,6 +1463,41 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   renderAdminDashboard()
   renderAdminAcquisition()
 }
+function renderAdminAcquisitionEvents() {
+  const events = latestAdminAcquisitionEvents || []
+  const counters = { landing_loaded:'diag-page-loaded', signup_opened:'diag-signup-opened', signup_submitted:'diag-signup-submitted', auth_account_created:'diag-auth-created', profile_saved:'diag-profile-saved', signup_completed:'diag-signup-completed', signup_failed:'diag-signup-failed' }
+  Object.entries(counters).forEach(([name, id]) => { const node = adminWorkspacePage.querySelector('#' + id); if (node) node.textContent = adminNumber(events.filter((item) => item.event === name).length) })
+  const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
+  const count = adminWorkspacePage.querySelector('#admin-acquisition-events-count')
+  const rows = adminWorkspacePage.querySelector('#admin-acquisition-events-rows')
+  if (!status || !rows || !count) return
+  count.textContent = events.length + ' événements récents'
+  status.textContent = 'Diagnostic synchronisé avec Firestore · ' + events.length + ' événements chargés (maximum 300 récents).'
+  replaceNodeChildren(rows)
+  const explanations = {
+    'auth/network-request-failed':'Connexion Internet interrompue ou requête bloquée.',
+    'auth/operation-not-allowed':'Méthode de connexion non activée dans Firebase.',
+    'auth/unauthorized-domain':'Domaine Audinoo non autorisé dans Firebase Authentication.',
+    'auth/popup-blocked':'Le navigateur a bloqué la fenêtre Google.',
+    'auth/popup-closed-by-user':'La fenêtre Google a été fermée avant la fin.',
+    'auth/email-already-in-use':'Cette adresse possède déjà un compte.',
+    'auth/too-many-requests':'Trop de tentatives : Firebase a temporairement limité les demandes.',
+    'permission-denied':'Les règles Firestore ont refusé une opération.',
+    'weak-password-format':'Le mot de passe ne respecte pas les critères demandés.',
+    'username-generation-failed':'Impossible de trouver un pseudo disponible.',
+    'username-taken':'Le pseudo généré était déjà utilisé.'
+  }
+  const labels = { landing_loaded:'Page chargée', signup_opened:'Inscription ouverte', signup_submitted:'Formulaire envoyé', google_signup_started:'Google demandé', auth_account_created:'Compte Auth créé', profile_saved:'Profil enregistré', country_step_shown:'Choix du pays affiché', signup_completed:'Inscription terminée', signup_failed:'ÉCHEC' }
+  if (!events.length) { const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='Aucun événement de diagnostic pour le moment.';row.append(cell);rows.append(row);return }
+  events.slice(0,150).forEach((item) => {
+    const row=document.createElement('tr')
+    const millis=item.createdAt?.toMillis?.()
+    const date=millis?new Date(millis).toLocaleString('fr-FR'):'Date en attente'
+    const diagnosis=item.event==='signup_failed' ? (explanations[item.code] || (item.code?'Erreur technique : '+item.code:'Échec à analyser'))+(item.stage?' Étape : '+item.stage+'.':'') : (labels[item.event]||item.event)+(item.stage?' · '+item.stage:'')
+    ;[date,item.source||'inconnu',(item.browser||'—')+' · '+(item.device||'—'),item.stage||labels[item.event]||item.event,diagnosis].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell)})
+    rows.append(row)
+  })
+}
 function renderAdminAcquisition() {
   const visitors = latestAdminVisitors || []
   const totalVisits = visitors.length
@@ -1471,6 +1507,7 @@ function renderAdminAcquisition() {
   adminWorkspacePage.querySelector('#admin-acquisition-clicks').textContent = adminNumber(totalClicks)
   adminWorkspacePage.querySelector('#admin-acquisition-rate').textContent = `${rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
   adminWorkspacePage.querySelector('#admin-acquisition-accounts').textContent = adminNumber(latestAdminUsers.length)
+  renderAdminAcquisitionEvents()
   const sourceNames = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google', youtube: 'YouTube', whatsapp: 'WhatsApp', direct: 'Direct / inconnu' }
   const groups = new Map()
   visitors.forEach((item) => {
@@ -1646,6 +1683,7 @@ for (const [id, title] of [['acquisition', 'Acquisition & inscriptions'], ['reve
 
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
+adminAcquisitionSection.innerHTML += `<section class="admin-panel admin-acquisition-diagnostics"><div class="admin-panel-heading"><div><p>DIAGNOSTIC DU PARCOURS</p><h2>Où les visiteurs abandonnent-ils ?</h2></div><span class="admin-data-count" id="admin-acquisition-events-count">En direct</span></div><div class="admin-acquisition-funnel"><article><span>Page chargée</span><strong id="diag-page-loaded">—</strong></article><article><span>Inscription ouverte</span><strong id="diag-signup-opened">—</strong></article><article><span>Formulaire envoyé</span><strong id="diag-signup-submitted">—</strong></article><article><span>Compte Firebase créé</span><strong id="diag-auth-created">—</strong></article><article><span>Profil enregistré</span><strong id="diag-profile-saved">—</strong></article><article><span>Inscription terminée</span><strong id="diag-signup-completed">—</strong></article><article><span>Échecs détectés</span><strong id="diag-signup-failed">—</strong></article></div><p class="admin-panel-status" id="admin-acquisition-events-status" role="status">Les étapes du parcours seront enregistrées après le déploiement de cette version.</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Date</th><th>Source</th><th>Navigateur</th><th>Étape atteinte</th><th>Résultat / explication</th></tr></thead><tbody id="admin-acquisition-events-rows"><tr><td colspan="5">En attente des événements…</td></tr></tbody></table></div><p class="admin-panel-status">Aucune adresse e-mail, aucun mot de passe, nom, numéro de téléphone ou identifiant personnel n’est enregistré dans ce diagnostic. Les événements sont associés à une session anonyme.</p></section>`
 adminAcquisitionSection.innerHTML += '<div class="admin-acquisition-summary"><article class="admin-stat-card"><span>VISITEURS ENREGISTRÉS</span><strong id="admin-acquisition-visits">—</strong><small>Sessions uniques enregistrées dans Firebase</small></article><article class="admin-stat-card"><span>CLICS SUR S’INSCRIRE</span><strong id="admin-acquisition-clicks">—</strong><small>Une seule fois par session</small></article><article class="admin-stat-card"><span>TAUX DE CLIC</span><strong id="admin-acquisition-rate">—</strong><small>Visiteurs ayant ouvert l’inscription</small></article><article class="admin-stat-card"><span>COMPTES CRÉÉS</span><strong id="admin-acquisition-accounts">—</strong><small>Total des profils présents dans Firebase</small></article></div><section class="admin-panel admin-acquisition-sources"><div class="admin-panel-heading"><div><p>ORIGINE DU TRAFIC</p><h2>Visiteurs et inscriptions par source</h2></div><span class="admin-data-count" id="admin-acquisition-source-count">—</span></div><p class="admin-panel-status" id="admin-acquisition-status" role="status">En attente des données Firebase…</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Source</th><th>Visiteurs</th><th>Clics sur S’inscrire</th><th>Taux de clic</th></tr></thead><tbody id="admin-acquisition-rows"><tr><td colspan="4">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Les visites historiques enregistrées avant l’activation du suivi par source apparaissent comme « Non attribué ». Les chiffres concernent des sessions de navigateur, pas des personnes identifiées.</p>'
 adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button><button class="admin-refresh-button" id="admin-reset-revenue" type="button">Remettre les compteurs à zéro</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article><article class="admin-stat-card"><span>Chansons achetées pour téléchargement</span><strong id="admin-revenue-downloads">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
 adminDangerSection.innerHTML += '<section class="admin-panel"><div class="admin-panel-heading"><div><p>SUPPRESSION DÉFINITIVE</p><h3>Supprimer un compte utilisateur</h3></div><span aria-hidden="true">⚠</span></div><p class="admin-panel-status">Supprime le compte Firebase Authentication, le profil et ses données Audinoo (créations, commandes, reçus, publications et fichiers audio). Les comptes administrateurs sont protégés.</p><div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Compte à supprimer</span><select id="admin-delete-user"><option value="">Choisir un compte…</option></select></label><label class="admin-search-field"><span>Confirmation exacte</span><input id="admin-delete-confirmation" type="text" autocomplete="off" placeholder="Saisis l’adresse e-mail affichée"></label><button class="admin-refresh-button" id="admin-delete-user-button" type="button" disabled>Supprimer définitivement</button></div><p class="admin-panel-status" id="admin-delete-status" role="status"></p></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>RÉINITIALISATION</p><h3>Effacer les visites anonymes</h3></div><span aria-hidden="true">↺</span></div><p class="admin-panel-status">Supprime toutes les sessions anonymes enregistrées et remet à zéro les statistiques de visites correspondantes.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span>Confirmation à saisir</span><input id="admin-reset-visitors-confirmation" type="text" autocomplete="off" placeholder="RESET VISITEURS"></label><button class="admin-refresh-button" id="admin-reset-visitors-button" type="button" disabled>Réinitialiser les visites</button></div><p class="admin-panel-status" id="admin-reset-visitors-status" role="status"></p></section>'
@@ -2305,7 +2343,16 @@ function startAdminStatsListeners(uid) {
   const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
     latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
   }, onError('generations'))
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations() }
+  const stopAcquisitionEvents = onSnapshot(query(collection(db, 'acquisitionEvents'), orderBy('createdAt', 'desc'), limit(300)), (snapshot) => {
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    latestAdminAcquisitionEvents = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))
+    renderAdminAcquisitionEvents()
+  }, (error) => {
+    console.error('[Audinoo admin] Could not load acquisition diagnostics', error)
+    const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
+    if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
+  })
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
@@ -2326,6 +2373,47 @@ function getAcquisitionSource() {
   if (/youtube|youtu\.be/.test(raw)) return 'youtube'
   if (/whatsapp|wa\.me/.test(raw)) return 'whatsapp'
   return raw.replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'direct'
+}
+function getAcquisitionSessionId() {
+  try {
+    let id = sessionStorage.getItem('audinoo-anonymous-visit-id')
+    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('audinoo-anonymous-visit-id', id) }
+    return id
+  } catch { return crypto.randomUUID() }
+}
+function getAcquisitionBrowser() {
+  const ua = navigator.userAgent || ''
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook intégré'
+  if (/Instagram/i.test(ua)) return 'Instagram intégré'
+  if (/TikTok|BytedanceWebview|musical_ly/i.test(ua)) return 'TikTok intégré'
+  if (/Edg\//i.test(ua)) return 'Microsoft Edge'
+  if (/SamsungBrowser/i.test(ua)) return 'Samsung Internet'
+  if (/Chrome\//i.test(ua)) return 'Chrome'
+  if (/Safari\//i.test(ua)) return 'Safari'
+  if (/Firefox\//i.test(ua)) return 'Firefox'
+  return 'Autre navigateur'
+}
+function getAcquisitionDevice() {
+  const ua = navigator.userAgent || ''
+  if (/iPad|Tablet/i.test(ua)) return 'tablette'
+  if (/Mobi|Android|iPhone|iPod/i.test(ua)) return 'mobile'
+  return 'ordinateur'
+}
+async function recordAcquisitionEvent(eventName, stage = '', error = null) {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const rawCode = error?.code || (typeof error?.message === 'string' ? error.message : '')
+    const code = String(rawCode || '').replace(/[^a-zA-Z0-9_/-]/g, '').slice(0, 100)
+    await addDoc(collection(db, 'acquisitionEvents'), {
+      createdAt: serverTimestamp(), sessionId: getAcquisitionSessionId(),
+      source: getAcquisitionSource(), medium: (params.get('utm_medium') || '').slice(0, 60),
+      campaign: (params.get('utm_campaign') || '').slice(0, 100), event: eventName,
+      stage: String(stage || '').slice(0, 100), code,
+      browser: getAcquisitionBrowser(), device: getAcquisitionDevice()
+    })
+  } catch (writeError) {
+    console.warn('[Audinoo diagnostics] Could not record acquisition event', writeError)
+  }
 }
 let acquisitionVisitPromise = null
 async function recordAnonymousVisit() {
@@ -2364,6 +2452,7 @@ async function recordSignupClick() {
     if (!visitId) return
     await updateDoc(doc(db, 'visitorSessions', visitId), { signupClicked: true, signupClickedAt: serverTimestamp() })
     sessionStorage.setItem('audinoo-signup-click-recorded', 'true')
+    await recordAcquisitionEvent('signup_opened', 'Formulaire d’inscription ouvert')
   } catch (error) {
     console.warn('[Audinoo analytics] Could not record signup click', error)
   }
@@ -3898,6 +3987,7 @@ function showAuthError(error, mode, operationStep = '') {
     ? 'La création du compte a échoué. Vérifie les informations et réessaie.'
     : 'La connexion a échoué. Vérifie ton adresse e-mail, ton mot de passe et ta connexion Internet.'
   const explanation = messages[code] || fallback
+  if (mode === 'signup') void recordAcquisitionEvent('signup_failed', operationStep || 'Authentification', error)
   authFeedback.textContent = explanation
   authFeedback.hidden = false
   authOverlay.classList.add('open')
@@ -4137,6 +4227,7 @@ function showCountrySelection(profile) {
   closeAuth()
   countryOverlay.classList.add('open')
   countryOverlay.setAttribute('aria-hidden', 'false')
+  void recordAcquisitionEvent('country_step_shown', 'Choix du pays affiché')
   countrySearch.focus()
 }
 
@@ -4288,12 +4379,14 @@ countrySubmit.addEventListener('click', async () => {
       updatedAt: serverTimestamp()
     })
     const profile = { ...pendingCountryProfile, countryCode: selectedCountry.code, country: selectedCountry.name }
+    void recordAcquisitionEvent('signup_completed', 'Compte prêt, pays enregistré')
     closeCountrySelection()
     openWorkspace(profile)
     toast.textContent = 'Ton pays a été enregistré.'
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 3200)
-  } catch {
+  } catch (error) {
+    void recordAcquisitionEvent('signup_failed', 'Enregistrement du pays dans Firestore', error)
     countryError.textContent = 'Impossible d’enregistrer ton pays. Vérifie ta connexion puis réessaie.'
     countrySubmit.disabled = false
   } finally {
@@ -4320,6 +4413,10 @@ async function completeGoogleSignIn(result, mode) {
   let profile = profileSnapshot.exists()
     ? { ...profileSnapshot.data(), created: false }
     : await createGoogleProfile(user)
+  if (mode === 'signup' && profile.created) {
+    void recordAcquisitionEvent('auth_account_created', 'Compte Google créé')
+    void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
+  }
   profile = await syncGoogleProfilePhoto(user, profile)
   hasAudinooProfile = true
   closeAuth()
@@ -4350,6 +4447,7 @@ function openChromeForGoogleSignup() {
 }
 
 googleButton.addEventListener('click', async () => {
+  if (authMode === 'signup') void recordAcquisitionEvent('google_signup_started', 'Bouton Continuer avec Google')
   const label = googleButton.querySelector('span')
   const defaultLabel = label.textContent
 
@@ -4399,7 +4497,10 @@ googleButton.addEventListener('click', async () => {
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const submittingMode = authMode
-  if (submittingMode === 'signup') void recordSignupClick()
+  if (submittingMode === 'signup') {
+    void recordSignupClick()
+    void recordAcquisitionEvent('signup_submitted', 'Formulaire envoyé')
+  }
   const email = authEmail.value.trim().toLowerCase()
   const password = authPassword.value
   authSubmit.disabled = true
@@ -4425,10 +4526,12 @@ authForm.addEventListener('submit', async (event) => {
 
       operationStep = 'création du compte Firebase Auth'
       const credential = await createUserWithEmailAndPassword(auth, email, password)
+      void recordAcquisitionEvent('auth_account_created', 'Compte Firebase Authentication créé')
       const displayName = username.slice(1).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
       try {
         operationStep = 'sauvegarde du profil et réservation du pseudo dans Firestore'
         var reservedProfile = await reserveProfile(credential.user, username, 'password', displayName)
+        void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
         hasAudinooProfile = true
       } catch (error) {
         try {
@@ -4541,7 +4644,7 @@ onAuthStateChanged(auth, async (user) => {
     activeWorkspaceProfile = null
     freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
     renderWorkspaceFreeCredit()
-    void recordAnonymousVisit()
+    void recordAnonymousVisit().then((visitId) => { if (visitId) return recordAcquisitionEvent('landing_loaded', 'Page Audinoo chargée') })
     // Firebase may deliver the initial signed-out event after a just-created
     // user has already reached the country step. Do not close that step or
     // reset the UI while the signup flow is still settling.
