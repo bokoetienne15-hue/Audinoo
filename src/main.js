@@ -1541,22 +1541,35 @@ function renderAdminAcquisitionEvents() {
 function renderAdminAcquisition() {
   const visitors = latestAdminVisitors || []
   const totalVisits = visitors.length
-  const totalClicks = visitors.filter((item) => item.signupClicked === true).length
+  const sourceNames = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google', youtube: 'YouTube', whatsapp: 'WhatsApp', direct: 'Direct / inconnu' }
+  const groups = new Map()
+  const sourceKey = (source) => typeof source === 'string' && source.trim() ? source.trim().toLowerCase() : 'unattributed'
+  const getGroup = (key) => groups.get(key) || { visits: 0, clicks: 0, label: sourceNames[key] || (key === 'unattributed' ? 'Non attribué' : key.charAt(0).toUpperCase() + key.slice(1)) }
+  const clickedSessions = new Map()
+  visitors.forEach((item) => {
+    const key = sourceKey(item.source)
+    const group = getGroup(key)
+    group.visits += 1
+    groups.set(key, group)
+    // Firestore document ID is the session ID; older records do not store sessionId as a field.
+    if (item.signupClicked === true) clickedSessions.set(item.sessionId || item.id, key)
+  })
+  // Use the event stream as a fallback when visitor attribution could not be updated.
+  latestAdminAcquisitionEvents.filter((item) => item.event === 'signup_clicked' && item.sessionId).forEach((item) => {
+    if (!clickedSessions.has(item.sessionId)) clickedSessions.set(item.sessionId, sourceKey(item.source))
+  })
+  clickedSessions.forEach((key) => {
+    const group = getGroup(key)
+    group.clicks += 1
+    groups.set(key, group)
+  })
+  const totalClicks = clickedSessions.size
   const rate = totalVisits ? (totalClicks / totalVisits) * 100 : 0
   adminWorkspacePage.querySelector('#admin-acquisition-visits').textContent = adminNumber(totalVisits)
   adminWorkspacePage.querySelector('#admin-acquisition-clicks').textContent = adminNumber(totalClicks)
   adminWorkspacePage.querySelector('#admin-acquisition-rate').textContent = `${rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
   adminWorkspacePage.querySelector('#admin-acquisition-accounts').textContent = adminNumber(latestAdminUsers.length)
   renderAdminAcquisitionEvents()
-  const sourceNames = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google', youtube: 'YouTube', whatsapp: 'WhatsApp', direct: 'Direct / inconnu' }
-  const groups = new Map()
-  visitors.forEach((item) => {
-    const key = typeof item.source === 'string' && item.source.trim() ? item.source.trim().toLowerCase() : 'unattributed'
-    const group = groups.get(key) || { visits: 0, clicks: 0, label: sourceNames[key] || (key === 'unattributed' ? 'Non attribué' : key.charAt(0).toUpperCase() + key.slice(1)) }
-    group.visits += 1
-    if (item.signupClicked === true) group.clicks += 1
-    groups.set(key, group)
-  })
   const rows = adminWorkspacePage.querySelector('#admin-acquisition-rows')
   replaceNodeChildren(rows)
   const ordered = [...groups.values()].sort((a, b) => b.visits - a.visits || a.label.localeCompare(b.label, 'fr'))
@@ -2387,6 +2400,7 @@ function startAdminStatsListeners(uid) {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminAcquisitionEvents = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))
     renderAdminAcquisitionEvents()
+    renderAdminAcquisition()
   }, (error) => {
     console.error('[Audinoo admin] Could not load acquisition diagnostics', error)
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
@@ -2451,8 +2465,10 @@ async function recordAcquisitionEvent(eventName, stage = '', error = null) {
       stage: String(stage || '').slice(0, 100), code,
       browser: getAcquisitionBrowser(), device: getAcquisitionDevice()
     })
+    return true
   } catch (writeError) {
     console.warn('[Audinoo diagnostics] Could not record acquisition event', writeError)
+    return false
   }
 }
 let acquisitionVisitPromise = null
@@ -2486,12 +2502,14 @@ async function recordAnonymousVisit() {
   finally { acquisitionVisitPromise = null }
 }
 async function recordSignupClick() {
-  try {
-    if (sessionStorage.getItem('audinoo-signup-click-recorded') === 'true') return
-    await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
-    sessionStorage.setItem('audinoo-signup-click-recorded', 'true')
-  } catch (error) {
-    console.warn('[Audinoo analytics] Could not record signup click event', error)
+  // Record the funnel event once per session, but always retry the visitor attribution update.
+  let alreadyRecorded = false
+  try { alreadyRecorded = sessionStorage.getItem('audinoo-signup-click-recorded') === 'true' } catch {}
+  if (!alreadyRecorded) {
+    const recorded = await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
+    if (recorded) {
+      try { sessionStorage.setItem('audinoo-signup-click-recorded', 'true') } catch {}
+    }
   }
   try {
     const visitId = await recordAnonymousVisit()
@@ -2500,11 +2518,6 @@ async function recordSignupClick() {
     console.warn('[Audinoo analytics] Could not update visitor signup attribution', error)
   }
 }
-document.addEventListener('click', (event) => {
-  const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target]
-  const signupTrigger = path.some((node) => node instanceof Element && node.matches('[data-auth="signup"], [data-auth-switch="signup"], a[href="#signup"]'))
-  if (signupTrigger) void recordSignupClick()
-}, true)
 async function refreshAdminAccess(uid) {
   stopAdminStatsListeners?.()
   stopAdminStatsListeners = null
@@ -3973,7 +3986,10 @@ currencyOptions.forEach((option) => option.addEventListener('click', () => {
 }))
 
 const openAuth = (mode) => {
+  // Prevent the first-visit welcome layer from covering auth controls on mobile.
+  dismissWelcomeOverlay()
   const isSignup = mode === 'signup'
+  if (isSignup) void recordSignupClick()
   authMode = mode
   if (isSignup) void recordAcquisitionEvent('signup_opened', 'Fenêtre d’inscription réellement affichée')
   authOverlay.classList.add('open')
@@ -4335,7 +4351,7 @@ function updateWorkspaceGreeting(displayName) {
   const hour = new Date().getHours()
   const prefix = document.querySelector('#workspace-greeting-prefix')
   if (prefix) prefix.textContent = hour < 12 ? 'Bonjour' : hour < 17 ? 'Bon après-midi' : 'Bonsoir'
-  const firstName = typeof displayName === 'string' ? displayName.trim().split(/\\s+/)[0] : ''
+  const firstName = typeof displayName === 'string' ? displayName.trim().split(/\s+/)[0] : ''
   workspaceGreeting.textContent = firstName || 'créateur'
 }
 
