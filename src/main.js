@@ -1541,7 +1541,9 @@ function renderAdminAcquisitionEvents() {
 function renderAdminAcquisition() {
   const visitors = latestAdminVisitors || []
   const totalVisits = visitors.length
-  const totalClicks = visitors.filter((item) => item.signupClicked === true).length
+  const clickedSessions = new Set(visitors.filter((item) => item.signupClicked === true).map((item) => item.sessionId).filter(Boolean))
+  latestAdminAcquisitionEvents.filter((item) => item.event === 'signup_clicked' && item.sessionId).forEach((item) => clickedSessions.add(item.sessionId))
+  const totalClicks = clickedSessions.size
   const rate = totalVisits ? (totalClicks / totalVisits) * 100 : 0
   adminWorkspacePage.querySelector('#admin-acquisition-visits').textContent = adminNumber(totalVisits)
   adminWorkspacePage.querySelector('#admin-acquisition-clicks').textContent = adminNumber(totalClicks)
@@ -2387,6 +2389,7 @@ function startAdminStatsListeners(uid) {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminAcquisitionEvents = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))
     renderAdminAcquisitionEvents()
+    renderAdminAcquisition()
   }, (error) => {
     console.error('[Audinoo admin] Could not load acquisition diagnostics', error)
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
@@ -2451,8 +2454,10 @@ async function recordAcquisitionEvent(eventName, stage = '', error = null) {
       stage: String(stage || '').slice(0, 100), code,
       browser: getAcquisitionBrowser(), device: getAcquisitionDevice()
     })
+    return true
   } catch (writeError) {
     console.warn('[Audinoo diagnostics] Could not record acquisition event', writeError)
+    return false
   }
 }
 let acquisitionVisitPromise = null
@@ -2486,12 +2491,14 @@ async function recordAnonymousVisit() {
   finally { acquisitionVisitPromise = null }
 }
 async function recordSignupClick() {
-  try {
-    if (sessionStorage.getItem('audinoo-signup-click-recorded') === 'true') return
-    await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
-    sessionStorage.setItem('audinoo-signup-click-recorded', 'true')
-  } catch (error) {
-    console.warn('[Audinoo analytics] Could not record signup click event', error)
+  // Record the funnel event once per session, but always retry the visitor attribution update.
+  let alreadyRecorded = false
+  try { alreadyRecorded = sessionStorage.getItem('audinoo-signup-click-recorded') === 'true' } catch {}
+  if (!alreadyRecorded) {
+    const recorded = await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
+    if (recorded) {
+      try { sessionStorage.setItem('audinoo-signup-click-recorded', 'true') } catch {}
+    }
   }
   try {
     const visitId = await recordAnonymousVisit()
@@ -2500,11 +2507,6 @@ async function recordSignupClick() {
     console.warn('[Audinoo analytics] Could not update visitor signup attribution', error)
   }
 }
-document.addEventListener('click', (event) => {
-  const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target]
-  const signupTrigger = path.some((node) => node instanceof Element && node.matches('[data-auth="signup"], [data-auth-switch="signup"], a[href="#signup"]'))
-  if (signupTrigger) void recordSignupClick()
-}, true)
 async function refreshAdminAccess(uid) {
   stopAdminStatsListeners?.()
   stopAdminStatsListeners = null
@@ -3976,6 +3978,7 @@ const openAuth = (mode) => {
   // Prevent the first-visit welcome layer from covering auth controls on mobile.
   dismissWelcomeOverlay()
   const isSignup = mode === 'signup'
+  if (isSignup) void recordSignupClick()
   authMode = mode
   if (isSignup) void recordAcquisitionEvent('signup_opened', 'Fenêtre d’inscription réellement affichée')
   authOverlay.classList.add('open')
@@ -4337,7 +4340,7 @@ function updateWorkspaceGreeting(displayName) {
   const hour = new Date().getHours()
   const prefix = document.querySelector('#workspace-greeting-prefix')
   if (prefix) prefix.textContent = hour < 12 ? 'Bonjour' : hour < 17 ? 'Bon après-midi' : 'Bonsoir'
-  const firstName = typeof displayName === 'string' ? displayName.trim().split(/\\s+/)[0] : ''
+  const firstName = typeof displayName === 'string' ? displayName.trim().split(/\s+/)[0] : ''
   workspaceGreeting.textContent = firstName || 'créateur'
 }
 
