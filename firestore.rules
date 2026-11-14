@@ -282,7 +282,7 @@ service cloud.firestore {
         && request.resource.data.medium is string && request.resource.data.medium.size() <= 60
         && request.resource.data.campaign is string && request.resource.data.campaign.size() <= 100
         && request.resource.data.event in [
-          'landing_loaded', 'signup_opened', 'signup_submitted',
+          'landing_loaded', 'signup_clicked', 'signup_opened', 'signup_submitted',
           'google_signup_started', 'auth_account_created', 'profile_saved',
           'country_step_shown', 'signup_completed', 'signup_failed'
         ]
