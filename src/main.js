@@ -4399,6 +4399,7 @@ googleButton.addEventListener('click', async () => {
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault()
   const submittingMode = authMode
+  if (submittingMode === 'signup') void recordSignupClick()
   const email = authEmail.value.trim().toLowerCase()
   const password = authPassword.value
   authSubmit.disabled = true
