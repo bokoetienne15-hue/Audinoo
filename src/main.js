@@ -4335,7 +4335,8 @@ function updateWorkspaceGreeting(displayName) {
   const hour = new Date().getHours()
   const prefix = document.querySelector('#workspace-greeting-prefix')
   if (prefix) prefix.textContent = hour < 12 ? 'Bonjour' : hour < 17 ? 'Bon après-midi' : 'Bonsoir'
-  workspaceGreeting.textContent = displayName || 'créateur'
+  const firstName = typeof displayName === 'string' ? displayName.trim().split(/\\s+/)[0] : ''
+  workspaceGreeting.textContent = firstName || 'créateur'
 }
 
 function openWorkspace(profile) {
