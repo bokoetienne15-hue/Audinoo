@@ -194,6 +194,20 @@ app.innerHTML = `
       </section>
     </section>
   </main>
+  <section class="welcome-overlay" id="welcome-overlay" aria-hidden="true" aria-labelledby="welcome-title">
+    <div class="welcome-card" role="dialog" aria-modal="true">
+      <button class="welcome-close" id="welcome-close" type="button" aria-label="Fermer l’accueil">×</button>
+      <div class="welcome-visual" role="img" aria-label="Univers musical abstrait aux lumières violettes et dorées"></div>
+      <div class="welcome-content">
+        <p class="welcome-kicker"><span></span> BIENVENUE DANS L’UNIVERS AUDINOO</p>
+        <h2 id="welcome-title">Et si ta première chanson commençait maintenant&nbsp;?</h2>
+        <p>Une émotion, une idée, une histoire… transforme ton imagination en musique et donne vie à ta première création.</p>
+        <button class="welcome-cta" id="welcome-cta" type="button">Créer ma première chanson <span aria-hidden="true">→</span></button>
+        <small>Ta musique commence ici.</small>
+      </div>
+      <a class="welcome-image-credit" href="https://stockcake.com/i/glowing-sound-waves_5343671_2171457" target="_blank" rel="noopener noreferrer">Visuel : StockCake</a>
+    </div>
+  </section>
   <div class="auth-overlay" id="auth-overlay" aria-hidden="true">
     <section class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <button class="auth-close" type="button" aria-label="Fermer">×</button>
@@ -233,6 +247,32 @@ const toast = document.querySelector('.toast')
 const menuButton = document.querySelector('.menu-button')
 const mobileMenu = document.querySelector('#mobile-menu')
 const authOverlay = document.querySelector('#auth-overlay')
+const welcomeOverlay = document.querySelector('#welcome-overlay')
+const welcomeClose = document.querySelector('#welcome-close')
+const welcomeCta = document.querySelector('#welcome-cta')
+const WELCOME_DISMISSED_KEY = 'audinoo-welcome-v1-dismissed'
+
+function dismissWelcomeOverlay() {
+  welcomeOverlay?.classList.remove('is-open')
+  welcomeOverlay?.setAttribute('aria-hidden', 'true')
+  writeBrowserStorage('localStorage', WELCOME_DISMISSED_KEY, '1')
+}
+
+function showWelcomeOverlay() {
+  const url = new URL(window.location.href)
+  if (auth.currentUser || url.searchParams.get('signup') === '1' || url.searchParams.get('google') === '1') return
+  if (readBrowserStorage('localStorage', WELCOME_DISMISSED_KEY) === '1') return
+  if (!landingPage || landingPage.hidden || authOverlay?.classList.contains('open')) return
+  welcomeOverlay?.classList.add('is-open')
+  welcomeOverlay?.setAttribute('aria-hidden', 'false')
+}
+
+welcomeClose?.addEventListener('click', dismissWelcomeOverlay)
+welcomeCta?.addEventListener('click', () => {
+  dismissWelcomeOverlay()
+  openAuth('signup')
+})
+
 const landingPage = document.querySelector('.page-shell')
 const workspace = document.querySelector('#workspace')
 const workspaceUsername = document.querySelector('#workspace-username')
@@ -4661,6 +4701,7 @@ onAuthStateChanged(auth, async (user) => {
     freeCreditPolicy = { enabled: true, activeCampaignId: DEFAULT_FREE_CREDIT_CAMPAIGN_ID }
     renderWorkspaceFreeCredit()
     void recordAnonymousVisit().then((visitId) => { if (visitId) return recordAcquisitionEvent('landing_loaded', 'Page Audinoo chargée') })
+    showWelcomeOverlay()
     // Firebase may deliver the initial signed-out event after a just-created
     // user has already reached the country step. Do not close that step or
     // reset the UI while the signup flow is still settling.
