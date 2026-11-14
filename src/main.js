@@ -3973,6 +3973,8 @@ currencyOptions.forEach((option) => option.addEventListener('click', () => {
 }))
 
 const openAuth = (mode) => {
+  // Prevent the first-visit welcome layer from covering auth controls on mobile.
+  dismissWelcomeOverlay()
   const isSignup = mode === 'signup'
   authMode = mode
   if (isSignup) void recordAcquisitionEvent('signup_opened', 'Fenêtre d’inscription réellement affichée')
