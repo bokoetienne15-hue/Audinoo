@@ -180,7 +180,7 @@ app.innerHTML = `
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1>Bonjour <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
         <h1>Pars d’un <span>modèle</span>.</h1>
@@ -205,7 +205,7 @@ app.innerHTML = `
       <p class="auth-browser-guidance" id="auth-browser-guidance" role="status" aria-live="polite" hidden></p>
       <button class="google-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"/><path fill="#34A853" d="M12 21.58c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.74 9.74 0 0 0 12 21.58Z"/><path fill="#FBBC05" d="M6.54 13.66A5.85 5.85 0 0 1 6.23 12c0-.58.1-1.14.31-1.66V7.81H3.3A9.73 9.73 0 0 0 2.26 12c0 1.52.36 2.96 1.04 4.19l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.31c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.31 14.63 2.42 12 2.42a9.74 9.74 0 0 0-8.7 5.39l3.24 2.53C7.31 8.03 9.46 6.31 12 6.31Z"/></svg><span>Continuer avec Google</span></button>
       <div class="auth-divider"><span>ou avec ton adresse e-mail</span></div>
-      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom d’utilisateur</label><input class="signup-only" id="auth-username" name="username" type="text" placeholder="ex. @etienne_boko" autocomplete="username" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" name="email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="new-password" minlength="8" required /><label class="signup-only" for="auth-password-confirm" hidden>Confirme ton mot de passe</label><input class="signup-only" id="auth-password-confirm" name="password-confirm" type="password" placeholder="Saisis le même mot de passe" autocomplete="new-password" minlength="8" hidden /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
+      <form class="auth-form" id="auth-form"><label class="signup-only" for="auth-username" hidden>Nom et prénom ou prénom seul</label><input class="signup-only" id="auth-username" name="displayName" type="text" placeholder="Ex. Etienne Boko ou Etienne" autocomplete="name" maxlength="60" hidden /><p class="username-feedback signup-only" id="username-feedback" aria-live="polite" hidden></p><div class="username-suggestions signup-only" id="username-suggestions" hidden></div><label for="auth-email">Adresse e-mail</label><input id="auth-email" name="email" type="email" placeholder="toi@exemple.com" autocomplete="email" required /><label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" placeholder="8 caractères minimum : lettres et chiffres" autocomplete="new-password" minlength="8" required /><label class="signup-only" for="auth-password-confirm" hidden>Confirme ton mot de passe</label><input class="signup-only" id="auth-password-confirm" name="password-confirm" type="password" placeholder="Saisis le même mot de passe" autocomplete="new-password" minlength="8" hidden /><p class="password-note signup-only" hidden>Au moins 8 caractères, avec une lettre et un chiffre.</p><button class="auth-submit" type="submit" id="auth-submit">Se connecter</button></form>
       <p class="auth-switch" id="auth-switch">Pas encore de compte ? <button type="button" data-auth-switch="signup">S'inscrire</button></p>
     </section>
   </div>
@@ -1037,7 +1037,7 @@ workspaceSettingsPage.querySelector('#settings-profile-form').addEventListener('
     })
     settingsProfileCache = { ...settingsProfileCache, username, displayName }
     workspaceUsername.textContent = username
-    workspaceGreeting.textContent = displayName.split(' ')[0]
+    updateWorkspaceGreeting(displayName)
     renderProfileAvatar(workspaceAvatar, settingsProfileCache)
     renderProfileAvatar(headerAvatar, settingsProfileCache)
     workspaceSettingsPage.querySelector('#settings-profile-name').textContent = displayName
@@ -2446,19 +2446,23 @@ async function recordAnonymousVisit() {
   finally { acquisitionVisitPromise = null }
 }
 async function recordSignupClick() {
-  if (sessionStorage.getItem('audinoo-signup-click-recorded') === 'true') return
+  try {
+    if (sessionStorage.getItem('audinoo-signup-click-recorded') === 'true') return
+    await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
+    sessionStorage.setItem('audinoo-signup-click-recorded', 'true')
+  } catch (error) {
+    console.warn('[Audinoo analytics] Could not record signup click event', error)
+  }
   try {
     const visitId = await recordAnonymousVisit()
-    if (!visitId) return
-    await updateDoc(doc(db, 'visitorSessions', visitId), { signupClicked: true, signupClickedAt: serverTimestamp() })
-    sessionStorage.setItem('audinoo-signup-click-recorded', 'true')
-    await recordAcquisitionEvent('signup_clicked', 'Clic sur un bouton d’inscription')
+    if (visitId) await updateDoc(doc(db, 'visitorSessions', visitId), { signupClicked: true, signupClickedAt: serverTimestamp() })
   } catch (error) {
-    console.warn('[Audinoo analytics] Could not record signup click', error)
+    console.warn('[Audinoo analytics] Could not update visitor signup attribution', error)
   }
 }
 document.addEventListener('click', (event) => {
-  const signupTrigger = event.target.closest('[data-auth="signup"], [data-auth-switch="signup"], a[href="#signup"]')
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target]
+  const signupTrigger = path.some((node) => node instanceof Element && node.matches('[data-auth="signup"], [data-auth-switch="signup"], a[href="#signup"]'))
   if (signupTrigger) void recordSignupClick()
 }, true)
 async function refreshAdminAccess(uid) {
@@ -3944,8 +3948,9 @@ const openAuth = (mode) => {
   authSwitch.innerHTML = isSignup ? 'Déjà un compte ? <button type="button" data-auth-switch="login">Se connecter</button>' : 'Pas encore de compte ? <button type="button" data-auth-switch="signup">S’inscrire</button>'
   signupOnlyFields.forEach((field) => { field.hidden = !isSignup })
   // The username is generated automatically at signup and can be changed later.
-  authUsername.required = false
-  authPasswordConfirm.required = false
+  authUsername.required = isSignup
+  authPasswordConfirm.required = isSignup
+  authPasswordConfirm.value = ''
   authPassword.autocomplete = isSignup ? 'new-password' : 'current-password'
   usernameFeedback.textContent = ''
   usernameFeedback.className = 'username-feedback signup-only'
@@ -3960,6 +3965,9 @@ const openAuth = (mode) => {
 
 function showAuthError(error, mode, operationStep = '') {
   const messages = {
+    'display-name-required': 'Saisis ton nom et prénom ou ton prénom pour continuer.',
+    'password-confirmation-mismatch': 'Les deux mots de passe ne correspondent pas. Vérifie-les puis réessaie.',
+    'username-generation-failed': 'Audinoo n’a pas pu attribuer un identifiant unique. Réessaie.',
     'auth/invalid-email': 'Cette adresse e-mail n’est pas valide. Vérifie-la puis réessaie.',
     'auth/user-not-found': 'Aucun compte ne correspond à cette adresse e-mail. Vérifie l’adresse ou crée un compte.',
     'auth/wrong-password': 'Le mot de passe est incorrect. Vérifie-le puis réessaie.',
@@ -4283,6 +4291,13 @@ function openProfile(profile, { requireCountry = false } = {}) {
   openWorkspace(profile)
 }
 
+function updateWorkspaceGreeting(displayName) {
+  const hour = new Date().getHours()
+  const prefix = document.querySelector('#workspace-greeting-prefix')
+  if (prefix) prefix.textContent = hour < 12 ? 'Bonjour' : hour < 17 ? 'Bon après-midi' : 'Bonsoir'
+  workspaceGreeting.textContent = displayName || 'créateur'
+}
+
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
   if (communityNotice) {
@@ -4310,7 +4325,7 @@ function openWorkspace(profile) {
   const username = profile.username || '@createur_audinoo'
   const displayName = profile.displayName || username.slice(1).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   workspaceUsername.textContent = username
-  workspaceGreeting.textContent = displayName.split(' ')[0]
+  updateWorkspaceGreeting(displayName)
   renderProfileAvatar(workspaceAvatar, profile)
   renderProfileAvatar(headerAvatar, profile)
   landingPage.hidden = true
@@ -4394,11 +4409,7 @@ countrySubmit.addEventListener('click', async () => {
     countrySubmit.textContent = 'Continuer'
   }
 })
-authUsername.addEventListener('input', () => {
-  window.clearTimeout(usernameCheckTimer)
-  renderUsernameSuggestions(authUsername.value)
-  usernameCheckTimer = window.setTimeout(checkUsernameAvailability, 350)
-})
+// Signup names are display names; unique usernames are generated automatically.
 async function completeGoogleSignIn(result, mode) {
   const user = result.user
   const name = user.displayName || user.email
@@ -4514,24 +4525,28 @@ authForm.addEventListener('submit', async (event) => {
   try {
     await authPersistenceReady
     if (submittingMode === 'signup') {
+      const displayName = authUsername.value.trim().replace(/\s+/g, ' ')
+      if (displayName.length < 2) throw new Error('display-name-required')
+      if (password !== authPasswordConfirm.value) throw new Error('password-confirmation-mismatch')
       if (!/(?=.*[a-zA-Z])(?=.*\d).{8,}/.test(password)) throw new Error('weak-password-format')
-      let username = ''
-      for (let attempt = 0; attempt < 12; attempt += 1) {
-        username = generatedUsername({ email })
-        authUsername.value = username
-        await checkUsernameAvailability()
-        if (usernameIsAvailable) break
-      }
-      if (!usernameIsAvailable) throw new Error('username-generation-failed')
-      operationStep = 'vérification du nom d’utilisateur dans Firestore'
 
       operationStep = 'création du compte Firebase Auth'
       const credential = await createUserWithEmailAndPassword(auth, email, password)
       void recordAcquisitionEvent('auth_account_created', 'Compte Firebase Authentication créé')
-      const displayName = username.slice(1).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+      let reservedProfile = null
+      let username = ''
       try {
-        operationStep = 'sauvegarde du profil et réservation du pseudo dans Firestore'
-        var reservedProfile = await reserveProfile(credential.user, username, 'password', displayName)
+        operationStep = 'attribution automatique et réservation du pseudo unique'
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          username = generatedUsername({ displayName, email })
+          try {
+            reservedProfile = await reserveProfile(credential.user, username, 'password', displayName)
+            break
+          } catch (error) {
+            if (error.message !== 'username-taken') throw error
+          }
+        }
+        if (!reservedProfile) throw new Error('username-generation-failed')
         void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
         hasAudinooProfile = true
       } catch (error) {
