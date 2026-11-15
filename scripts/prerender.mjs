@@ -54,23 +54,8 @@ const clarityIntegration = `<script>
   };
   if (savedConsent === 'granted') loadClarity();
 
-  // Mask authenticated and identity-related areas before Clarity observes DOM changes.
-  const maskPrivateAreas = (root) => {
-    if (!root || root.nodeType !== 1) return;
-    const selectors = ['#workspace', '.auth-overlay', '.country-overlay'];
-    if (root.matches && selectors.some((selector) => root.matches(selector))) {
-      root.setAttribute('data-clarity-mask', 'true');
-    }
-    if (root.querySelectorAll) {
-      root.querySelectorAll(selectors.join(',')).forEach((element) => {
-        element.setAttribute('data-clarity-mask', 'true');
-      });
-    }
-  };
-  maskPrivateAreas(document.documentElement);
-  new MutationObserver((records) => {
-    records.forEach((record) => record.addedNodes.forEach((node) => maskPrivateAreas(node)));
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  // Clarity automatically masks text entered into input fields.
+  // Keep signup, country selection, and workspace UI visible for journey diagnosis.
 
   const showPreferencesButton = () => {
     if (document.getElementById('audinoo-clarity-preferences')) return;
@@ -95,7 +80,7 @@ const clarityIntegration = `<script>
     notice.setAttribute('aria-label', 'Préférences de mesure d’audience');
     notice.style.cssText = 'position:fixed;z-index:100000;left:16px;right:16px;bottom:16px;max-width:680px;margin:0 auto;padding:16px 18px;border:1px solid rgba(190,150,255,.35);border-radius:16px;background:#11101d;color:#f8f7ff;box-shadow:0 12px 44px rgba(0,0,0,.48);font:13px/1.55 system-ui,sans-serif';
     const message = document.createElement('p');
-    message.textContent = 'Audinoo utilise Microsoft Clarity pour comprendre la navigation et améliorer le site. Les champs saisis et les espaces connectés sont masqués. Tu peux accepter ou refuser cette mesure d’audience.';
+    message.textContent = 'Audinoo utilise Microsoft Clarity pendant une période de diagnostic pour comprendre la navigation et améliorer le site. Microsoft Clarity masque automatiquement le contenu des champs de saisie. Tu peux accepter ou refuser cette mesure d’audience.';
     message.style.cssText = 'margin:0 0 12px;color:#e5e0ef';
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:9px';
