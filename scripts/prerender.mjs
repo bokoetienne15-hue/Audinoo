@@ -36,13 +36,18 @@ const clarityIntegration = `<script>
   let savedConsent = null;
   try { savedConsent = window.localStorage.getItem(consentKey); } catch (_) {}
   let clarityLoaded = false;
-  const loadClarity = () => {
-    if (clarityLoaded) return;
-    clarityLoaded = true;
+  const loadClarity = (analyticsConsent) => {
+    // Always send the consent state before loading Clarity. A denied state
+    // enables Microsoft's cookieless collection without persistent analytics cookies.
     window.clarity = window.clarity || function () {
       (window.clarity.q = window.clarity.q || []).push(arguments);
     };
-    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
+    window.clarity('consentv2', {
+      ad_Storage: 'denied',
+      analytics_Storage: analyticsConsent === 'granted' ? 'granted' : 'denied'
+    });
+    if (clarityLoaded) return;
+    clarityLoaded = true;
     (function (c, l, a, r, i, t, y) {
       c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
       t = l.createElement(r);
@@ -52,7 +57,8 @@ const clarityIntegration = `<script>
       y.parentNode.insertBefore(t, y);
     })(window, document, 'clarity', 'script', projectId);
   };
-  if (savedConsent === 'granted') loadClarity();
+  // Load in cookieless mode even before a choice, or when the visitor refuses.
+  loadClarity(savedConsent === 'granted' ? 'granted' : 'denied');
 
   // Clarity automatically masks text entered into input fields.
   // Keep signup, country selection, and workspace UI visible for journey diagnosis.
@@ -94,13 +100,7 @@ const clarityIntegration = `<script>
     reject.style.cssText = 'padding:9px 16px;border:1px solid #625a72;border-radius:9px;background:transparent;color:white;cursor:pointer';
     const saveChoice = (granted) => {
       try { window.localStorage.setItem(consentKey, granted ? 'granted' : 'denied'); } catch (_) {}
-      if (granted) loadClarity();
-      else if (window.clarity) {
-        window.clarity('consentv2', {
-          ad_Storage: 'denied',
-          analytics_Storage: 'denied'
-        });
-      }
+      loadClarity(granted ? 'granted' : 'denied');
       notice.remove();
       showPreferencesButton();
     };
