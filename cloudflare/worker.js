@@ -295,6 +295,43 @@ async function fedapayWebhook(request, env, db) {
     return response(400, { error: 'payment-confirmation-failed' })
   }
 }
+async function composeSimpleSong(env, idea) {
+  if (!env.AI || typeof env.AI.run !== 'function') throw new Error('songwriter-not-configured')
+  const systemPrompt = [
+    "Tu es l'auteur-compositeur et directeur artistique d'Audinoo.",
+    "L'utilisateur donne une idée, une émotion, une situation ou une intention : ce texte est une source d'inspiration, JAMAIS le texte final à chanter ni le prompt final du générateur.",
+    "Tu dois obligatoirement interpréter cette idée et écrire une chanson complète, originale et cohérente qui développe réellement le sujet.",
+    "Ne recopie pas la demande. Ne la transforme pas en une seule phrase chantée. Ne commence pas par répéter les mots de l'utilisateur. Développe une histoire, des images, des émotions et une progression.",
+    "Choisis le genre musical le plus adapté. Si l'utilisateur mentionne explicitement un genre (rap, afrobeat, gospel, R&B, etc.), respecte-le. Sinon, choisis librement le genre qui sert le mieux son idée.",
+    "Écris dans la langue de l'utilisateur, sauf demande explicite contraire.",
+    "La chanson doit être complète et exploitable : titre, couplets, refrain accrocheur répété, et pont ou outro si pertinent. Pour une chanson chantée, écris de vraies paroles avec des lignes développées, pas un résumé ni des instructions.",
+    "Le champ style doit décrire précisément le genre, l'ambiance, le tempo approximatif, les instruments, le type de voix et l'interprétation. N'y mets pas les paroles.",
+    "Réponds uniquement avec un objet JSON valide, sans Markdown, sans commentaire, avec exactement les clés title, lyrics et style.",
+    "Limites : title 80 caractères maximum ; lyrics 4500 caractères maximum ; style 900 caractères maximum."
+  ].join(" ")
+  const generated = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: "Idée de départ à développer en chanson complète : " + idea }
+    ],
+    max_tokens: 1800,
+    temperature: 0.85
+  })
+  const raw = typeof generated?.response === 'string' ? generated.response : typeof generated?.output === 'string' ? generated.output : ''
+  if (!raw.trim()) throw new Error('songwriting-empty-response')
+  const jsonText = raw.replace(/^﻿/, '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const firstBrace = jsonText.indexOf('{')
+  const lastBrace = jsonText.lastIndexOf('}')
+  if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error('songwriting-invalid-response')
+  let composition
+  try { composition = JSON.parse(jsonText.slice(firstBrace, lastBrace + 1)) } catch { throw new Error('songwriting-invalid-response') }
+  const title = typeof composition.title === 'string' ? composition.title.trim().slice(0, 80) : ''
+  const lyrics = typeof composition.lyrics === 'string' ? composition.lyrics.trim().slice(0, 4500) : ''
+  const style = typeof composition.style === 'string' ? composition.style.trim().slice(0, 900) : ''
+  if (title.length < 2 || lyrics.length < 180 || style.length < 20) throw new Error('songwriting-incomplete-response')
+  return { title, lyrics, style }
+}
+
 async function generate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
@@ -334,9 +371,28 @@ async function generate(request, env, db, user) {
     if (mapped) return response(mapped[0], { error: mapped[1] })
     throw error
   }
+  let generationPrompt = prompt
+  let generationStyle = style
+  let generationTitle = title
+  let providerCustomMode = customMode
+  let composition = null
+  if (!customMode) {
+    try {
+      composition = await composeSimpleSong(env, prompt)
+      generationPrompt = composition.lyrics
+      generationStyle = composition.style
+      generationTitle = composition.title
+      providerCustomMode = true
+    } catch (error) {
+      await releaseGenerationReservation(db, lock, requestId)
+      console.error('[Audinoo simple songwriting]', error)
+      const unavailable = error.message === 'songwriter-not-configured'
+      return response(unavailable ? 503 : 502, { error: unavailable ? 'songwriter-not-configured' : 'songwriting-failed' })
+    }
+  }
   let provider, result
   try {
-    provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt, ...(customMode ? { style, ...(title ? { title } : {}) } : {}), customMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
+    provider = await fetch(SUNO_GENERATE_URL, { method: 'POST', headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ prompt: generationPrompt, ...(providerCustomMode ? { style: generationStyle, ...(generationTitle ? { title: generationTitle } : {}) } : {}), customMode: providerCustomMode, instrumental: false, model: 'V6', callBackUrl: (env.PUBLIC_BASE_URL || new URL(request.url).origin) + '/api/suno-callback' }), signal: AbortSignal.timeout(25000) })
     result = await provider.json().catch(() => ({}))
   } catch (error) {
     await releaseGenerationReservation(db, lock, requestId)
@@ -371,9 +427,9 @@ async function generate(request, env, db, user) {
     }
     tx.delete(db.doc(lock))
     const paidCreditUsed = l.data().creditType === 'paid'
-    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: customMode ? title.slice(0,80) : (title || 'Sans titre').slice(0,80), prompt: prompt.slice(0,5000), state: 'PENDING', paidCreditUsed, downloadIncluded: paidCreditUsed, createdAt: SERVER_TIMESTAMP, expiresAt })
+    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: generationTitle.slice(0,80) || 'Sans titre', prompt: generationPrompt.slice(0,5000), ...(generationStyle ? { style: generationStyle.slice(0,1000) } : {}), ...(composition ? { originalIdea: prompt.slice(0,400) } : {}), state: 'PENDING', paidCreditUsed, downloadIncluded: paidCreditUsed, createdAt: SERVER_TIMESTAMP, expiresAt })
   })
-  return response(202, { taskId, status: 'PENDING', freeCreditUsed: true })
+  return response(202, { taskId, status: 'PENDING', freeCreditUsed: true, ...(composition ? { composition: { title: composition.title, lyrics: composition.lyrics, style: composition.style } } : {}) })
 }
 async function sunoHealth(request, env) {
   if (request.method !== 'GET') return response(405, { connected: false, error: 'method-not-allowed' })

@@ -6,6 +6,7 @@
   "vars": {
     "FEDAPAY_ENVIRONMENT": "live"
   },
+  "ai": { "binding": "AI" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
