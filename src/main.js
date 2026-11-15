@@ -3157,7 +3157,12 @@ async function showFirstSongFeedback(track) {
   if(!user) return
   const key='audinoo-first-song-feedback-prompted-v1-'+user.uid
   if(readBrowserStorage('localStorage',key)==='1' || readBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid)==='1') return
-  try { if((await getDoc(doc(db,'songFeedback',user.uid))).exists()){writeBrowserStorage('localStorage',key,'1');return} } catch(error) { console.warn('[Audinoo feedback] Could not check previous response',error); return }
+  try {
+    if((await getDoc(doc(db,'songFeedback',user.uid))).exists()){writeBrowserStorage('localStorage',key,'1');return}
+    const firstGeneration = await getDocs(query(collection(db,'users',user.uid,'generations'),orderBy('createdAt','asc'),limit(1)))
+    const firstRecord = firstGeneration.docs[0]?.data()
+    if(!firstRecord || String(firstRecord.taskId || firstGeneration.docs[0].id) !== String(track.taskId || '')) return
+  } catch(error) { console.warn('[Audinoo feedback] Could not verify first creation',error); return }
   const alreadyOpen=document.querySelector('dialog[open]')
   if(alreadyOpen && alreadyOpen !== songFeedbackDialog) {
     alreadyOpen.addEventListener('close',()=>{void showFirstSongFeedback(track)},{once:true})
