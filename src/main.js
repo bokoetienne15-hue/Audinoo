@@ -3158,6 +3158,11 @@ async function showFirstSongFeedback(track) {
   const key='audinoo-first-song-feedback-prompted-v1-'+user.uid
   if(readBrowserStorage('localStorage',key)==='1' || readBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid)==='1') return
   try { if((await getDoc(doc(db,'songFeedback',user.uid))).exists()){writeBrowserStorage('localStorage',key,'1');return} } catch(error) { console.warn('[Audinoo feedback] Could not check previous response',error); return }
+  const alreadyOpen=document.querySelector('dialog[open]')
+  if(alreadyOpen && alreadyOpen !== songFeedbackDialog) {
+    alreadyOpen.addEventListener('close',()=>{void showFirstSongFeedback(track)},{once:true})
+    return
+  }
   const dialog=getSongFeedbackDialog()
   if(dialog.open) return
   writeBrowserStorage('localStorage',key,'1')
