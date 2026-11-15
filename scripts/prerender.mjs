@@ -28,7 +28,7 @@ const pages = [
 ]
 
 
-const clarityIntegration = String.raw`<script>
+const clarityIntegration = `<script>
 (() => {
   const projectId = 'zdydqhyfrs';
   const consentKey = 'audinoo_clarity_analytics_consent_v1';
