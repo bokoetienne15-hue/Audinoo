@@ -305,6 +305,26 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /songFeedback/{feedbackId} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == feedbackId);
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && feedbackId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','rating','comment','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','displayName','email','rating','comment','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 254
+        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.comment is string && request.resource.data.comment.size() <= 500
+        && request.resource.data.trackTitle is string && request.resource.data.trackTitle.size() <= 150
+        && request.resource.data.taskId is string && request.resource.data.taskId.size() <= 200
+        && request.resource.data.trackIndex is int && request.resource.data.trackIndex >= 0 && request.resource.data.trackIndex <= 10
+        && request.resource.data.listenSeconds == 30
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
     match /admins/{userId} {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list, create, update, delete: if false;
