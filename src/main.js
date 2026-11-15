@@ -4470,7 +4470,7 @@ function startUserPresence(profile) {
   void setDoc(presenceRef,{uid:profile.uid,displayName:profile.displayName||'',username:profile.username||'',online:true,startedAt:serverTimestamp(),lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).then(()=>{if(activePresenceRef===presenceRef) presenceHeartbeatTimer=window.setInterval(heartbeat,20000)}).catch(error=>console.error('[Audinoo presence] Could not start presence',error))
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && activePresenceRef) void updateDoc(activePresenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
-window.addEventListener('pagehide',()=>{if(activePresenceRef) void deleteDoc(activePresenceRef).catch(()=>{})})
+window.addEventListener('pagehide',()=>{if(activePresenceRef) void updateDoc(activePresenceRef,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
 window.addEventListener('pageshow',()=>{if(activePresenceRef) void updateDoc(activePresenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
