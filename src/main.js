@@ -331,6 +331,8 @@ const notificationCloseMarkup = '<svg viewBox="0 0 24 24" fill="none" stroke="cu
 const notificationDot = workspaceNotificationButton.querySelector('.workspace-notification-dot')
 let liveNotificationItems = []
 let liveNotificationReadIds = new Set()
+let liveAllNotificationItems = []
+let livePersonalNotificationItems = []
 let stopNotificationListeners = null
 const pendingNotificationReads = new Set()
 workspace.append(workspaceNotificationPanel)
@@ -424,21 +426,30 @@ function startNotificationListeners(user) {
   liveNotificationReadIds = new Set()
   renderUserNotifications()
   if (!user) return
-  const stopNotifications = onSnapshot(query(collection(db, 'notifications'), where('audience', '==', 'all')), (snapshot) => {
-    if (auth.currentUser?.uid !== user.uid) return
-    liveNotificationItems = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
-      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+  liveAllNotificationItems = []
+  livePersonalNotificationItems = []
+  const mergeNotifications = () => {
+    const byId = new Map([...liveAllNotificationItems, ...livePersonalNotificationItems].map(item => [item.id, item]))
+    liveNotificationItems = [...byId.values()].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
     renderUserNotifications()
     if (!workspaceNotificationPanel.hidden) void markVisibleNotificationsRead()
-  }, (error) => {
-    console.error('[Audinoo notifications] Live notification stream failed', error)
-  })
+  }
+  const stopAllNotifications = onSnapshot(query(collection(db, 'notifications'), where('audience', '==', 'all')), snapshot => {
+    if (auth.currentUser?.uid !== user.uid) return
+    liveAllNotificationItems = snapshot.docs.map(item => ({id:item.id,...item.data()}))
+    mergeNotifications()
+  }, error => console.error('[Audinoo notifications] Global stream failed', error))
+  const stopPersonalNotifications = onSnapshot(query(collection(db, 'notifications'), where('recipientUid', '==', user.uid)), snapshot => {
+    if (auth.currentUser?.uid !== user.uid) return
+    livePersonalNotificationItems = snapshot.docs.map(item => ({id:item.id,...item.data()}))
+    mergeNotifications()
+  }, error => console.error('[Audinoo notifications] Personal stream failed', error))
   const stopReads = onSnapshot(query(collection(db, 'notificationReads'), where('userId', '==', user.uid)), (snapshot) => {
     if (auth.currentUser?.uid !== user.uid) return
     liveNotificationReadIds = new Set(snapshot.docs.map((item) => item.data().notificationId))
     renderUserNotifications()
   }, (error) => console.error('[Audinoo notifications] Read-state stream failed', error))
-  stopNotificationListeners = () => { stopNotifications(); stopReads() }
+  stopNotificationListeners = () => { stopAllNotifications(); stopPersonalNotifications(); stopReads() }
 }
 workspaceNotificationPanel.addEventListener('click', (event) => {
   if (event.target !== workspaceNotificationPanel) return
@@ -1492,6 +1503,7 @@ function drawAdminChart(svg, series, color) {
   })
 }
 let stopAdminStatsListeners = null
+let latestAdminPresenceSessions = []
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
   latestAdminUsers = userSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
@@ -1726,9 +1738,10 @@ const adminCommunicationSection = createAdminSection('communications', 'Communic
 const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
 const adminRevenueSection = createAdminSection('revenue', 'Revenus et ventes', 'Paiements confirmés par FedaPay et créations payées, avec filtres par période et pays.')
 const adminAcquisitionSection = createAdminSection('acquisition', 'Acquisition & inscriptions', 'Découvre d’où viennent les visiteurs et combien ouvrent le formulaire d’inscription.')
+const adminOnlineSection = createAdminSection('online', 'Utilisateurs en ligne', 'Les comptes actuellement actifs sur Audinoo, avec leur présence actualisée automatiquement.')
 const adminDangerSection = createAdminSection('danger', 'Zone dangereuse', 'Actions irréversibles réservées à l’administration. Chaque opération demande une confirmation explicite.')
 adminDangerSection.classList.add('admin-danger-section')
-for (const [id, title] of [['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
+for (const [id, title] of [['online', 'Utilisateurs en ligne'], ['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
   const button = document.createElement('button')
   button.type = 'button'; button.className = 'admin-section-link'; button.dataset.adminSection = id
   button.textContent = title
@@ -1736,12 +1749,62 @@ for (const [id, title] of [['acquisition', 'Acquisition & inscriptions'], ['reve
 }
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
+adminOnlineSection.innerHTML += '<section class="admin-panel admin-online-panel"><div class="admin-panel-heading"><div><p>PRÉSENCE EN DIRECT</p><h2>Membres connectés</h2></div><strong class="admin-online-count" id="admin-online-count">0 en ligne</strong></div><p class="admin-panel-status" id="admin-online-status" role="status">Connexion au flux de présence…</p><div class="admin-online-list" id="admin-online-list"><p class="admin-panel-status">Chargement des utilisateurs…</p></div></section><section class="admin-panel admin-personal-notification-panel"><div class="admin-panel-heading"><div><p>MESSAGE INDIVIDUEL</p><h2>Envoyer une notification personnalisée</h2></div></div><form class="admin-notification-form" id="admin-personal-notification-form"><label for="admin-personal-notification-user">Choisir un utilisateur actuellement en ligne</label><select id="admin-personal-notification-user" name="recipientUid" required><option value="">Aucun utilisateur en ligne</option></select><label for="admin-personal-notification-title">Titre</label><input id="admin-personal-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Un petit message pour toi" required><label for="admin-personal-notification-message">Message</label><textarea id="admin-personal-notification-message" name="message" minlength="2" maxlength="600" rows="4" placeholder="Écris ton message personnel…" required></textarea><button class="admin-publish-button" type="submit" disabled>Envoyer à cet utilisateur <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-personal-notification-status" role="status" aria-live="polite"></p></form></section>'
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
 adminAcquisitionSection.innerHTML += `<section class="admin-panel admin-acquisition-diagnostics"><div class="admin-panel-heading"><div><p>DIAGNOSTIC DU PARCOURS</p><h2>Où les visiteurs abandonnent-ils ?</h2></div><span class="admin-data-count" id="admin-acquisition-events-count">En direct</span></div><div class="admin-acquisition-funnel"><article><span>Page chargée</span><strong id="diag-page-loaded">—</strong></article><article><span>Clic inscription</span><strong id="diag-signup-clicked">—</strong></article><article><span>Fenêtre affichée</span><strong id="diag-signup-opened">—</strong></article><article><span>Formulaire envoyé</span><strong id="diag-signup-submitted">—</strong></article><article><span>Compte Firebase créé</span><strong id="diag-auth-created">—</strong></article><article><span>Profil enregistré</span><strong id="diag-profile-saved">—</strong></article><article><span>Inscription terminée</span><strong id="diag-signup-completed">—</strong></article><article><span>Échecs détectés</span><strong id="diag-signup-failed">—</strong></article></div><p class="admin-panel-status" id="admin-acquisition-events-status" role="status">Les étapes du parcours seront enregistrées après le déploiement de cette version.</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Date</th><th>Source</th><th>Navigateur</th><th>Étape atteinte</th><th>Résultat / explication</th></tr></thead><tbody id="admin-acquisition-events-rows"><tr><td colspan="5">En attente des événements…</td></tr></tbody></table></div><p class="admin-panel-status">Aucune adresse e-mail, aucun mot de passe, nom, numéro de téléphone ou identifiant personnel n’est enregistré dans ce diagnostic. Les événements sont associés à une session anonyme.</p></section>`
 adminAcquisitionSection.innerHTML += '<div class="admin-acquisition-summary"><article class="admin-stat-card"><span>VISITEURS ENREGISTRÉS</span><strong id="admin-acquisition-visits">—</strong><small>Sessions uniques enregistrées dans Firebase</small></article><article class="admin-stat-card"><span>CLICS SUR S’INSCRIRE</span><strong id="admin-acquisition-clicks">—</strong><small>Une seule fois par session</small></article><article class="admin-stat-card"><span>TAUX DE CLIC</span><strong id="admin-acquisition-rate">—</strong><small>Visiteurs ayant ouvert l’inscription</small></article><article class="admin-stat-card"><span>COMPTES CRÉÉS</span><strong id="admin-acquisition-accounts">—</strong><small>Total des profils présents dans Firebase</small></article></div><section class="admin-panel admin-acquisition-sources"><div class="admin-panel-heading"><div><p>ORIGINE DU TRAFIC</p><h2>Visiteurs et inscriptions par source</h2></div><span class="admin-data-count" id="admin-acquisition-source-count">—</span></div><p class="admin-panel-status" id="admin-acquisition-status" role="status">En attente des données Firebase…</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Source</th><th>Visiteurs</th><th>Clics sur S’inscrire</th><th>Taux de clic</th></tr></thead><tbody id="admin-acquisition-rows"><tr><td colspan="4">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Les visites historiques enregistrées avant l’activation du suivi par source apparaissent comme « Non attribué ». Les chiffres concernent des sessions de navigateur, pas des personnes identifiées.</p>'
 adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button><button class="admin-refresh-button" id="admin-reset-revenue" type="button">Remettre les compteurs à zéro</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article><article class="admin-stat-card"><span>Chansons achetées pour téléchargement</span><strong id="admin-revenue-downloads">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
 adminDangerSection.innerHTML += '<section class="admin-panel"><div class="admin-panel-heading"><div><p>SUPPRESSION DÉFINITIVE</p><h3>Supprimer un compte utilisateur</h3></div><span aria-hidden="true">⚠</span></div><p class="admin-panel-status">Supprime le compte Firebase Authentication, le profil et ses données Audinoo (créations, commandes, reçus, publications et fichiers audio). Les comptes administrateurs sont protégés.</p><div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Compte à supprimer</span><select id="admin-delete-user"><option value="">Choisir un compte…</option></select></label><label class="admin-search-field"><span>Confirmation exacte</span><input id="admin-delete-confirmation" type="text" autocomplete="off" placeholder="Saisis l’adresse e-mail affichée"></label><button class="admin-refresh-button" id="admin-delete-user-button" type="button" disabled>Supprimer définitivement</button></div><p class="admin-panel-status" id="admin-delete-status" role="status"></p></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>REMISE À ZÉRO DES STATISTIQUES</p><h3>Repartir de zéro pour l’acquisition</h3></div><span aria-hidden="true">↺</span></div><p class="admin-panel-status">Efface uniquement l’historique des visites anonymes et les événements du parcours d’inscription (clics, ouvertures, formulaires, réussites et erreurs). Le compteur des comptes créés repartira de zéro à partir de cette date. Les comptes existants, profils, chansons, crédits, paiements et autres données ne seront pas supprimés.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span>Confirmation à saisir</span><input id="admin-reset-acquisition-confirmation" type="text" autocomplete="off" placeholder="RESET ACQUISITION"></label><button class="admin-refresh-button" id="admin-reset-acquisition-button" type="button" disabled>Remettre les statistiques à zéro</button></div><p class="admin-panel-status" id="admin-reset-acquisition-status" role="status"></p></section>'
+const adminPersonalNotificationForm = adminOnlineSection.querySelector('#admin-personal-notification-form')
+const adminPersonalNotificationStatus = adminOnlineSection.querySelector('#admin-personal-notification-status')
+const adminPersonalNotificationUser = adminOnlineSection.querySelector('#admin-personal-notification-user')
+function presenceMillis(value) { return value?.toMillis?.() || (value?.seconds ? value.seconds * 1000 : value instanceof Date ? value.getTime() : 0) }
+function getOnlineAdminUsers() {
+  const cutoff = Date.now() - 70000
+  const onlineIds = new Set(latestAdminPresenceSessions.filter(session => session.online === true && presenceMillis(session.lastSeenAt) >= cutoff).map(session => session.uid).filter(Boolean))
+  return latestAdminUsers.filter(user => onlineIds.has(user.uid)).sort((a,b) => String(a.displayName || a.username || '').localeCompare(String(b.displayName || b.username || ''), 'fr'))
+}
+function renderAdminOnlineUsers() {
+  const users = getOnlineAdminUsers()
+  const list = adminOnlineSection.querySelector('#admin-online-list')
+  const count = adminOnlineSection.querySelector('#admin-online-count')
+  const status = adminOnlineSection.querySelector('#admin-online-status')
+  count.textContent = users.length + ' en ligne'
+  status.textContent = 'Présence synchronisée en direct. Un compte est considéré en ligne si son activité a été confirmée au cours des 70 dernières secondes.'
+  const previous = adminPersonalNotificationUser.value
+  replaceNodeChildren(adminPersonalNotificationUser, new Option('Choisir un utilisateur…', ''))
+  users.forEach(user => adminPersonalNotificationUser.add(new Option((user.displayName || user.username || 'Utilisateur') + ' · ' + (user.username || user.email || user.uid), user.uid)))
+  if (users.some(user => user.uid === previous)) adminPersonalNotificationUser.value = previous
+  adminPersonalNotificationForm.querySelector('button[type="submit"]').disabled = !users.length || !adminPersonalNotificationUser.value
+  replaceNodeChildren(list)
+  if (!users.length) { const empty=document.createElement('p'); empty.className='admin-panel-status'; empty.textContent='Aucun utilisateur connecté pour le moment.'; list.append(empty); return }
+  users.forEach(user => {
+    const card=document.createElement('article'); card.className='admin-online-user'
+    const dot=document.createElement('span'); dot.className='admin-online-dot'; dot.setAttribute('aria-hidden','true')
+    const identity=document.createElement('div'); identity.className='admin-online-identity'
+    const name=document.createElement('strong'); name.textContent=user.displayName || user.username || 'Utilisateur Audinoo'
+    const meta=document.createElement('small'); meta.textContent=[user.username,user.country || user.countryCode,user.email].filter(Boolean).join(' · ')
+    identity.append(name,meta)
+    const choose=document.createElement('button'); choose.type='button'; choose.className='admin-refresh-button'; choose.textContent='Choisir'
+    choose.addEventListener('click',()=>{adminPersonalNotificationUser.value=user.uid;adminPersonalNotificationForm.querySelector('button[type="submit"]').disabled=false;adminPersonalNotificationForm.scrollIntoView({behavior:'smooth',block:'center'})})
+    card.append(dot,identity,choose); list.append(card)
+  })
+}
+adminPersonalNotificationUser.addEventListener('change', () => { adminPersonalNotificationForm.querySelector('button[type="submit"]').disabled = !getOnlineAdminUsers().some(user => user.uid === adminPersonalNotificationUser.value) })
+adminPersonalNotificationForm.addEventListener('submit', async event => {
+  event.preventDefault()
+  const admin=auth.currentUser, target=getOnlineAdminUsers().find(user => user.uid === adminPersonalNotificationUser.value)
+  if (!admin || verifiedAdminUid !== admin.uid) { adminPersonalNotificationStatus.textContent='Accès administrateur requis.'; return }
+  if (!target) { adminPersonalNotificationStatus.textContent='Cet utilisateur n’est plus en ligne. Actualise la liste avant de lui écrire.'; renderAdminOnlineUsers(); return }
+  const title=adminPersonalNotificationForm.elements.title.value.trim(), message=adminPersonalNotificationForm.elements.message.value.trim()
+  const submit=adminPersonalNotificationForm.querySelector('button[type="submit"]'); submit.disabled=true; adminPersonalNotificationStatus.textContent='Envoi de la notification…'
+  try {
+    await addDoc(collection(db,'notifications'),{title,message,audience:'user',recipientUid:target.uid,createdBy:admin.uid,createdAt:serverTimestamp()})
+    adminPersonalNotificationForm.reset(); adminPersonalNotificationStatus.textContent='Notification envoyée à '+(target.displayName || target.username || 'cet utilisateur')+'. Elle apparaîtra dans son espace Notifications.'
+  } catch(error) { console.error('[Audinoo admin] Personal notification failed',error); adminPersonalNotificationStatus.textContent='Envoi impossible : '+exactErrorDetails(error) }
+  finally { renderAdminOnlineUsers(); submit.disabled=!getOnlineAdminUsers().some(user=>user.uid===adminPersonalNotificationUser.value) }
+})
 const adminUserSearch = adminUsersSection.querySelector('#admin-user-search')
 const adminGenerationSearch = adminGenerationsSection.querySelector('#admin-generation-search')
 const adminGenerationDateFilter = adminGenerationsSection.querySelector('#admin-generation-date')
@@ -2408,6 +2471,15 @@ function startAdminStatsListeners(uid) {
   const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
     latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
   }, onError('generations'))
+  const stopPresence = onSnapshot(collection(db, 'presenceSessions'), snapshot => {
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    latestAdminPresenceSessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
+    renderAdminOnlineUsers()
+  }, error => {
+    console.error('[Audinoo admin] Could not load live presence',error)
+    const status=adminOnlineSection.querySelector('#admin-online-status')
+    if(status) status.textContent='Présence indisponible : '+exactErrorDetails(error)
+  })
   const stopAcquisitionEvents = onSnapshot(query(collection(db, 'acquisitionEvents'), orderBy('createdAt', 'desc'), limit(300)), (snapshot) => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminAcquisitionEvents = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))
@@ -2418,7 +2490,7 @@ function startAdminStatsListeners(uid) {
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents() }
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); latestAdminPresenceSessions=[]; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
@@ -2605,7 +2677,7 @@ function renderAdminNotificationList(items) {
     const date = value => value?.toDate ? value.toDate().getTime() : value?.seconds ? value.seconds * 1000 : 0
     return date(b.createdAt) - date(a.createdAt)
   })
-  adminNotificationListStatus.textContent = ordered.length ? ordered.length + ' notification(s) publiée(s).' : 'Aucune notification publiée.'
+  adminNotificationListStatus.textContent = ordered.length ? ordered.length + ' notification(s) publiée(s) ou ciblée(s).' : 'Aucune notification publiée.'
   if (!ordered.length) {
     const empty = document.createElement('p')
     empty.className = 'admin-panel-status'
@@ -2620,7 +2692,8 @@ function renderAdminNotificationList(items) {
     const title = document.createElement('strong'); title.textContent = item.title || 'Notification Audinoo'
     const message = document.createElement('p'); message.textContent = item.message || ''
     const date = document.createElement('small'); date.textContent = adminDateLabel(item.createdAt)
-    content.append(title,message,date)
+    const recipient = document.createElement('small'); const targetUser = latestAdminUsers.find(user => user.uid === item.recipientUid); recipient.textContent = item.recipientUid ? 'Destinataire : ' + (targetUser?.displayName || targetUser?.username || 'Utilisateur ciblé') : 'Destinataire : tous les utilisateurs'
+    content.append(title,message,date,recipient)
     const remove = document.createElement('button')
     remove.type = 'button'; remove.className = 'admin-refresh-button is-danger'; remove.textContent = 'Supprimer'
     remove.addEventListener('click', async () => {
@@ -2644,7 +2717,7 @@ let stopAdminNotificationListener = null
 function startAdminNotificationListener() {
   stopAdminNotificationListener?.()
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
-  stopAdminNotificationListener = onSnapshot(query(collection(db,'notifications'),where('audience','==','all')), snapshot => {
+  stopAdminNotificationListener = onSnapshot(collection(db,'notifications'), snapshot => {
     adminNotificationSnapshot = snapshot.docs.map(item => ({ id:item.id, ...item.data() }))
     renderAdminNotificationList(adminNotificationSnapshot)
   }, error => {
@@ -4374,6 +4447,26 @@ function updateWorkspaceGreeting(displayName) {
   workspaceGreeting.textContent = firstName || 'créateur'
 }
 
+let activePresenceRef = null
+let presenceHeartbeatTimer = null
+function stopUserPresence() {
+  if (presenceHeartbeatTimer) window.clearInterval(presenceHeartbeatTimer)
+  presenceHeartbeatTimer = null
+  const previous = activePresenceRef
+  activePresenceRef = null
+  if (previous && auth.currentUser) void updateDoc(previous,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(error=>console.warn('[Audinoo presence] Could not mark session offline',error))
+}
+function startUserPresence(profile) {
+  stopUserPresence()
+  const user=auth.currentUser
+  if(!user || !profile?.uid || user.uid!==profile.uid) return
+  const presenceRef=doc(db,'presenceSessions',crypto.randomUUID())
+  activePresenceRef=presenceRef
+  const heartbeat=()=>{if(auth.currentUser?.uid===profile.uid && activePresenceRef===presenceRef) void updateDoc(presenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(error=>console.warn('[Audinoo presence] Heartbeat failed',error))}
+  void setDoc(presenceRef,{uid:profile.uid,displayName:profile.displayName||'',username:profile.username||'',online:true,startedAt:serverTimestamp(),lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).then(()=>{if(activePresenceRef===presenceRef) presenceHeartbeatTimer=window.setInterval(heartbeat,20000)}).catch(error=>console.error('[Audinoo presence] Could not start presence',error))
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && activePresenceRef) void updateDoc(activePresenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
+window.addEventListener('pagehide',()=>{if(activePresenceRef) void updateDoc(activePresenceRef,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
   if (communityNotice) {
@@ -4396,6 +4489,7 @@ function openWorkspace(profile) {
   workspaceModelChoice.classList.remove('is-active')
   adminWorkspacePage.hidden = true
   startNotificationListeners(auth.currentUser)
+  startUserPresence(profile)
   listenToFreeCreditPolicy(profile)
   void refreshAdminAccess(profile.uid)
   const username = profile.username || '@createur_audinoo'
@@ -4411,6 +4505,7 @@ function openWorkspace(profile) {
 }
 
 function openLanding() {
+  stopUserPresence()
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
   adminWorkspacePage.hidden = true
@@ -4726,6 +4821,7 @@ onAuthStateChanged(auth, async (user) => {
   if (authFlowInProgress) return
 
   if (!user) {
+    stopUserPresence()
     stopAdminStatsListeners?.()
     stopAdminStatsListeners = null
     startNotificationListeners(null)
