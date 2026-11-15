@@ -3298,6 +3298,8 @@ function generationErrorMessage(errorCode) {
     'profile-not-found': 'Ton profil Audinoo est introuvable. Reconnecte-toi puis réessaie.',
     'generation-already-running': 'Une création est déjà en cours sur ton compte. Réessaie dans quelques instants.',
     'music-provider-not-configured': 'Le service musical n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret SUNOAPI_KEY dans les paramètres du Worker audinoo-test.',
+    'songwriter-not-configured': 'La composition intelligente du mode Simple n’est pas encore activée sur Cloudflare. Active Workers AI pour ce Worker puis réessaie.',
+    'songwriting-failed': 'Audinoo n’a pas réussi à composer les paroles et le style. Aucun crédit n’a été consommé. Réessaie dans quelques instants.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
