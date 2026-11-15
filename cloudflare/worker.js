@@ -309,7 +309,7 @@ async function composeSimpleSong(env, idea) {
     "Réponds uniquement avec un objet JSON valide, sans Markdown, sans commentaire, avec exactement les clés title, lyrics et style.",
     "Limites : title 80 caractères maximum ; lyrics 4500 caractères maximum ; style 900 caractères maximum."
   ].join(" ")
-  const generated = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+  const generated = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: "Idée de départ à développer en chanson complète : " + idea }
