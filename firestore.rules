@@ -185,6 +185,164 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /userActivitySessions/{sessionId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && sessionId.matches('^[0-9a-f-]{36}
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','displayName','username','online','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.keys().hasAll(['uid','displayName','username','online','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 100
+        && request.resource.data.username is string && request.resource.data.username.size() <= 40
+        && request.resource.data.online == true
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['online','lastSeenAt','updatedAt'])
+        && request.resource.data.online is bool
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /notificationReads/{readId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.keys().hasAll(['userId', 'notificationId', 'readAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.notificationId is string
+        && request.resource.data.notificationId.size() > 0
+        && request.resource.data.readAt == request.time
+        && (get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all' || get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.recipientUid == request.auth.uid);
+      allow update, delete: if false;
+    }
+
+    match /visitorSessions/{sessionId} {
+      // Anonymous acquisition data: source labels only, no names, emails, IPs or full referrer URLs.
+      allow create: if request.resource.data.keys().hasOnly(['createdAt', 'source', 'medium', 'campaign', 'signupClicked'])
+        && request.resource.data.keys().hasAll(['createdAt', 'source', 'medium', 'campaign', 'signupClicked'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.source is string
+        && request.resource.data.source.size() <= 60
+        && request.resource.data.medium is string
+        && request.resource.data.medium.size() <= 60
+        && request.resource.data.campaign is string
+        && request.resource.data.campaign.size() <= 100
+        && request.resource.data.signupClicked == false
+        && sessionId.matches('^[0-9a-f-]{36}$');
+      allow get, list: if isAdmin();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['signupClicked', 'signupClickedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['signupClicked', 'signupClickedAt'])
+        && (!('signupClicked' in resource.data) || resource.data.signupClicked == false)
+        && request.resource.data.signupClicked == true
+        && request.resource.data.signupClickedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /acquisitionEvents/{eventId} {
+      // Anonymous funnel diagnostics only: never collect email, password, IP, auth UID or full URLs.
+      allow create: if request.resource.data.keys().hasOnly([
+          'createdAt', 'sessionId', 'source', 'medium', 'campaign',
+          'event', 'stage', 'code', 'browser', 'device'
+        ])
+        && request.resource.data.keys().hasAll([
+          'createdAt', 'sessionId', 'source', 'medium', 'campaign',
+          'event', 'stage', 'code', 'browser', 'device'
+        ])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.sessionId is string
+        && request.resource.data.sessionId.size() == 36
+        && request.resource.data.sessionId.matches('^[0-9a-f-]+$')
+        && request.resource.data.source is string
+        && request.resource.data.source.size() <= 60
+        && request.resource.data.medium is string
+        && request.resource.data.medium.size() <= 60
+        && request.resource.data.campaign is string
+        && request.resource.data.campaign.size() <= 100
+        && request.resource.data.event in [
+          'landing_loaded', 'signup_clicked', 'signup_opened', 'signup_submitted',
+          'google_signup_started', 'auth_account_created', 'profile_saved',
+          'country_step_shown', 'signup_completed', 'signup_failed'
+        ]
+        && request.resource.data.stage is string
+        && request.resource.data.stage.size() <= 100
+        && request.resource.data.code is string
+        && request.resource.data.code.size() <= 100
+        && request.resource.data.browser in [
+          'Facebook intégré', 'Instagram intégré', 'TikTok intégré',
+          'Microsoft Edge', 'Samsung Internet', 'Chrome', 'Safari',
+          'Firefox', 'Autre navigateur'
+        ]
+        && request.resource.data.device in ['mobile', 'tablette', 'ordinateur'];
+      allow get, list: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Collection-group reads expose per-user generation records only to verified admins.
+    match /{path=**}/generations/{generationId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow get: if signedIn() && settingId == 'credits';
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && settingId == 'credits'
+        && request.resource.data.keys().hasOnly([
+          'enabled', 'activeCampaignId', 'freeGenerationCount',
+          'freeGenerationReservations', 'freeGenerationCampaignId',
+          'freeOfferExhausted', 'freeOfferDisabledAt', 'updatedAt', 'updatedBy'
+        ])
+        && request.resource.data.keys().hasAll(['enabled', 'activeCampaignId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.enabled is bool
+        && (
+          (request.resource.data.enabled == true
+            && request.resource.data.activeCampaignId is string
+            && request.resource.data.activeCampaignId.size() > 0)
+          || (request.resource.data.enabled == false && request.resource.data.activeCampaignId == null)
+        )
+        && (!('freeGenerationCount' in request.resource.data) || (request.resource.data.freeGenerationCount is int && request.resource.data.freeGenerationCount >= 0 && request.resource.data.freeGenerationCount <= 50))
+        && (!('freeGenerationReservations' in request.resource.data) || (request.resource.data.freeGenerationReservations is int && request.resource.data.freeGenerationReservations >= 0 && request.resource.data.freeGenerationReservations <= 50))
+        && (!('freeGenerationCampaignId' in request.resource.data) || request.resource.data.freeGenerationCampaignId == null || request.resource.data.freeGenerationCampaignId is string)
+        && (!('freeOfferExhausted' in request.resource.data) || request.resource.data.freeOfferExhausted is bool)
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && request.resource.data.keys().hasOnly(['uid','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.keys().hasAll(['uid','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt','updatedAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /presenceSessions/{sessionId} {
       allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn()
