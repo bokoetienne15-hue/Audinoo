@@ -33,14 +33,26 @@ const clarityIntegration = `<script>
   const projectId = 'zdydqhyfrs';
   const consentKey = 'audinoo_clarity_analytics_consent_v1';
 
-  window.clarity = window.clarity || function () {
-    (window.clarity.q = window.clarity.q || []).push(arguments);
-  };
-
   let savedConsent = null;
   try { savedConsent = window.localStorage.getItem(consentKey); } catch (_) {}
-  const analyticsConsent = savedConsent === 'granted' ? 'granted' : 'denied';
-  window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: analyticsConsent });
+  let clarityLoaded = false;
+  const loadClarity = () => {
+    if (clarityLoaded) return;
+    clarityLoaded = true;
+    window.clarity = window.clarity || function () {
+      (window.clarity.q = window.clarity.q || []).push(arguments);
+    };
+    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
+    (function (c, l, a, r, i, t, y) {
+      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+      t = l.createElement(r);
+      t.async = true;
+      t.src = 'https://www.clarity.ms/tag/' + i;
+      y = l.getElementsByTagName(r)[0];
+      y.parentNode.insertBefore(t, y);
+    })(window, document, 'clarity', 'script', projectId);
+  };
+  if (savedConsent === 'granted') loadClarity();
 
   // Mask authenticated and identity-related areas before Clarity observes DOM changes.
   const maskPrivateAreas = (root) => {
@@ -59,15 +71,6 @@ const clarityIntegration = `<script>
   new MutationObserver((records) => {
     records.forEach((record) => record.addedNodes.forEach((node) => maskPrivateAreas(node)));
   }).observe(document.documentElement, { childList: true, subtree: true });
-
-  (function (c, l, a, r, i, t, y) {
-    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-    t = l.createElement(r);
-    t.async = true;
-    t.src = 'https://www.clarity.ms/tag/' + i;
-    y = l.getElementsByTagName(r)[0];
-    y.parentNode.insertBefore(t, y);
-  })(window, document, 'clarity', 'script', projectId);
 
   const showPreferencesButton = () => {
     if (document.getElementById('audinoo-clarity-preferences')) return;
@@ -106,10 +109,13 @@ const clarityIntegration = `<script>
     reject.style.cssText = 'padding:9px 16px;border:1px solid #625a72;border-radius:9px;background:transparent;color:white;cursor:pointer';
     const saveChoice = (granted) => {
       try { window.localStorage.setItem(consentKey, granted ? 'granted' : 'denied'); } catch (_) {}
-      window.clarity('consentv2', {
-        ad_Storage: 'denied',
-        analytics_Storage: granted ? 'granted' : 'denied'
-      });
+      if (granted) loadClarity();
+      else if (window.clarity) {
+        window.clarity('consentv2', {
+          ad_Storage: 'denied',
+          analytics_Storage: 'denied'
+        });
+      }
       notice.remove();
       showPreferencesButton();
     };
