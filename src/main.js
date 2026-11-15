@@ -1512,6 +1512,7 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
+  renderAdminRetention()
   renderAdminGenerationsTable()
   adminReportDataReady = true
   excelReportButton.disabled = false
