@@ -1395,6 +1395,7 @@ adminCreditToggle.addEventListener('click', async () => {
 const adminPeriodFilter = adminWorkspacePage.querySelector('#admin-period-filter')
 const adminCountryFilter = adminWorkspacePage.querySelector('#admin-country-filter')
 let latestAdminUsers = []
+let latestAdminAuthUserIds = new Set()
 let latestAdminVisitors = []
 let latestAdminAcquisitionEvents = []
 let adminAcquisitionResetAt = null
@@ -1506,7 +1507,7 @@ let stopAdminStatsListeners = null
 let latestAdminPresenceSessions = []
 let adminPresenceExpiryTimer = null
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
-  latestAdminUsers = userSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
+  latestAdminUsers = userSnapshots.docs.filter((snapshot) => latestAdminAuthUserIds.has(snapshot.id)).map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
@@ -2325,10 +2326,11 @@ deleteUserButton.addEventListener('click', async () => {
   try {
     const result = await callAudinooApi('/api/admin/users/delete', { method: 'POST', body: JSON.stringify({ uid: target.uid, confirmation: target.email }) })
     latestAdminUsers = latestAdminUsers.filter(user => user.uid !== target.uid)
+    latestAdminAuthUserIds.delete(target.uid)
     deleteUserConfirmation.value = ''; deleteUserStatus.textContent = `Compte supprimé. ${adminNumber(result.firestoreDocuments)} documents Firebase effacés; fichiers personnels supprimés.`
     renderAdminUsersTable(); renderAdminDashboard()
   } catch (error) {
-    const messages = { 'firebase-auth-delete-permission-required': 'Ajoute au compte de service Firebase le droit firebaseauth.users.delete, puis réessaie.', 'firebase-auth-delete-failed': 'Firebase Authentication n’a pas pu supprimer ce compte; aucune donnée n’a été effacée.', 'admin-account-protected': 'Les comptes administrateurs ne peuvent pas être supprimés depuis cette section.', 'user-data-limit-reached': 'Trop de données liées à ce compte pour une suppression sécurisée en une seule opération.' }
+    const messages = { 'firebase-auth-delete-permission-required': 'Le compte de service utilisé par Cloudflare doit recevoir le rôle Firebase Authentication Admin (roles/firebaseauth.admin), qui autorise la suppression des comptes.', 'firebase-auth-delete-failed': 'Firebase Authentication n’a pas pu supprimer ce compte; aucune donnée n’a été effacée.', 'admin-account-protected': 'Les comptes administrateurs ne peuvent pas être supprimés depuis cette section.', 'user-data-limit-reached': 'Trop de données liées à ce compte pour une suppression sécurisée en une seule opération.' }
     deleteUserStatus.textContent = messages[error.message] || 'Suppression impossible : ' + generationErrorMessage(error.message)
   } finally { updateDeleteUserButton() }
 })
@@ -2443,11 +2445,14 @@ function startAdminStatsListeners(uid) {
   let latestUsers = null
   let latestVisitors = null
   let latestGenerations = null
+  let authUsersReady = false
+  let authUsersSyncTimer = null
+  let authUsersSyncRunning = false
   const failedSources = new Set()
   const sourceLabels = { users: 'utilisateurs', visitors: 'visites', generations: 'générations' }
   const renderWhenReady = () => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
-    const ready = latestUsers && latestVisitors && latestGenerations
+    const ready = latestUsers && latestVisitors && latestGenerations && authUsersReady
     if (ready) {
       renderAdminStats(latestUsers, latestVisitors, latestGenerations)
       refreshAdminGrantCreditOptions()
@@ -2455,6 +2460,30 @@ function startAdminStatsListeners(uid) {
       adminStatsStatus.dataset.state = 'ready'
     }
   }
+  const refreshAuthUsers = async () => {
+    if (authUsersSyncRunning || auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    authUsersSyncRunning = true
+    try {
+      const result = await callAudinooApi('/api/admin/users/auth-list')
+      if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+      latestAdminAuthUserIds = new Set(Array.isArray(result.uids) ? result.uids : [])
+      authUsersReady = true
+      renderWhenReady()
+    } catch (error) {
+      console.error('[Audinoo admin] Could not synchronize Firebase Authentication users', error)
+      const messages = {
+        'firebase-auth-list-permission-required': 'Le compte de service Cloudflare doit recevoir le rôle Firebase Authentication Admin (permissions firebaseauth.users.get et firebaseauth.users.delete).',
+        'firebase-auth-list-limit-reached': 'Le nombre de comptes dépasse la limite de synchronisation actuelle.',
+        'backend-not-configured': 'La configuration du compte de service Firebase côté Cloudflare est incomplète.'
+      }
+      adminStatsStatus.textContent = messages[error.message] || 'Impossible de vérifier les comptes Firebase Authentication : ' + exactErrorDetails(error)
+      adminStatsStatus.dataset.state = 'error'
+    } finally {
+      authUsersSyncRunning = false
+    }
+  }
+  void refreshAuthUsers()
+  authUsersSyncTimer = window.setInterval(refreshAuthUsers, 60000)
   const onError = (source) => (error) => {
     console.error(`[Audinoo admin] Could not load ${source} live data`, error)
     failedSources.add(source)
@@ -2494,7 +2523,7 @@ function startAdminStatsListeners(uid) {
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
