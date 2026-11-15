@@ -168,24 +168,43 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow get, list: if isAdmin()
-        || (signedIn() && resource.data.audience == 'all');
+        || (signedIn() && (resource.data.audience == 'all' || resource.data.recipientUid == request.auth.uid));
       allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly([
-          'title', 'message', 'audience', 'createdBy', 'createdAt'
-        ])
-        && request.resource.data.keys().hasAll([
-          'title', 'message', 'audience', 'createdBy', 'createdAt'
-        ])
+        && request.resource.data.keys().hasOnly(['title','message','audience','recipientUid','createdBy','createdAt'])
+        && request.resource.data.keys().hasAll(['title','message','audience','createdBy','createdAt'])
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 2
         && request.resource.data.title.size() <= 80
         && request.resource.data.message is string
         && request.resource.data.message.size() >= 2
         && request.resource.data.message.size() <= 600
-        && request.resource.data.audience == 'all'
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && ((request.resource.data.audience == 'all' && !('recipientUid' in request.resource.data))
+          || (request.resource.data.audience == 'user' && request.resource.data.recipientUid is string && request.resource.data.recipientUid.size() > 0));
       allow update, delete: if isAdmin();
+    }
+
+    match /presenceSessions/{sessionId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','displayName','username','online','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.keys().hasAll(['uid','displayName','username','online','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 100
+        && request.resource.data.username is string && request.resource.data.username.size() <= 40
+        && request.resource.data.online == true
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['online','lastSeenAt','updatedAt'])
+        && request.resource.data.online is bool
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /notificationReads/{readId} {
@@ -197,7 +216,7 @@ service cloud.firestore {
         && request.resource.data.notificationId is string
         && request.resource.data.notificationId.size() > 0
         && request.resource.data.readAt == request.time
-        && get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all';
+        && (get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.audience == 'all' || get(/databases/$(database)/documents/notifications/$(request.resource.data.notificationId)).data.recipientUid == request.auth.uid);
       allow update, delete: if false;
     }
 
