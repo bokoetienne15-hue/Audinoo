@@ -2980,6 +2980,46 @@ function showTrackUnlockDialog() {
   })
 }
 
+let listenInviteDialog = null
+function getListenInviteDialog() {
+  if (listenInviteDialog?.isConnected) return listenInviteDialog
+  const dialog = document.createElement('dialog')
+  dialog.className = 'listen-story-dialog'
+  dialog.setAttribute('aria-labelledby', 'listen-story-title')
+  dialog.innerHTML = `
+    <div class="listen-story-art" aria-hidden="true"><span class="listen-story-orbit"></span><span class="listen-story-disc">♫</span><span class="listen-story-spark listen-story-spark-one"></span><span class="listen-story-spark listen-story-spark-two"></span></div>
+    <button class="listen-story-close" type="button" aria-label="Fermer">×</button>
+    <div class="listen-story-copy">
+      <p class="listen-story-kicker">TA VIE. TON HISTOIRE. TA MUSIQUE.</p>
+      <h2 id="listen-story-title">Et si ton histoire devenait une chanson ?</h2>
+      <p>Raconte ton parcours, tes rêves, tes défis ou les moments qui t’ont construit. Audinoo transforme ton histoire en une chanson unique, créée spécialement pour toi.</p>
+      <button class="listen-story-create" type="button">Créer ma chanson <span aria-hidden="true">→</span></button>
+      <p class="listen-story-note">Ta musique commence par ton histoire.</p>
+    </div>`
+  document.body.append(dialog)
+  dialog.querySelector('.listen-story-close').addEventListener('click', () => dialog.close())
+  dialog.querySelector('.listen-story-create').addEventListener('click', () => {
+    dialog.close()
+    document.querySelector('.workspace-nav[href="#studio"]')?.click()
+    window.setTimeout(() => document.querySelector('#studio-prompt')?.focus(), 180)
+  })
+  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close() })
+  listenInviteDialog = dialog
+  return dialog
+}
+function showListenStoryInvite(track) {
+  const userId = auth.currentUser?.uid
+  const taskId = String(track.taskId || '')
+  const trackIndex = Number.isInteger(track.trackIndex) ? track.trackIndex : 0
+  if (!userId || !taskId) return
+  const storageKey = 'audinoo-listen-story-invite-v1-' + userId + '-' + taskId + '-' + trackIndex
+  if (readBrowserStorage('localStorage', storageKey) === '1') return
+  const dialog = getListenInviteDialog()
+  if (dialog.open) return
+  writeBrowserStorage('localStorage', storageKey, '1')
+  try { dialog.showModal() } catch (error) { console.warn('[Audinoo listening invite]', error) }
+}
+
 function renderGenerationTracks(container, tracks) {
   replaceNodeChildren(container)
   tracks.forEach((track, index) => {
@@ -3097,6 +3137,24 @@ function renderGenerationTracks(container, tracks) {
     })
     player.addEventListener('ended', () => { showPlayIcon(); if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
     player.addEventListener('timeupdate', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    let inviteListenedMs = 0
+    let inviteLastTick = 0
+    let inviteAlreadyShown = false
+    player.addEventListener('playing', () => { inviteLastTick = performance.now() })
+    player.addEventListener('timeupdate', () => {
+      if (!isLibraryTrack() || inviteAlreadyShown || player.paused) { inviteLastTick = 0; return }
+      const now = performance.now()
+      if (inviteLastTick) inviteListenedMs += Math.min(1500, Math.max(0, now - inviteLastTick))
+      inviteLastTick = now
+      if (inviteListenedMs >= 10000) {
+        inviteAlreadyShown = true
+        inviteLastTick = 0
+        showListenStoryInvite(track)
+      }
+    })
+    player.addEventListener('waiting', () => { inviteLastTick = 0 })
+    player.addEventListener('pause', () => { inviteLastTick = 0 })
+    player.addEventListener('ended', () => { inviteLastTick = 0 })
     player.addEventListener('loadedmetadata', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
     player.addEventListener('durationchange', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
     play.addEventListener('click', async () => {
