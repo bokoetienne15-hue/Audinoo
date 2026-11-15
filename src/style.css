@@ -3043,3 +3043,16 @@ button.is-generating:disabled {
  .welcome-image-credit{top:157px;bottom:auto}
 }
 @media(prefers-reduced-motion:reduce){.welcome-overlay,.welcome-card,.welcome-close,.welcome-cta{transition:none}}
+
+
+/* Utilisateurs en ligne et notifications individuelles */
+.admin-online-panel,.admin-personal-notification-panel{margin-top:18px}
+.admin-online-count{padding:8px 12px;border:1px solid rgba(71,220,160,.3);border-radius:999px;color:#8cf0bd;background:rgba(40,180,115,.1);font-size:12px;white-space:nowrap}
+.admin-online-list{display:grid;gap:9px;margin-top:14px}
+.admin-online-user{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--workspace-border,rgba(148,163,184,.2));border-radius:12px;background:var(--workspace-panel,rgba(255,255,255,.035))}
+.admin-online-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#48df9a;box-shadow:0 0 12px rgba(72,223,154,.65)}
+.admin-online-identity{display:grid;gap:4px;min-width:0;flex:1}
+.admin-online-identity strong{color:var(--workspace-text,#fff);font-size:13px}
+.admin-online-identity small{overflow-wrap:anywhere;color:var(--workspace-muted,#929bad);font-size:11px;line-height:1.5}
+.admin-online-user .admin-refresh-button{flex:0 0 auto}
+@media(max-width:560px){.admin-online-user{align-items:flex-start;flex-wrap:wrap}.admin-online-user .admin-refresh-button{margin-left:21px}}
