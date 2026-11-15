@@ -2330,7 +2330,7 @@ deleteUserButton.addEventListener('click', async () => {
     deleteUserConfirmation.value = ''; deleteUserStatus.textContent = `Compte supprimé. ${adminNumber(result.firestoreDocuments)} documents Firebase effacés; fichiers personnels supprimés.`
     renderAdminUsersTable(); renderAdminDashboard()
   } catch (error) {
-    const messages = { 'firebase-auth-delete-permission-required': 'Ajoute au compte de service Firebase le droit firebaseauth.users.delete, puis réessaie.', 'firebase-auth-delete-failed': 'Firebase Authentication n’a pas pu supprimer ce compte; aucune donnée n’a été effacée.', 'admin-account-protected': 'Les comptes administrateurs ne peuvent pas être supprimés depuis cette section.', 'user-data-limit-reached': 'Trop de données liées à ce compte pour une suppression sécurisée en une seule opération.' }
+    const messages = { 'firebase-auth-delete-permission-required': 'Le compte de service utilisé par Cloudflare doit recevoir le rôle Firebase Authentication Admin (roles/firebaseauth.admin), qui autorise la suppression des comptes.', 'firebase-auth-delete-failed': 'Firebase Authentication n’a pas pu supprimer ce compte; aucune donnée n’a été effacée.', 'admin-account-protected': 'Les comptes administrateurs ne peuvent pas être supprimés depuis cette section.', 'user-data-limit-reached': 'Trop de données liées à ce compte pour une suppression sécurisée en une seule opération.' }
     deleteUserStatus.textContent = messages[error.message] || 'Suppression impossible : ' + generationErrorMessage(error.message)
   } finally { updateDeleteUserButton() }
 })
