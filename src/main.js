@@ -3688,6 +3688,11 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
       })
     })
     if (!result.taskId) throw new Error('generation-failed')
+    if (!customMode && result.composition) {
+      preview.title = result.composition.title || preview.title
+      preview.prompt = result.composition.lyrics || preview.prompt
+      preview.style = result.composition.style || preview.style
+    }
     openLibraryForGenerationPreview(preview)
     preview.taskId = result.taskId
     preview.group.dataset.libraryTask = result.taskId
