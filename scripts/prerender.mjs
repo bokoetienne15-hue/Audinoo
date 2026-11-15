@@ -141,7 +141,7 @@ for (const page of pages) {
   let html = await readFile(file, 'utf8')
   html = html.replaceAll('https://audinoo.com', site).replaceAll('https://audinoo.com', site)
   html = html.replace(/<meta name="robots" content="[^"]*">?/i, '')
-  if (!html.includes('zdydqhyfrs')) html = html.replace('</head>', clarityIntegration + '\\n</head>')
+  if (!html.includes('zdydqhyfrs')) html = html.replace('</head>', clarityIntegration + '\n</head>')
   html = html.replace('</head>', '<meta name="robots" content="' + (isTest ? 'noindex, nofollow' : 'index, follow, max-image-preview:large') + '">\n</head>')
   await writeFile(file, html, 'utf8')
   assert(html.includes('<!doctype html>') || html.includes('<!DOCTYPE html>'), page.path + ' : doctype HTML absent')
