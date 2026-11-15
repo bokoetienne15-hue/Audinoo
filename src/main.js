@@ -1401,6 +1401,7 @@ let latestAdminAcquisitionEvents = []
 let adminAcquisitionResetAt = null
 let latestAdminGenerations = []
 let latestAdminActivitySessions = []
+let latestAdminSongFeedback = []
 const adminPeriods = {
   day: { count: 30, unit: 'day', label: '30 derniers jours' },
   week: { count: 12, unit: 'week', label: '12 dernières semaines' },
@@ -1738,6 +1739,7 @@ function createAdminSection(id, title, description) {
 const adminOverviewSection = createAdminSection('overview', 'Vue d’ensemble', 'Les indicateurs de croissance et d’activité de la communauté Audinoo.')
 const adminUsersSection = createAdminSection('users', 'Utilisateurs', 'Recherche et consultation des profils enregistrés dans Firebase.')
 const adminRetentionSection = createAdminSection('retention', 'Fidélisation', 'Mesure les retours des membres et leur activité depuis l’activation du suivi.')
+const adminFeedbackSection = createAdminSection('feedback', 'Avis des utilisateurs', 'Découvre les retours des membres après leur première écoute sur Audinoo.')
 const adminGenerationsSection = createAdminSection('generations', 'Générations musicales', 'Historique des créations enregistrées. La liste est limitée aux 1 000 dernières entrées synchronisées.')
 const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
 const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
@@ -1747,7 +1749,7 @@ const adminAcquisitionSection = createAdminSection('acquisition', 'Acquisition &
 const adminOnlineSection = createAdminSection('online', 'Utilisateurs en ligne', 'Les comptes actuellement actifs sur Audinoo, avec leur présence actualisée automatiquement.')
 const adminDangerSection = createAdminSection('danger', 'Zone dangereuse', 'Actions irréversibles réservées à l’administration. Chaque opération demande une confirmation explicite.')
 adminDangerSection.classList.add('admin-danger-section')
-for (const [id, title] of [['retention', 'Fidélisation'], ['online', 'Utilisateurs en ligne'], ['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
+for (const [id, title] of [['retention', 'Fidélisation'], ['feedback', 'Avis utilisateurs'], ['online', 'Utilisateurs en ligne'], ['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
   const button = document.createElement('button')
   button.type = 'button'; button.className = 'admin-section-link'; button.dataset.adminSection = id
   button.textContent = title
@@ -1756,6 +1758,7 @@ for (const [id, title] of [['retention', 'Fidélisation'], ['online', 'Utilisate
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminOnlineSection.innerHTML += '<section class="admin-panel admin-online-panel"><div class="admin-panel-heading"><div><p>PRÉSENCE EN DIRECT</p><h2>Membres connectés</h2></div><strong class="admin-online-count" id="admin-online-count">0 en ligne</strong></div><p class="admin-panel-status" id="admin-online-status" role="status">Connexion au flux de présence…</p><div class="admin-online-list" id="admin-online-list"><p class="admin-panel-status">Chargement des utilisateurs…</p></div></section><section class="admin-panel admin-personal-notification-panel"><div class="admin-panel-heading"><div><p>MESSAGE INDIVIDUEL</p><h2>Envoyer une notification personnalisée</h2></div></div><form class="admin-notification-form" id="admin-personal-notification-form"><label for="admin-personal-notification-user">Choisir un utilisateur actuellement en ligne</label><select id="admin-personal-notification-user" name="recipientUid" required><option value="">Aucun utilisateur en ligne</option></select><label for="admin-personal-notification-title">Titre</label><input id="admin-personal-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Un petit message pour toi" required><label for="admin-personal-notification-message">Message</label><textarea id="admin-personal-notification-message" name="message" minlength="2" maxlength="600" rows="4" placeholder="Écris ton message personnel…" required></textarea><button class="admin-publish-button" type="submit" disabled>Envoyer à cet utilisateur <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-personal-notification-status" role="status" aria-live="polite"></p></form></section>'
+adminFeedbackSection.innerHTML += '<div class="admin-feedback-summary"><article class="admin-stat-card"><span>AVIS REÇUS</span><strong id="admin-feedback-total">—</strong><small>Premières écoutes évaluées</small></article><article class="admin-stat-card"><span>NOTE MOYENNE</span><strong id="admin-feedback-average">—</strong><small>Sur 5 étoiles</small></article><article class="admin-stat-card"><span>AVIS AVEC COMMENTAIRE</span><strong id="admin-feedback-comments">—</strong><small>Retours écrits des membres</small></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>RETOURS CLIENTS</p><h2>Comment trouvent-ils leur première chanson ?</h2></div><span class="admin-data-count" id="admin-feedback-count">—</span></div><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-feedback-search" type="search" placeholder="Rechercher un nom, e-mail ou commentaire…" autocomplete="off"></label></div><p class="admin-panel-status" id="admin-feedback-status" role="status">Chargement des avis Firebase…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Avis des utilisateurs, faire défiler horizontalement"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Note</th><th>Première chanson</th><th>Commentaire</th><th>Date</th></tr></thead><tbody id="admin-feedback-rows"><tr><td colspan="5">Chargement des avis…</td></tr></tbody></table></div></section><p class="admin-panel-status">Chaque compte peut envoyer un seul avis sur sa première écoute suivie. Les avis sont enregistrés dans Firebase et visibles uniquement par l’administration.</p>';
 adminRetentionSection.innerHTML += '<div class="admin-retention-summary"><article class="admin-stat-card"><span>MEMBRES DE RETOUR</span><strong id="admin-retention-returning">—</strong><small>Au moins deux sessions enregistrées</small></article><article class="admin-stat-card"><span>RETOURS AUJOURD’HUI</span><strong id="admin-retention-today">—</strong><small>Membres déjà venus auparavant</small></article><article class="admin-stat-card"><span>ACTIFS · 7 JOURS</span><strong id="admin-retention-week">—</strong><small>Au moins une session récente</small></article><article class="admin-stat-card"><span>RETOURS · 30 JOURS</span><strong id="admin-retention-month">—</strong><small>Au moins deux sessions sur la période</small></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>FIDÉLISATION</p><h2>Qui revient sur Audinoo ?</h2></div><span class="admin-data-count" id="admin-retention-count">—</span></div><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-retention-search" type="search" placeholder="Rechercher un nom ou un e-mail…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Période</span><select id="admin-retention-period"><option value="30">30 derniers jours</option><option value="7">7 derniers jours</option><option value="all">Tout l’historique</option></select></label></div><p class="admin-panel-status" id="admin-retention-status" role="status">Chargement des sessions Firebase…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Historique de fidélisation, faire défiler horizontalement"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Visites</th><th>Dernière activité</th><th>Chansons créées</th><th>Fidélisation</th></tr></thead><tbody id="admin-retention-rows"><tr><td colspan="5">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Une visite correspond à une session authentifiée enregistrée. Le suivi commence après le déploiement : les visites antérieures ne peuvent pas être reconstituées. Les chansons affichées proviennent des 1 000 dernières créations synchronisées dans l’administration.</p>';
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
@@ -1826,6 +1829,30 @@ function adminDateLabel(value) {
   const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
   return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
 }
+const adminFeedbackSearch = adminFeedbackSection.querySelector('#admin-feedback-search')
+function renderAdminSongFeedback() {
+  const term = adminFeedbackSearch.value.trim().toLocaleLowerCase('fr')
+  const filtered = latestAdminSongFeedback.filter(item => [item.displayName,item.email,item.trackTitle,item.comment].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+  const ratings = latestAdminSongFeedback.map(item => Number(item.rating)).filter(value => value >= 1 && value <= 5)
+  adminFeedbackSection.querySelector('#admin-feedback-total').textContent = adminNumber(latestAdminSongFeedback.length)
+  adminFeedbackSection.querySelector('#admin-feedback-average').textContent = ratings.length ? (ratings.reduce((sum,value)=>sum+value,0)/ratings.length).toFixed(1).replace('.', ',') + ' / 5' : '—'
+  adminFeedbackSection.querySelector('#admin-feedback-comments').textContent = adminNumber(latestAdminSongFeedback.filter(item => String(item.comment || '').trim()).length)
+  adminFeedbackSection.querySelector('#admin-feedback-count').textContent = `${adminNumber(filtered.length)} avis`
+  adminFeedbackSection.querySelector('#admin-feedback-status').textContent = `${adminNumber(latestAdminSongFeedback.length)} avis enregistrés dans Firebase.`
+  const body = adminFeedbackSection.querySelector('#admin-feedback-rows'); replaceNodeChildren(body)
+  if (!filtered.length) { const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='Aucun avis reçu pour le moment.';row.append(cell);body.append(row);return }
+  filtered.forEach(item => {
+    const row=document.createElement('tr')
+    const identity=document.createElement('td'),name=document.createElement('strong'),email=document.createElement('small')
+    name.textContent=item.displayName || 'Utilisateur Audinoo'; email.textContent=item.email || ''; identity.append(name,email)
+    const rating=document.createElement('td'); rating.textContent='★'.repeat(Math.max(0,Math.min(5,Number(item.rating)||0))) + '☆'.repeat(5-Math.max(0,Math.min(5,Number(item.rating)||0))); rating.className='admin-feedback-stars'
+    const song=document.createElement('td'); song.textContent=item.trackTitle || 'Première chanson'
+    const comment=document.createElement('td'); comment.textContent=item.comment || 'Aucun commentaire'; comment.className='admin-feedback-comment'
+    const date=document.createElement('td'); date.textContent=adminDateLabel(item.createdAt)
+    row.append(identity,rating,song,comment,date);body.append(row)
+  })
+}
+adminFeedbackSearch.addEventListener('input', renderAdminSongFeedback)
 const adminRetentionSearch = adminRetentionSection.querySelector('#admin-retention-search')
 const adminRetentionPeriod = adminRetentionSection.querySelector('#admin-retention-period')
 function renderAdminRetention() {
@@ -2567,6 +2594,15 @@ function startAdminStatsListeners(uid) {
   }, onError('generations'))
   if (adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer)
   adminPresenceExpiryTimer = window.setInterval(renderAdminOnlineUsers, 5000)
+  const stopSongFeedback = onSnapshot(query(collection(db, 'songFeedback'), orderBy('createdAt', 'desc'), limit(500)), snapshot => {
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    latestAdminSongFeedback = snapshot.docs.map(item => ({id:item.id,...item.data()}))
+    renderAdminSongFeedback()
+  }, error => {
+    console.error('[Audinoo admin] Could not load song feedback', error)
+    const status = adminFeedbackSection.querySelector('#admin-feedback-status')
+    if (status) status.textContent = 'Avis indisponibles : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
+  })
   const stopActivitySessions = onSnapshot(query(collection(db, 'userActivitySessions'), orderBy('startedAt', 'desc'), limit(5000)), snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminActivitySessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
@@ -2595,7 +2631,7 @@ function startAdminStatsListeners(uid) {
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); stopActivitySessions(); latestAdminActivitySessions=[]; if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); stopActivitySessions(); stopSongFeedback(); latestAdminActivitySessions=[]; latestAdminSongFeedback=[]; if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
@@ -3081,6 +3117,59 @@ function showTrackUnlockDialog() {
   })
 }
 
+let songFeedbackDialog = null
+function getSongFeedbackDialog() {
+  if (songFeedbackDialog?.isConnected) return songFeedbackDialog
+  const dialog = document.createElement('dialog')
+  dialog.className = 'song-feedback-dialog'
+  dialog.setAttribute('aria-labelledby','song-feedback-title')
+  dialog.innerHTML = `<button class="song-feedback-close" type="button" aria-label="Fermer">×</button><p class="song-feedback-kicker">TON PREMIER MORCEAU SUR AUDINOO</p><div class="song-feedback-icon" aria-hidden="true">♫</div><h2 id="song-feedback-title">Alors, qu’en penses-tu ?</h2><p class="song-feedback-intro">Tu viens d’écouter ta première chanson. Ton avis nous aide à améliorer Audinoo.</p><form id="song-feedback-form"><fieldset><legend>Quelle note donnes-tu à ta chanson ?</legend><div class="song-feedback-rating">${[1,2,3,4,5].map(value=>`<label><input type="radio" name="rating" value="${value}" required><span aria-hidden="true">★</span><small>${value}</small></label>`).join('')}</div></fieldset><label class="song-feedback-comment-label" for="song-feedback-comment">Qu’as-tu aimé ou que peut-on améliorer ? <span>(facultatif)</span></label><textarea id="song-feedback-comment" name="comment" maxlength="500" rows="3" placeholder="Ton avis en quelques mots…"></textarea><p class="song-feedback-status" id="song-feedback-status" role="status"></p><button class="song-feedback-submit" type="submit">Envoyer mon avis</button><button class="song-feedback-later" type="button">Plus tard</button></form>`
+  document.body.append(dialog)
+  const close = () => { if(dialog.open) dialog.close() }
+  dialog.querySelector('.song-feedback-close').addEventListener('click',close)
+  dialog.querySelector('.song-feedback-later').addEventListener('click',close)
+  dialog.addEventListener('click',event=>{if(event.target===dialog)close()})
+  dialog.querySelectorAll('.song-feedback-rating input').forEach(input=>input.addEventListener('change',()=>dialog.querySelector('.song-feedback-rating').classList.add('has-selection')))
+  dialog.querySelector('#song-feedback-form').addEventListener('submit',async event=>{
+    event.preventDefault()
+    const user=auth.currentUser
+    const form=event.currentTarget
+    const rating=Number(new FormData(form).get('rating'))
+    const comment=String(new FormData(form).get('comment')||'').trim().slice(0,500)
+    const status=dialog.querySelector('#song-feedback-status')
+    const submit=dialog.querySelector('.song-feedback-submit')
+    if(!user || !Number.isInteger(rating) || rating<1 || rating>5){status.textContent='Choisis une note entre 1 et 5 étoiles.';return}
+    submit.disabled=true;status.textContent='Enregistrement de ton avis…'
+    try {
+      const ref=doc(db,'songFeedback',user.uid)
+      const existing=await getDoc(ref)
+      if(!existing.exists()) await setDoc(ref,{uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,comment,trackTitle:String(dialog.dataset.trackTitle||'Première chanson').slice(0,150),taskId:String(dialog.dataset.taskId||'').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()})
+      writeBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid,'1')
+      status.textContent='Merci ! Ton avis a bien été envoyé. ❤️'
+      window.setTimeout(()=>{if(dialog.open)dialog.close()},900)
+    } catch(error) { console.error('[Audinoo feedback] Could not save rating',error);status.textContent='Impossible d’enregistrer ton avis pour le moment. Réessaie.';submit.disabled=false }
+  })
+  songFeedbackDialog=dialog
+  return dialog
+}
+async function showFirstSongFeedback(track) {
+  const user=auth.currentUser
+  if(!user) return
+  const key='audinoo-first-song-feedback-prompted-v1-'+user.uid
+  if(readBrowserStorage('localStorage',key)==='1' || readBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid)==='1') return
+  try { if((await getDoc(doc(db,'songFeedback',user.uid))).exists()){writeBrowserStorage('localStorage',key,'1');return} } catch(error) { console.warn('[Audinoo feedback] Could not check previous response',error); return }
+  const dialog=getSongFeedbackDialog()
+  if(dialog.open) return
+  writeBrowserStorage('localStorage',key,'1')
+  dialog.dataset.trackTitle=String(track.title||'Première chanson')
+  dialog.dataset.taskId=String(track.taskId||'')
+  dialog.dataset.trackIndex=String(Number.isInteger(track.trackIndex)?track.trackIndex:0)
+  dialog.querySelector('#song-feedback-status').textContent=''
+  dialog.querySelector('#song-feedback-form').reset()
+  dialog.querySelector('.song-feedback-rating').classList.remove('has-selection')
+  dialog.querySelector('.song-feedback-submit').disabled=false
+  try { dialog.showModal() } catch(error) { console.warn('[Audinoo feedback] Could not open dialog',error) }
+}
 let listenInviteDialog = null
 function getListenInviteDialog() {
   if (listenInviteDialog?.isConnected) return listenInviteDialog
@@ -3238,6 +3327,20 @@ function renderGenerationTracks(container, tracks) {
     })
     player.addEventListener('ended', () => { showPlayIcon(); if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
     player.addEventListener('timeupdate', () => { if (activeLibraryAudio === player) syncLibraryMiniPlayer() })
+    let feedbackListenedMs = 0
+    let feedbackLastTick = 0
+    let feedbackAlreadyChecked = false
+    player.addEventListener('playing',()=>{feedbackLastTick=performance.now()})
+    player.addEventListener('timeupdate',()=>{
+      if(!isLibraryTrack() || feedbackAlreadyChecked || player.paused || !auth.currentUser){feedbackLastTick=0;return}
+      const now=performance.now()
+      if(feedbackLastTick) feedbackListenedMs += Math.min(1500,Math.max(0,now-feedbackLastTick))
+      feedbackLastTick=now
+      if(feedbackListenedMs>=30000){feedbackAlreadyChecked=true;feedbackLastTick=0;void showFirstSongFeedback(track)}
+    })
+    player.addEventListener('waiting',()=>{feedbackLastTick=0})
+    player.addEventListener('pause',()=>{feedbackLastTick=0})
+    player.addEventListener('ended',()=>{feedbackLastTick=0})
     let inviteListenedMs = 0
     let inviteLastTick = 0
     let inviteAlreadyShown = false
