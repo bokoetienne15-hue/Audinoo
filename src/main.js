@@ -1400,6 +1400,7 @@ let latestAdminVisitors = []
 let latestAdminAcquisitionEvents = []
 let adminAcquisitionResetAt = null
 let latestAdminGenerations = []
+let latestAdminActivitySessions = []
 const adminPeriods = {
   day: { count: 30, unit: 'day', label: '30 derniers jours' },
   week: { count: 12, unit: 'week', label: '12 dernières semaines' },
@@ -1735,6 +1736,7 @@ function createAdminSection(id, title, description) {
 }
 const adminOverviewSection = createAdminSection('overview', 'Vue d’ensemble', 'Les indicateurs de croissance et d’activité de la communauté Audinoo.')
 const adminUsersSection = createAdminSection('users', 'Utilisateurs', 'Recherche et consultation des profils enregistrés dans Firebase.')
+const adminRetentionSection = createAdminSection('retention', 'Fidélisation', 'Mesure les retours des membres et leur activité depuis l’activation du suivi.')
 const adminGenerationsSection = createAdminSection('generations', 'Générations musicales', 'Historique des créations enregistrées. La liste est limitée aux 1 000 dernières entrées synchronisées.')
 const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
 const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
@@ -1744,7 +1746,7 @@ const adminAcquisitionSection = createAdminSection('acquisition', 'Acquisition &
 const adminOnlineSection = createAdminSection('online', 'Utilisateurs en ligne', 'Les comptes actuellement actifs sur Audinoo, avec leur présence actualisée automatiquement.')
 const adminDangerSection = createAdminSection('danger', 'Zone dangereuse', 'Actions irréversibles réservées à l’administration. Chaque opération demande une confirmation explicite.')
 adminDangerSection.classList.add('admin-danger-section')
-for (const [id, title] of [['online', 'Utilisateurs en ligne'], ['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
+for (const [id, title] of [['retention', 'Fidélisation'], ['online', 'Utilisateurs en ligne'], ['acquisition', 'Acquisition & inscriptions'], ['revenue', 'Revenus et ventes'], ['danger', 'Zone dangereuse']]) {
   const button = document.createElement('button')
   button.type = 'button'; button.className = 'admin-section-link'; button.dataset.adminSection = id
   button.textContent = title
@@ -1753,6 +1755,7 @@ for (const [id, title] of [['online', 'Utilisateurs en ligne'], ['acquisition', 
 ;[adminHero, adminToolbar, adminLiveStatus, adminStatsGrid, adminCharts, adminCountryPanel].forEach((node) => node && adminOverviewSection.append(node))
 
 adminOnlineSection.innerHTML += '<section class="admin-panel admin-online-panel"><div class="admin-panel-heading"><div><p>PRÉSENCE EN DIRECT</p><h2>Membres connectés</h2></div><strong class="admin-online-count" id="admin-online-count">0 en ligne</strong></div><p class="admin-panel-status" id="admin-online-status" role="status">Connexion au flux de présence…</p><div class="admin-online-list" id="admin-online-list"><p class="admin-panel-status">Chargement des utilisateurs…</p></div></section><section class="admin-panel admin-personal-notification-panel"><div class="admin-panel-heading"><div><p>MESSAGE INDIVIDUEL</p><h2>Envoyer une notification personnalisée</h2></div></div><form class="admin-notification-form" id="admin-personal-notification-form"><label for="admin-personal-notification-user">Choisir un utilisateur actuellement en ligne</label><select id="admin-personal-notification-user" name="recipientUid" required><option value="">Aucun utilisateur en ligne</option></select><label for="admin-personal-notification-title">Titre</label><input id="admin-personal-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Un petit message pour toi" required><label for="admin-personal-notification-message">Message</label><textarea id="admin-personal-notification-message" name="message" minlength="2" maxlength="600" rows="4" placeholder="Écris ton message personnel…" required></textarea><button class="admin-publish-button" type="submit" disabled>Envoyer à cet utilisateur <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-personal-notification-status" role="status" aria-live="polite"></p></form></section>'
+adminRetentionSection.innerHTML += '<div class="admin-retention-summary"><article class="admin-stat-card"><span>MEMBRES DE RETOUR</span><strong id="admin-retention-returning">—</strong><small>Au moins deux sessions enregistrées</small></article><article class="admin-stat-card"><span>RETOURS AUJOURD’HUI</span><strong id="admin-retention-today">—</strong><small>Membres déjà venus auparavant</small></article><article class="admin-stat-card"><span>ACTIFS · 7 JOURS</span><strong id="admin-retention-week">—</strong><small>Au moins une session récente</small></article><article class="admin-stat-card"><span>RETOURS · 30 JOURS</span><strong id="admin-retention-month">—</strong><small>Au moins deux sessions sur la période</small></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>FIDÉLISATION</p><h2>Qui revient sur Audinoo ?</h2></div><span class="admin-data-count" id="admin-retention-count">—</span></div><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-retention-search" type="search" placeholder="Rechercher un nom ou un e-mail…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Période</span><select id="admin-retention-period"><option value="30">30 derniers jours</option><option value="7">7 derniers jours</option><option value="all">Tout l’historique</option></select></label></div><p class="admin-panel-status" id="admin-retention-status" role="status">Chargement des sessions Firebase…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Historique de fidélisation, faire défiler horizontalement"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Visites</th><th>Dernière activité</th><th>Chansons créées</th><th>Fidélisation</th></tr></thead><tbody id="admin-retention-rows"><tr><td colspan="5">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Une visite correspond à une session authentifiée enregistrée. Le suivi commence après le déploiement : les visites antérieures ne peuvent pas être reconstituées. Les chansons affichées proviennent des 1 000 dernières créations synchronisées dans l’administration.</p>';
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
 adminAcquisitionSection.innerHTML += `<section class="admin-panel admin-acquisition-diagnostics"><div class="admin-panel-heading"><div><p>DIAGNOSTIC DU PARCOURS</p><h2>Où les visiteurs abandonnent-ils ?</h2></div><span class="admin-data-count" id="admin-acquisition-events-count">En direct</span></div><div class="admin-acquisition-funnel"><article><span>Page chargée</span><strong id="diag-page-loaded">—</strong></article><article><span>Clic inscription</span><strong id="diag-signup-clicked">—</strong></article><article><span>Fenêtre affichée</span><strong id="diag-signup-opened">—</strong></article><article><span>Formulaire envoyé</span><strong id="diag-signup-submitted">—</strong></article><article><span>Compte Firebase créé</span><strong id="diag-auth-created">—</strong></article><article><span>Profil enregistré</span><strong id="diag-profile-saved">—</strong></article><article><span>Inscription terminée</span><strong id="diag-signup-completed">—</strong></article><article><span>Échecs détectés</span><strong id="diag-signup-failed">—</strong></article></div><p class="admin-panel-status" id="admin-acquisition-events-status" role="status">Les étapes du parcours seront enregistrées après le déploiement de cette version.</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Date</th><th>Source</th><th>Navigateur</th><th>Étape atteinte</th><th>Résultat / explication</th></tr></thead><tbody id="admin-acquisition-events-rows"><tr><td colspan="5">En attente des événements…</td></tr></tbody></table></div><p class="admin-panel-status">Aucune adresse e-mail, aucun mot de passe, nom, numéro de téléphone ou identifiant personnel n’est enregistré dans ce diagnostic. Les événements sont associés à une session anonyme.</p></section>`
@@ -1822,6 +1825,65 @@ function adminDateLabel(value) {
   const date = value?.toDate ? value.toDate() : value instanceof Date ? value : value?.seconds ? new Date(value.seconds * 1000) : null
   return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Date inconnue'
 }
+const adminRetentionSearch = adminRetentionSection.querySelector('#admin-retention-search')
+const adminRetentionPeriod = adminRetentionSection.querySelector('#admin-retention-period')
+function renderAdminRetention() {
+  const now = Date.now()
+  const periodDays = adminRetentionPeriod.value === 'all' ? null : Number(adminRetentionPeriod.value)
+  const periodStart = periodDays ? now - periodDays * 86400000 : 0
+  const sessionsByUid = new Map()
+  latestAdminActivitySessions.forEach(session => {
+    if (!session.uid) return
+    if (!sessionsByUid.has(session.uid)) sessionsByUid.set(session.uid, [])
+    sessionsByUid.get(session.uid).push(session)
+  })
+  const userRows = latestAdminUsers.map(user => {
+    const sessions = (sessionsByUid.get(user.uid) || []).slice().sort((a,b) => presenceMillis(a.startedAt) - presenceMillis(b.startedAt))
+    const recentSessions = sessions.filter(session => presenceMillis(session.startedAt) >= periodStart)
+    const lastSession = sessions.reduce((latest, session) => presenceMillis(session.lastSeenAt) > presenceMillis(latest?.lastSeenAt) ? session : latest, null)
+    const songs = latestAdminGenerations.filter(item => item.uid === user.uid).length
+    return { user, sessions, recentSessions, lastSession, songs }
+  })
+  const returning = userRows.filter(row => row.sessions.length >= 2)
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+  const returnedToday = userRows.filter(row => row.sessions.length >= 2 && row.sessions.some(session => presenceMillis(session.startedAt) >= todayStart.getTime()))
+  const activeWeek = userRows.filter(row => row.sessions.some(session => presenceMillis(session.lastSeenAt) >= now - 7 * 86400000))
+  const returnedMonth = userRows.filter(row => row.sessions.filter(session => presenceMillis(session.startedAt) >= now - 30 * 86400000).length >= 2)
+  adminRetentionSection.querySelector('#admin-retention-returning').textContent = adminNumber(returning.length)
+  adminRetentionSection.querySelector('#admin-retention-today').textContent = adminNumber(returnedToday.length)
+  adminRetentionSection.querySelector('#admin-retention-week').textContent = adminNumber(activeWeek.length)
+  adminRetentionSection.querySelector('#admin-retention-month').textContent = adminNumber(returnedMonth.length)
+  const term = adminRetentionSearch.value.trim().toLocaleLowerCase('fr')
+  const filtered = userRows.filter(row => [row.user.displayName,row.user.username,row.user.email].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
+    .filter(row => !periodDays || row.recentSessions.length > 0)
+    .sort((a,b) => presenceMillis(b.lastSession?.lastSeenAt) - presenceMillis(a.lastSession?.lastSeenAt))
+  const body = adminRetentionSection.querySelector('#admin-retention-rows')
+  replaceNodeChildren(body)
+  adminRetentionSection.querySelector('#admin-retention-count').textContent = `${adminNumber(filtered.length)} membre(s)`
+  const status = adminRetentionSection.querySelector('#admin-retention-status')
+  status.textContent = `Suivi actif · ${adminNumber(latestAdminActivitySessions.length)} session(s) enregistrée(s) dans Firebase.`
+  if (!filtered.length) {
+    const row=document.createElement('tr'), cell=document.createElement('td')
+    cell.colSpan=5; cell.textContent='Aucune activité enregistrée pour cette période.'
+    row.append(cell); body.append(row); return
+  }
+  filtered.slice(0,300).forEach(({user,sessions,recentSessions,lastSession,songs}) => {
+    const row=document.createElement('tr')
+    const identity=document.createElement('td'), name=document.createElement('strong'), email=document.createElement('small')
+    name.textContent=user.displayName || user.username || 'Utilisateur'
+    email.textContent=user.email || user.username || ''
+    identity.append(name,email)
+    const visits=document.createElement('td'); visits.textContent=adminNumber(recentSessions.length)
+    const last=document.createElement('td'); last.textContent=lastSession ? adminDateLabel(lastSession.lastSeenAt) : 'Aucune visite suivie'
+    const creations=document.createElement('td'); creations.textContent=adminNumber(songs)
+    const state=document.createElement('td'); state.textContent=sessions.length >= 2 ? 'De retour' : sessions.length === 1 ? 'Première session suivie' : 'Pas encore suivi'
+    state.className=sessions.length >= 2 ? 'admin-retention-returning' : ''
+    row.append(identity,visits,last,creations,state); body.append(row)
+  })
+  if (filtered.length > 300) { const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='Affichage limité aux 300 premiers résultats.';row.append(cell);body.append(row) }
+}
+adminRetentionSearch.addEventListener('input', renderAdminRetention)
+adminRetentionPeriod.addEventListener('change', renderAdminRetention)
 function renderAdminUsersTable() {
   const term = adminUserSearch.value.trim().toLocaleLowerCase('fr')
   const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid,user.country,user.countryCode].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
@@ -2504,6 +2566,15 @@ function startAdminStatsListeners(uid) {
   }, onError('generations'))
   if (adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer)
   adminPresenceExpiryTimer = window.setInterval(renderAdminOnlineUsers, 5000)
+  const stopActivitySessions = onSnapshot(query(collection(db, 'userActivitySessions'), orderBy('startedAt', 'desc'), limit(5000)), snapshot => {
+    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    latestAdminActivitySessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
+    renderAdminRetention()
+  }, error => {
+    console.error('[Audinoo admin] Could not load user activity sessions', error)
+    const status = adminRetentionSection.querySelector('#admin-retention-status')
+    if (status) status.textContent = 'Historique indisponible : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
+  })
   const stopPresence = onSnapshot(collection(db, 'presenceSessions'), snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminPresenceSessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
@@ -2523,7 +2594,7 @@ function startAdminStatsListeners(uid) {
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); stopActivitySessions(); latestAdminActivitySessions=[]; if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
@@ -4539,6 +4610,29 @@ function updateWorkspaceGreeting(displayName) {
 }
 
 let activePresenceRef = null
+let activeActivitySessionRef = null
+let activityHeartbeatTimer = null
+function stopUserActivityTracking() {
+  if (activityHeartbeatTimer) window.clearInterval(activityHeartbeatTimer)
+  activityHeartbeatTimer = null
+  const previous = activeActivitySessionRef
+  activeActivitySessionRef = null
+  if (previous && auth.currentUser) void updateDoc(previous, { lastSeenAt: serverTimestamp(), updatedAt: serverTimestamp() }).catch(error => console.warn('[Audinoo activity] Could not close session', error))
+}
+function startUserActivityTracking(profile) {
+  stopUserActivityTracking()
+  const user = auth.currentUser
+  if (!user || !profile?.uid || user.uid !== profile.uid) return
+  const sessionRef = doc(db, 'userActivitySessions', crypto.randomUUID())
+  activeActivitySessionRef = sessionRef
+  const heartbeat = () => {
+    if (auth.currentUser?.uid === profile.uid && activeActivitySessionRef === sessionRef) void updateDoc(sessionRef, { lastSeenAt: serverTimestamp(), updatedAt: serverTimestamp() }).catch(error => console.warn('[Audinoo activity] Heartbeat failed', error))
+  }
+  void setDoc(sessionRef, { uid: profile.uid, startedAt: serverTimestamp(), lastSeenAt: serverTimestamp(), updatedAt: serverTimestamp() }).then(() => {
+    if (activeActivitySessionRef === sessionRef) activityHeartbeatTimer = window.setInterval(heartbeat, 60000)
+  }).catch(error => console.error('[Audinoo activity] Could not start session tracking', error))
+}
+window.addEventListener('pagehide', () => { if (activeActivitySessionRef) void updateDoc(activeActivitySessionRef, { lastSeenAt: serverTimestamp(), updatedAt: serverTimestamp() }).catch(() => {}) })
 let presenceHeartbeatTimer = null
 function stopUserPresence() {
   if (presenceHeartbeatTimer) window.clearInterval(presenceHeartbeatTimer)
@@ -4582,6 +4676,7 @@ function openWorkspace(profile) {
   adminWorkspacePage.hidden = true
   startNotificationListeners(auth.currentUser)
   startUserPresence(profile)
+  startUserActivityTracking(profile)
   listenToFreeCreditPolicy(profile)
   void refreshAdminAccess(profile.uid)
   const username = profile.username || '@createur_audinoo'
@@ -4914,6 +5009,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
     stopUserPresence()
+    stopUserActivityTracking()
     stopAdminStatsListeners?.()
     stopAdminStatsListeners = null
     startNotificationListeners(null)
