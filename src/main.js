@@ -1504,6 +1504,7 @@ function drawAdminChart(svg, series, color) {
 }
 let stopAdminStatsListeners = null
 let latestAdminPresenceSessions = []
+let adminPresenceExpiryTimer = null
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
   latestAdminUsers = userSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
@@ -1515,6 +1516,7 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   pdfReportButton.disabled = false
   renderAdminDashboard()
   renderAdminAcquisition()
+  renderAdminOnlineUsers()
 }
 function renderAdminAcquisitionEvents() {
   const events = latestAdminAcquisitionEvents || []
@@ -2471,6 +2473,8 @@ function startAdminStatsListeners(uid) {
   const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
     latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
   }, onError('generations'))
+  if (adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer)
+  adminPresenceExpiryTimer = window.setInterval(renderAdminOnlineUsers, 5000)
   const stopPresence = onSnapshot(collection(db, 'presenceSessions'), snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminPresenceSessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
@@ -2490,7 +2494,7 @@ function startAdminStatsListeners(uid) {
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); latestAdminPresenceSessions=[]; renderAdminOnlineUsers() }
+  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
@@ -4454,7 +4458,7 @@ function stopUserPresence() {
   presenceHeartbeatTimer = null
   const previous = activePresenceRef
   activePresenceRef = null
-  if (previous && auth.currentUser) void updateDoc(previous,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(error=>console.warn('[Audinoo presence] Could not mark session offline',error))
+  if (previous && auth.currentUser) void deleteDoc(previous).catch(error=>updateDoc(previous,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(fallback=>console.warn('[Audinoo presence] Could not close session',error,fallback)))
 }
 function startUserPresence(profile) {
   stopUserPresence()
@@ -4466,7 +4470,8 @@ function startUserPresence(profile) {
   void setDoc(presenceRef,{uid:profile.uid,displayName:profile.displayName||'',username:profile.username||'',online:true,startedAt:serverTimestamp(),lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).then(()=>{if(activePresenceRef===presenceRef) presenceHeartbeatTimer=window.setInterval(heartbeat,20000)}).catch(error=>console.error('[Audinoo presence] Could not start presence',error))
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && activePresenceRef) void updateDoc(activePresenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
-window.addEventListener('pagehide',()=>{if(activePresenceRef) void updateDoc(activePresenceRef,{online:false,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
+window.addEventListener('pagehide',()=>{if(activePresenceRef) void deleteDoc(activePresenceRef).catch(()=>{})})
+window.addEventListener('pageshow',()=>{if(activePresenceRef) void updateDoc(activePresenceRef,{online:true,lastSeenAt:serverTimestamp(),updatedAt:serverTimestamp()}).catch(()=>{})})
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
   if (communityNotice) {
