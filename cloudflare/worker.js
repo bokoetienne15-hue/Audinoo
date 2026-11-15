@@ -605,6 +605,31 @@ async function adminRevenue(request, db, user) {
     limited: ordersRaw?.length >= 1000 || generationsRaw?.length >= 1000
   })
 }
+async function adminAuthUsers(request, db, user) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const uids = []
+  let nextPageToken = ''
+  let pages = 0
+  try {
+    do {
+      const query = new URLSearchParams({ maxResults: '1000', ...(nextPageToken ? { nextPageToken } : {}) })
+      const result = await db.identityRequest('projects/audinoo/accounts:batchGet?' + query.toString())
+      for (const account of result.users || []) {
+        if (typeof account.localId === 'string' && account.localId) uids.push(account.localId)
+      }
+      nextPageToken = result.nextPageToken || ''
+      pages += 1
+      if (pages >= 50 && nextPageToken) return response(503, { error: 'firebase-auth-list-limit-reached' })
+    } while (nextPageToken)
+    return response(200, { uids, count: uids.length })
+  } catch (error) {
+    console.error('[Audinoo admin auth list]', error.status || '', error.message)
+    if (error.status === 403) return response(503, { error: 'firebase-auth-list-permission-required' })
+    if (error.message === 'firebase-admin-not-configured') return response(503, { error: 'backend-not-configured' })
+    return response(502, { error: 'firebase-auth-list-failed' })
+  }
+}
 async function adminDeleteUser(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
@@ -967,6 +992,7 @@ export default {
       if (url.pathname === '/api/admin/credits/grant') return await grantAdminCredits(request,db,user)
       if (url.pathname === '/api/admin/generations') return await adminGenerations(request,db,user)
       if (url.pathname === '/api/admin/revenue') return await adminRevenue(request,db,user)
+      if (url.pathname === '/api/admin/users/auth-list') return await adminAuthUsers(request,db,user)
       if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
       if (url.pathname === '/api/admin/acquisition') return await adminAcquisition(request,db,user)
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
