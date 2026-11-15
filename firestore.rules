@@ -185,6 +185,24 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /userActivitySessions/{sessionId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.keys().hasAll(['uid','startedAt','lastSeenAt','updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt','updatedAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /presenceSessions/{sessionId} {
       allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn()
