@@ -3188,7 +3188,38 @@ function getSongFeedbackDialog() {
   const dialog = document.createElement('dialog')
   dialog.className = 'song-feedback-dialog'
   dialog.setAttribute('aria-labelledby','song-feedback-title')
-  dialog.innerHTML = `<button class="song-feedback-close" type="button" aria-label="Fermer">×</button><p class="song-feedback-kicker">TON AVIS COMPTE POUR AUDINOO</p><div class="song-feedback-icon" aria-hidden="true">♫</div><h2 id="song-feedback-title">Alors, qu’en penses-tu ?</h2><p class="song-feedback-intro">Ton expérience compte. Dis-nous ce que tu penses d’Audinoo en quelques secondes.</p><form id="song-feedback-form"><fieldset><legend>Quelle note donnes-tu à ton expérience sur Audinoo ?</legend><div class="song-feedback-rating">${[1,2,3,4,5].map(value=>`<label aria-label="Sélectionner ou retirer ${value} étoile${value>1?'s':''}"><input type="checkbox" name="rating" value="${value}" aria-label="${value} étoile${value>1?'s':''}"><span aria-hidden="true">★</span></label>`).join('')}</div></fieldset><label class="song-feedback-comment-label" for="song-feedback-comment">Qu’as-tu aimé ou que peut-on améliorer ? <span>(facultatif)</span></label><textarea id="song-feedback-comment" name="comment" maxlength="500" rows="3" placeholder="Ton avis en quelques mots…"></textarea><p class="song-feedback-status" id="song-feedback-status" role="status"></p><button class="song-feedback-submit" type="submit">Envoyer mon avis</button><button class="song-feedback-later" type="button">Plus tard</button></form>`
+  dialog.innerHTML = `
+    <button class="song-feedback-close" type="button" aria-label="Fermer">×</button>
+    <div class="song-feedback-hero">
+      <p class="song-feedback-kicker">AUDINOO ÉVOLUE AVEC TOI</p>
+      <div class="song-feedback-icon" aria-hidden="true"><span>♫</span><i></i><i></i><i></i></div>
+      <h2 id="song-feedback-title">Et si on améliorait Audinoo ensemble ?</h2>
+      <p class="song-feedback-intro">Tes idées peuvent faire la différence. Raconte-nous ce que tu aimerais voir changer, ajouter ou rendre plus simple sur Audinoo.</p>
+      <div class="song-feedback-promise"><span aria-hidden="true">✦</span> Chaque suggestion nous aide à créer une meilleure expérience musicale.</div>
+    </div>
+    <form id="song-feedback-form">
+      <fieldset>
+        <legend>Comment évalues-tu ton expérience actuelle ? <span class="song-feedback-optional">facultatif</span></legend>
+        <div class="song-feedback-rating">${[1,2,3,4,5].map(value=>`<label aria-label="Sélectionner ou retirer ${value} étoile${value>1?'s':''}"><input type="checkbox" name="rating" value="${value}" aria-label="${value} étoile${value>1?'s':''}"><span aria-hidden="true">★</span></label>`).join('')}</div>
+        <p class="song-feedback-rating-hint">Tu peux choisir une ou plusieurs étoiles.</p>
+      </fieldset>
+      <label class="song-feedback-comment-label" for="song-feedback-topic">Quel aspect d’Audinoo souhaites-tu améliorer ?</label>
+      <select id="song-feedback-topic" name="topic" class="song-feedback-topic">
+        <option value="Expérience générale">L’expérience générale</option>
+        <option value="Création musicale">La création de chansons</option>
+        <option value="Qualité audio">La qualité du son</option>
+        <option value="Bibliothèque et lecteur">La bibliothèque et le lecteur</option>
+        <option value="Crédits et paiements">Les crédits et les paiements</option>
+        <option value="Design et navigation">Le design et la navigation</option>
+        <option value="Version mobile">L’utilisation sur téléphone</option>
+        <option value="Autre idée">Autre idée</option>
+      </select>
+      <label class="song-feedback-comment-label" for="song-feedback-comment">Dis-nous ce que tu aimerais voir sur Audinoo <span>(ton idée, un problème ou une fonctionnalité)</span></label>
+      <textarea id="song-feedback-comment" name="comment" maxlength="1200" rows="4" placeholder="Ex. : J’aimerais pouvoir… / Ce serait plus simple si… / Vous pourriez ajouter…"></textarea>
+      <p class="song-feedback-status" id="song-feedback-status" role="status"></p>
+      <button class="song-feedback-submit" type="submit"><span>Partager mon idée</span><span aria-hidden="true">→</span></button>
+      <button class="song-feedback-later" type="button">Je le ferai plus tard</button>
+    </form>`
   document.body.append(dialog)
   const close = () => { if(dialog.open) dialog.close(); dialog.dataset.preview = '0' }
   dialog.querySelector('.song-feedback-close').addEventListener('click',close)
@@ -3198,27 +3229,30 @@ function getSongFeedbackDialog() {
   dialog.querySelector('#song-feedback-form').addEventListener('submit',async event=>{
     event.preventDefault()
     if (dialog.dataset.preview === '1') {
-      dialog.querySelector('#song-feedback-status').textContent = 'Mode aperçu : aucun avis ne sera envoyé ni enregistré.'
+      dialog.querySelector('#song-feedback-status').textContent = 'Mode aperçu : aucune suggestion ne sera envoyée ni enregistrée.'
       return
     }
     const user=auth.currentUser
     const form=event.currentTarget
-    const selectedRatings=[...new Set(new FormData(form).getAll('rating').map(Number).filter(value=>Number.isInteger(value)&&value>=1&&value<=5))].sort((a,b)=>a-b)
+    const formData=new FormData(form)
+    const selectedRatings=[...new Set(formData.getAll('rating').map(Number).filter(value=>Number.isInteger(value)&&value>=1&&value<=5))].sort((a,b)=>a-b)
     const rating=selectedRatings.length?Math.max(...selectedRatings):0
-    const comment=String(new FormData(form).get('comment')||'').trim().slice(0,500)
+    const topic=String(formData.get('topic')||'Expérience générale').slice(0,80)
+    const comment=String(formData.get('comment')||'').trim().slice(0,1200)
     const status=dialog.querySelector('#song-feedback-status')
     const submit=dialog.querySelector('.song-feedback-submit')
-    if(!user || !selectedRatings.length || !Number.isInteger(rating) || rating<1 || rating>5){status.textContent='Sélectionne au moins une étoile.';return}
-    submit.disabled=true;status.textContent='Enregistrement de ton avis…'
+    if(!user){status.textContent='Connecte-toi pour partager ton idée.';return}
+    if(!comment){status.textContent='Écris quelques mots pour nous expliquer ton idée.';dialog.querySelector('#song-feedback-comment').focus();return}
+    submit.disabled=true;status.textContent='Envoi de ta suggestion…'
     try {
       const ref=doc(db,'songFeedback',user.uid)
       const existing=await getDoc(ref)
-      if(existing.exists()) { status.textContent='Tu as déjà envoyé ton avis. Merci pour ton retour !'; submit.disabled=true; return }
-      await setDoc(ref,{uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,selectedRatings,comment,trackTitle:String(dialog.dataset.trackTitle||'Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()})
+      if(existing.exists()) { status.textContent='Tu as déjà partagé ton avis. Merci pour ta contribution !'; submit.disabled=true; return }
+      await setDoc(ref,{uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,selectedRatings,topic,comment,improvementSuggestion:comment,trackTitle:String(dialog.dataset.trackTitle||'Avis général sur Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()})
       writeBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid,'1')
-      status.textContent='Merci ! Ton avis a bien été envoyé. ❤️'
-      window.setTimeout(()=>{if(dialog.open)dialog.close()},900)
-    } catch(error) { console.error('[Audinoo feedback] Could not save rating',error);status.textContent='Impossible d’enregistrer ton avis pour le moment. Réessaie.';submit.disabled=false }
+      status.textContent='Merci ! Ton idée a bien été transmise. Ensemble, faisons grandir Audinoo. 💜'
+      window.setTimeout(()=>{if(dialog.open)dialog.close()},1400)
+    } catch(error) { console.error('[Audinoo feedback] Could not save suggestion',error);status.textContent='Impossible d’envoyer ta suggestion pour le moment. Réessaie.';submit.disabled=false }
   })
   songFeedbackDialog=dialog
   return dialog
