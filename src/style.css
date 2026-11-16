@@ -3121,13 +3121,18 @@ button.is-generating:disabled {
 .song-feedback-intro { margin:0 auto 20px; max-width:330px; color:#bdb5cb; font-size:13px; line-height:1.55; }
 .song-feedback-dialog fieldset { margin:0 0 18px; padding:0; border:0; }
 .song-feedback-dialog legend { margin:0 auto 12px; color:#eee8f7; font-size:13px; font-weight:650; }
-.song-feedback-rating { display:flex; justify-content:center; gap:12px; }
-.song-feedback-rating label { display:grid; gap:2px; justify-items:center; cursor:pointer; }
+.song-feedback-rating { display:flex; justify-content:center; gap:14px; padding:4px 0 8px; }
+.song-feedback-rating label { display:grid; place-items:center; min-width:42px; min-height:48px; cursor:pointer; border-radius:12px; transition:background .15s,transform .15s; }
+.song-feedback-rating label:hover { background:rgba(255,198,92,.09); transform:translateY(-2px); }
 .song-feedback-rating input { position:absolute; opacity:0; pointer-events:none; }
-.song-feedback-rating label span { color:#625b70; font-size:32px; line-height:1.1; transition:color .15s,transform .15s; }
-.song-feedback-rating label:has(input:checked) span { color:#ffc65c; transform:scale(1.08); }
+.song-feedback-rating label span { color:#625b70; font-size:40px; line-height:1; transition:color .15s,transform .15s,text-shadow .15s; }
+.song-feedback-rating label:has(input:checked) span { color:#ffc65c; transform:scale(1.13); text-shadow:0 0 18px rgba(255,198,92,.32); }
 .song-feedback-rating label:has(input:focus-visible) span { outline:2px solid #d9a4ff; outline-offset:4px; border-radius:5px; }
-.song-feedback-rating label small { color:#8f879d; font-size:10px; }
+.admin-feedback-invite-panel { margin:18px 0 22px; }
+#admin-feedback-invite-users, #admin-personal-notification-user { min-height:150px; padding:10px; border:1px solid rgba(255,255,255,.14); border-radius:12px; color:inherit; background:rgba(255,255,255,.045); }
+.admin-feedback-invite-panel input[type="search"] { width:100%; min-height:42px; padding:10px 12px; border:1px solid rgba(255,255,255,.14); border-radius:10px; color:inherit; background:rgba(255,255,255,.045); }
+.admin-feedback-invite-panel select option, .admin-personal-notification-panel select option { padding:7px; }
+@media(max-width:520px){.song-feedback-rating{gap:6px}.song-feedback-rating label{min-width:38px}.song-feedback-rating label span{font-size:36px}}
 .song-feedback-comment-label { display:block; margin:0 0 8px; color:#eee8f7; text-align:left; font-size:12px; font-weight:650; }
 .song-feedback-comment-label span { color:#91899f; font-weight:400; }
 .song-feedback-dialog textarea { display:block; width:100%; min-height:78px; resize:vertical; padding:11px 12px; border:1px solid rgba(255,255,255,.13); border-radius:12px; outline:none; color:#fff; background:rgba(255,255,255,.045); font:inherit; font-size:12px; }
