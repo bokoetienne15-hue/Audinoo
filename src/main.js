@@ -1879,9 +1879,9 @@ function renderAdminSongFeedback() {
   const ratings = allFeedback.map(item => Number(item.rating)).filter(value => value >= 1 && value <= 5)
   adminFeedbackSection.querySelector('#admin-feedback-total').textContent = adminNumber(allFeedback.length)
   adminFeedbackSection.querySelector('#admin-feedback-average').textContent = ratings.length ? (ratings.reduce((sum,value)=>sum+value,0)/ratings.length).toFixed(1).replace('.', ',') + ' / 5' : '—'
-  adminFeedbackSection.querySelector('#admin-feedback-comments').textContent = adminNumber(latestAdminSongFeedback.filter(item => String(item.comment || '').trim()).length)
+  adminFeedbackSection.querySelector('#admin-feedback-comments').textContent = adminNumber(allFeedback.filter(item => String(item.comment || '').trim()).length)
   adminFeedbackSection.querySelector('#admin-feedback-count').textContent = `${adminNumber(filtered.length)} avis`
-  adminFeedbackSection.querySelector('#admin-feedback-status').textContent = `${adminNumber(latestAdminSongFeedback.length)} avis enregistrés dans Firebase.`
+  adminFeedbackSection.querySelector('#admin-feedback-status').textContent = `${adminNumber(allFeedback.length)} retour(s) enregistrés dans Firebase.`
   const body = adminFeedbackSection.querySelector('#admin-feedback-rows'); replaceNodeChildren(body)
   if (!filtered.length) { const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='Aucun avis reçu pour le moment.';row.append(cell);body.append(row);return }
   filtered.forEach(item => {
@@ -3257,9 +3257,8 @@ function getSongFeedbackDialog() {
       const payload={uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,selectedRatings,topic,comment,improvementSuggestion:comment,trackTitle:String(dialog.dataset.trackTitle||'Avis général sur Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()}
       if(invitationId){
         const invitationRef=doc(db,'feedbackInvitations',invitationId),responseRef=doc(db,'feedbackResponses',invitationId)
-        const [invitation,response]=await Promise.all([getDoc(invitationRef),getDoc(responseRef)])
+        const invitation=await getDoc(invitationRef)
         if(!invitation.exists()||invitation.data().uid!==user.uid||invitation.data().status!=='pending'){status.textContent='Cette invitation n’est plus disponible.';submit.disabled=true;return}
-        if(response.exists()){status.textContent='Ton retour a déjà été transmis. Merci !';submit.disabled=true;return}
         await setDoc(responseRef,payload)
         await updateDoc(invitationRef,{status:'completed',completedAt:serverTimestamp()})
       }else{
@@ -4842,6 +4841,7 @@ function openProfile(profile, { requireCountry = false } = {}) {
   }
   closeCountrySelection()
   openWorkspace(profile)
+  window.setTimeout(() => { void showPendingFeedbackInvitation(profile.uid) }, 900)
 }
 
 function updateWorkspaceGreeting(displayName) {
@@ -4999,6 +4999,7 @@ countrySubmit.addEventListener('click', async () => {
     void recordAcquisitionEvent('signup_completed', 'Compte prêt, pays enregistré')
     closeCountrySelection()
     openWorkspace(profile)
+    window.setTimeout(() => { void showPendingFeedbackInvitation(profile.uid) }, 900)
     toast.textContent = 'Ton pays a été enregistré.'
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 3200)
