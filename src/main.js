@@ -3268,7 +3268,7 @@ function getSongFeedbackDialog() {
       }
       writeBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid,'1')
       status.textContent='Merci ! Ton idée a bien été transmise. Ensemble, faisons grandir Audinoo. 💜'
-      window.setTimeout(()=>{if(dialog.open)dialog.close()},1400)
+      window.setTimeout(()=>{if(dialog.open)dialog.close();if(invitationId)void showPendingFeedbackInvitation(user.uid)},1400)
     } catch(error) { console.error('[Audinoo feedback] Could not save suggestion',error);status.textContent='Impossible d’envoyer ta suggestion pour le moment. Réessaie.';submit.disabled=false }
   })
   songFeedbackDialog=dialog
