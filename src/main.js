@@ -3254,7 +3254,9 @@ function getSongFeedbackDialog() {
     submit.disabled=true;status.textContent='Envoi de ta suggestion…'
     try {
       const invitationId=String(dialog.dataset.invitationId||'')
-      const payload={uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,selectedRatings,topic,comment,improvementSuggestion:comment,trackTitle:String(dialog.dataset.trackTitle||'Avis général sur Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()}
+      const profileSnapshot=await getDoc(doc(db,'users',user.uid))
+      const savedProfile=profileSnapshot.exists()?profileSnapshot.data():{}
+      const payload={uid:user.uid,displayName:String(savedProfile.displayName||user.displayName||savedProfile.username||user.email||'Utilisateur').slice(0,100),email:String(savedProfile.email||user.email||'').slice(0,254),rating,selectedRatings,topic,comment,improvementSuggestion:comment,trackTitle:String(dialog.dataset.trackTitle||'Avis général sur Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()}
       if(invitationId){
         const invitationRef=doc(db,'feedbackInvitations',invitationId),responseRef=doc(db,'feedbackResponses',invitationId)
         const invitation=await getDoc(invitationRef)
@@ -3303,8 +3305,17 @@ async function showManualSongFeedback(invitationId = '') {
 async function showPendingFeedbackInvitation(userId){
   if(!userId||auth.currentUser?.uid!==userId)return
   try{
-    const pending=await getDocs(query(collection(db,'feedbackInvitations'),where('uid','==',userId),where('status','==','pending'),limit(1)))
-    if(auth.currentUser?.uid===userId&&pending.size)await showManualSongFeedback(pending.docs[0].id)
+    const pending=await getDocs(query(collection(db,'feedbackInvitations'),where('uid','==',userId),where('status','==','pending'),limit(10)))
+    for(const invitation of pending.docs){
+      if(auth.currentUser?.uid!==userId)return
+      const response=await getDoc(doc(db,'feedbackResponses',invitation.id))
+      if(response.exists()){
+        await updateDoc(doc(db,'feedbackInvitations',invitation.id),{status:'completed',completedAt:serverTimestamp()})
+        continue
+      }
+      await showManualSongFeedback(invitation.id)
+      return
+    }
   }catch(error){console.warn('[Audinoo feedback] Could not load pending invitations',error)}
 }
 
