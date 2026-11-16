@@ -342,7 +342,8 @@ service cloud.firestore {
         && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt'])
         && request.resource.data.status == 'completed'
-        && request.resource.data.completedAt == request.time;
+        && request.resource.data.completedAt == request.time
+        && exists(/databases/$(database)/documents/feedbackResponses/$(invitationId));
       allow delete: if isAdmin();
     }
 
