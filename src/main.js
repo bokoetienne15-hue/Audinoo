@@ -1889,7 +1889,7 @@ function renderAdminSongFeedback() {
     const row=document.createElement('tr')
     const identity=document.createElement('td'),name=document.createElement('strong'),email=document.createElement('small')
     name.textContent=item.displayName || 'Utilisateur Audinoo'; email.textContent=item.email || ''; identity.append(name,email)
-    const rating=document.createElement('td'); rating.textContent='★'.repeat(Math.max(0,Math.min(5,Number(item.rating)||0))) + '☆'.repeat(5-Math.max(0,Math.min(5,Number(item.rating)||0))); rating.className='admin-feedback-stars'
+    const rating=document.createElement('td'); const selectedRatings=Array.isArray(item.selectedRatings)?item.selectedRatings.map(Number).filter(value=>Number.isInteger(value)&&value>=1&&value<=5):[]; rating.textContent=selectedRatings.length?[1,2,3,4,5].map(value=>selectedRatings.includes(value)?'★':'☆').join(''):'★'.repeat(Math.max(0,Math.min(5,Number(item.rating)||0))) + '☆'.repeat(5-Math.max(0,Math.min(5,Number(item.rating)||0))); rating.className='admin-feedback-stars'
     const song=document.createElement('td'); song.textContent=item.trackTitle || 'Première chanson'
     const comment=document.createElement('td'); comment.textContent=item.comment || 'Aucun commentaire'; comment.className='admin-feedback-comment'
     const date=document.createElement('td'); date.textContent=adminDateLabel(item.createdAt)
@@ -3188,13 +3188,13 @@ function getSongFeedbackDialog() {
   const dialog = document.createElement('dialog')
   dialog.className = 'song-feedback-dialog'
   dialog.setAttribute('aria-labelledby','song-feedback-title')
-  dialog.innerHTML = `<button class="song-feedback-close" type="button" aria-label="Fermer">×</button><p class="song-feedback-kicker">TON AVIS COMPTE POUR AUDINOO</p><div class="song-feedback-icon" aria-hidden="true">♫</div><h2 id="song-feedback-title">Alors, qu’en penses-tu ?</h2><p class="song-feedback-intro">Ton expérience compte. Dis-nous ce que tu penses d’Audinoo en quelques secondes.</p><form id="song-feedback-form"><fieldset><legend>Quelle note donnes-tu à ton expérience sur Audinoo ?</legend><div class="song-feedback-rating">${[1,2,3,4,5].map(value=>`<label aria-label="${value} étoile${value>1?'s':''}"><input type="radio" name="rating" value="${value}" required><span aria-hidden="true">★</span></label>`).join('')}</div></fieldset><label class="song-feedback-comment-label" for="song-feedback-comment">Qu’as-tu aimé ou que peut-on améliorer ? <span>(facultatif)</span></label><textarea id="song-feedback-comment" name="comment" maxlength="500" rows="3" placeholder="Ton avis en quelques mots…"></textarea><p class="song-feedback-status" id="song-feedback-status" role="status"></p><button class="song-feedback-submit" type="submit">Envoyer mon avis</button><button class="song-feedback-later" type="button">Plus tard</button></form>`
+  dialog.innerHTML = `<button class="song-feedback-close" type="button" aria-label="Fermer">×</button><p class="song-feedback-kicker">TON AVIS COMPTE POUR AUDINOO</p><div class="song-feedback-icon" aria-hidden="true">♫</div><h2 id="song-feedback-title">Alors, qu’en penses-tu ?</h2><p class="song-feedback-intro">Ton expérience compte. Dis-nous ce que tu penses d’Audinoo en quelques secondes.</p><form id="song-feedback-form"><fieldset><legend>Quelle note donnes-tu à ton expérience sur Audinoo ?</legend><div class="song-feedback-rating">${[1,2,3,4,5].map(value=>`<label aria-label="Sélectionner ou retirer ${value} étoile${value>1?'s':''}"><input type="checkbox" name="rating" value="${value}" aria-label="${value} étoile${value>1?'s':''}"><span aria-hidden="true">★</span></label>`).join('')}</div></fieldset><label class="song-feedback-comment-label" for="song-feedback-comment">Qu’as-tu aimé ou que peut-on améliorer ? <span>(facultatif)</span></label><textarea id="song-feedback-comment" name="comment" maxlength="500" rows="3" placeholder="Ton avis en quelques mots…"></textarea><p class="song-feedback-status" id="song-feedback-status" role="status"></p><button class="song-feedback-submit" type="submit">Envoyer mon avis</button><button class="song-feedback-later" type="button">Plus tard</button></form>`
   document.body.append(dialog)
   const close = () => { if(dialog.open) dialog.close(); dialog.dataset.preview = '0' }
   dialog.querySelector('.song-feedback-close').addEventListener('click',close)
   dialog.querySelector('.song-feedback-later').addEventListener('click',close)
   dialog.addEventListener('click',event=>{if(event.target===dialog)close()})
-  dialog.querySelectorAll('.song-feedback-rating input').forEach(input=>input.addEventListener('change',()=>dialog.querySelector('.song-feedback-rating').classList.add('has-selection')))
+  dialog.querySelectorAll('.song-feedback-rating input').forEach(input=>input.addEventListener('change',()=>dialog.querySelector('.song-feedback-rating').classList.toggle('has-selection',Array.from(dialog.querySelectorAll('.song-feedback-rating input:checked')).length>0)))
   dialog.querySelector('#song-feedback-form').addEventListener('submit',async event=>{
     event.preventDefault()
     if (dialog.dataset.preview === '1') {
@@ -3203,17 +3203,18 @@ function getSongFeedbackDialog() {
     }
     const user=auth.currentUser
     const form=event.currentTarget
-    const rating=Number(new FormData(form).get('rating'))
+    const selectedRatings=[...new Set(new FormData(form).getAll('rating').map(Number).filter(value=>Number.isInteger(value)&&value>=1&&value<=5))].sort((a,b)=>a-b)
+    const rating=selectedRatings.length?Math.max(...selectedRatings):0
     const comment=String(new FormData(form).get('comment')||'').trim().slice(0,500)
     const status=dialog.querySelector('#song-feedback-status')
     const submit=dialog.querySelector('.song-feedback-submit')
-    if(!user || !Number.isInteger(rating) || rating<1 || rating>5){status.textContent='Choisis une note entre 1 et 5 étoiles.';return}
+    if(!user || !selectedRatings.length || !Number.isInteger(rating) || rating<1 || rating>5){status.textContent='Sélectionne au moins une étoile.';return}
     submit.disabled=true;status.textContent='Enregistrement de ton avis…'
     try {
       const ref=doc(db,'songFeedback',user.uid)
       const existing=await getDoc(ref)
       if(existing.exists()) { status.textContent='Tu as déjà envoyé ton avis. Merci pour ton retour !'; submit.disabled=true; return }
-      await setDoc(ref,{uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,comment,trackTitle:String(dialog.dataset.trackTitle||'Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()})
+      await setDoc(ref,{uid:user.uid,displayName:String(user.displayName||user.email||'Utilisateur').slice(0,100),email:String(user.email||'').slice(0,254),rating,selectedRatings,comment,trackTitle:String(dialog.dataset.trackTitle||'Audinoo').slice(0,150),taskId:String(dialog.dataset.taskId||'manual-feedback').slice(0,200),trackIndex:Number(dialog.dataset.trackIndex||0),listenSeconds:30,createdAt:serverTimestamp()})
       writeBrowserStorage('localStorage','audinoo-first-song-feedback-submitted-v1-'+user.uid,'1')
       status.textContent='Merci ! Ton avis a bien été envoyé. ❤️'
       window.setTimeout(()=>{if(dialog.open)dialog.close()},900)
