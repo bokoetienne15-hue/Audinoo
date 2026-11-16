@@ -348,7 +348,8 @@ service cloud.firestore {
     }
 
     match /feedbackResponses/{responseId} {
-      allow get, list: if isAdmin();
+      allow get: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
       allow create: if signedIn()
         && exists(/databases/$(database)/documents/feedbackInvitations/$(responseId))
         && get(/databases/$(database)/documents/feedbackInvitations/$(responseId)).data.uid == request.auth.uid
