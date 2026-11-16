@@ -3112,22 +3112,52 @@ button.is-generating:disabled {
 
 
 /* First-song feedback dialog */
-.song-feedback-dialog { width:min(440px,calc(100vw - 28px)); max-width:calc(100vw - 28px); max-height:min(90vh,760px); overflow-y:auto; padding:26px 22px 22px; border:1px solid rgba(190,135,255,.28); border-radius:24px; color:#f7f3ff; background:radial-gradient(circle at 50% 0,rgba(126,74,180,.22),transparent 42%),#100d1b; box-shadow:0 24px 90px rgba(0,0,0,.62); text-align:center; }
-.song-feedback-dialog::backdrop { background:rgba(4,3,10,.72); backdrop-filter:blur(7px); }
-.song-feedback-close { position:absolute; top:12px; right:14px; width:34px; height:34px; border:1px solid rgba(255,255,255,.12); border-radius:50%; color:#c9c2d8; background:rgba(255,255,255,.06); font-size:22px; cursor:pointer; }
-.song-feedback-kicker { margin:2px 0 12px; color:#c58cff; font-size:10px; font-weight:800; letter-spacing:.16em; }
-.song-feedback-icon { display:grid; place-items:center; width:52px; height:52px; margin:0 auto 12px; border:1px solid rgba(193,133,255,.3); border-radius:17px; color:#e3b5ff; background:rgba(159,93,220,.15); font-size:26px; }
-.song-feedback-dialog h2 { margin:0 0 8px; font-size:23px; }
-.song-feedback-intro { margin:0 auto 20px; max-width:330px; color:#bdb5cb; font-size:13px; line-height:1.55; }
-.song-feedback-dialog fieldset { margin:0 0 18px; padding:0; border:0; }
-.song-feedback-dialog legend { margin:0 auto 12px; color:#eee8f7; font-size:13px; font-weight:650; }
-.song-feedback-rating { display:flex; justify-content:center; gap:12px; }
-.song-feedback-rating label { display:grid; gap:2px; justify-items:center; cursor:pointer; }
+.song-feedback-dialog { position:relative; width:min(500px,calc(100vw - 24px)); max-width:calc(100vw - 24px); max-height:min(92vh,850px); overflow-y:auto; padding:0 24px 22px; border:1px solid rgba(190,135,255,.25); border-radius:28px; color:#f7f3ff; background:linear-gradient(180deg,rgba(39,24,59,.98),#100d1b 48%); box-shadow:0 28px 100px rgba(0,0,0,.68),0 0 55px rgba(155,91,220,.12); text-align:left; }
+.song-feedback-dialog::backdrop { background:rgba(4,3,10,.78); backdrop-filter:blur(9px); }
+.song-feedback-close { position:sticky; z-index:3; float:right; top:12px; margin:12px -10px -44px 0; width:34px; height:34px; border:1px solid rgba(255,255,255,.14); border-radius:50%; color:#ded5eb; background:rgba(255,255,255,.08); font-size:22px; cursor:pointer; }
+.song-feedback-hero { padding:24px 0 18px; text-align:center; }
+.song-feedback-kicker { margin:2px 0 14px; color:#d4a6ff; font-size:10px; font-weight:850; letter-spacing:.17em; }
+.song-feedback-icon { position:relative; display:flex; align-items:center; justify-content:center; gap:3px; width:76px; height:76px; margin:0 auto 16px; border:1px solid rgba(205,157,255,.42); border-radius:25px; color:#f0d6ff; background:radial-gradient(circle at 50% 40%,rgba(195,129,255,.32),rgba(128,68,180,.12) 70%); box-shadow:0 0 34px rgba(176,107,255,.18),inset 0 0 22px rgba(255,255,255,.05); font-size:35px; }
+.song-feedback-icon span { position:relative; z-index:1; text-shadow:0 0 18px rgba(220,174,255,.7); animation:feedback-note-float 2.8s ease-in-out infinite; }
+.song-feedback-icon i { position:absolute; bottom:18px; width:3px; border-radius:8px; background:#d8a8ff; opacity:.8; }
+.song-feedback-icon i:nth-of-type(1) { left:12px; height:8px; }
+.song-feedback-icon i:nth-of-type(2) { left:17px; height:14px; }
+.song-feedback-icon i:nth-of-type(3) { right:12px; height:10px; }
+@keyframes feedback-note-float { 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-4px) rotate(5deg)} }
+.song-feedback-dialog h2 { max-width:390px; margin:0 auto 9px; color:#fff; font-size:clamp(21px,5vw,26px); line-height:1.16; letter-spacing:-.035em; }
+.song-feedback-intro { max-width:390px; margin:0 auto 14px; color:#c9bfd6; font-size:13px; line-height:1.65; }
+.song-feedback-promise { display:inline-flex; align-items:center; gap:7px; padding:8px 12px; border:1px solid rgba(202,153,255,.16); border-radius:30px; color:#d9c5ee; background:rgba(174,112,229,.09); font-size:10px; line-height:1.4; }
+.song-feedback-promise span { color:#e4b9ff; }
+.song-feedback-dialog form { padding-top:16px; border-top:1px solid rgba(255,255,255,.09); }
+.song-feedback-dialog fieldset { margin:0 0 17px; padding:0; border:0; }
+.song-feedback-dialog legend { margin:0 0 8px; color:#f0eafa; font-size:12px; font-weight:700; }
+.song-feedback-optional,.song-feedback-rating-hint { color:#988ba9; font-size:10px; font-weight:400; }
+.song-feedback-rating { display:flex; justify-content:flex-start; gap:12px; padding:2px 0 3px; }
+.song-feedback-rating label { display:grid; place-items:center; min-width:38px; min-height:42px; cursor:pointer; border-radius:11px; transition:background .15s,transform .15s; }
+.song-feedback-rating label:hover { background:rgba(255,198,92,.09); transform:translateY(-2px); }
 .song-feedback-rating input { position:absolute; opacity:0; pointer-events:none; }
-.song-feedback-rating label span { color:#625b70; font-size:32px; line-height:1.1; transition:color .15s,transform .15s; }
-.song-feedback-rating label:has(input:checked) span { color:#ffc65c; transform:scale(1.08); }
+.song-feedback-rating label span { color:#625b70; font-size:34px; line-height:1; transition:color .15s,transform .15s,text-shadow .15s; }
+.song-feedback-rating label:has(input:checked) span { color:#ffc65c; transform:scale(1.13); text-shadow:0 0 18px rgba(255,198,92,.32); }
 .song-feedback-rating label:has(input:focus-visible) span { outline:2px solid #d9a4ff; outline-offset:4px; border-radius:5px; }
-.song-feedback-rating label small { color:#8f879d; font-size:10px; }
+.song-feedback-rating-hint { margin:0; }
+.song-feedback-comment-label { display:block; margin:0 0 8px; color:#f0eafa; font-size:12px; font-weight:700; line-height:1.5; }
+.song-feedback-comment-label span { color:#988ba9; font-weight:400; }
+.song-feedback-topic,.song-feedback-dialog textarea { display:block; width:100%; min-height:44px; margin:0 0 15px; padding:11px 12px; border:1px solid rgba(255,255,255,.13); border-radius:13px; outline:none; color:#fff; background:rgba(255,255,255,.055); font:inherit; font-size:12px; }
+.song-feedback-topic { color-scheme:dark; }
+.song-feedback-topic option { color:#fff; background:#171122; }
+.song-feedback-dialog textarea { min-height:112px; resize:vertical; line-height:1.55; }
+.song-feedback-dialog textarea:focus,.song-feedback-topic:focus { border-color:#bd8bea; box-shadow:0 0 0 3px rgba(189,139,234,.12); }
+.song-feedback-status { min-height:18px; margin:8px 0; color:#d7b8f4; font-size:11px; line-height:1.5; }
+.song-feedback-submit { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; min-height:48px; border:0; border-radius:14px; color:#190e25; background:linear-gradient(105deg,#e0b5ff,#bd8bf2 55%,#a878e5); box-shadow:0 8px 25px rgba(168,120,229,.2); font-size:13px; font-weight:850; cursor:pointer; transition:transform .15s,filter .15s; }
+.song-feedback-submit:hover { transform:translateY(-1px); filter:brightness(1.06); }
+.song-feedback-submit:disabled { opacity:.55; cursor:wait; }
+.song-feedback-later { display:block; margin:9px auto 0; padding:8px 16px; border:0; color:#aaa1b8; background:transparent; font-size:11px; cursor:pointer; }
+@media(max-width:520px){.song-feedback-dialog{padding:0 18px 18px;border-radius:23px}.song-feedback-hero{padding-top:21px}.song-feedback-rating{gap:8px}.song-feedback-rating label{min-width:35px}.song-feedback-rating label span{font-size:32px}.song-feedback-promise{font-size:9px}}
+.admin-feedback-invite-panel { margin:18px 0 22px; }
+#admin-feedback-invite-users, #admin-personal-notification-user { min-height:150px; padding:10px; border:1px solid rgba(255,255,255,.14); border-radius:12px; color:inherit; background:rgba(255,255,255,.045); }
+.admin-feedback-invite-panel input[type="search"] { width:100%; min-height:42px; padding:10px 12px; border:1px solid rgba(255,255,255,.14); border-radius:10px; color:inherit; background:rgba(255,255,255,.045); }
+.admin-feedback-invite-panel select option, .admin-personal-notification-panel select option { padding:7px; }
+@media(max-width:520px){.song-feedback-rating{gap:6px}.song-feedback-rating label{min-width:38px}.song-feedback-rating label span{font-size:36px}}
 .song-feedback-comment-label { display:block; margin:0 0 8px; color:#eee8f7; text-align:left; font-size:12px; font-weight:650; }
 .song-feedback-comment-label span { color:#91899f; font-weight:400; }
 .song-feedback-dialog textarea { display:block; width:100%; min-height:78px; resize:vertical; padding:11px 12px; border:1px solid rgba(255,255,255,.13); border-radius:12px; outline:none; color:#fff; background:rgba(255,255,255,.045); font:inherit; font-size:12px; }

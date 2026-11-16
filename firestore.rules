@@ -310,13 +310,60 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if signedIn()
         && feedbackId == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid','displayName','email','rating','comment','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
-        && request.resource.data.keys().hasAll(['uid','displayName','email','rating','comment','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','rating','selectedRatings','topic','comment','improvementSuggestion','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','displayName','email','rating','selectedRatings','topic','comment','improvementSuggestion','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 100
         && request.resource.data.email is string && request.resource.data.email.size() <= 254
-        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
-        && request.resource.data.comment is string && request.resource.data.comment.size() <= 500
+        && request.resource.data.rating is int && request.resource.data.rating >= 0 && request.resource.data.rating <= 5
+        && request.resource.data.selectedRatings is list && request.resource.data.selectedRatings.size() <= 5
+        && request.resource.data.topic is string && request.resource.data.topic.size() <= 80
+        && request.resource.data.comment is string && request.resource.data.comment.size() >= 1 && request.resource.data.comment.size() <= 1200
+        && request.resource.data.improvementSuggestion == request.resource.data.comment
+        && request.resource.data.trackTitle is string && request.resource.data.trackTitle.size() <= 150
+        && request.resource.data.taskId is string && request.resource.data.taskId.size() <= 200
+        && request.resource.data.trackIndex is int && request.resource.data.trackIndex >= 0 && request.resource.data.trackIndex <= 10
+        && request.resource.data.listenSeconds == 30
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /feedbackInvitations/{invitationId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['uid','createdBy','status','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','createdBy','status','createdAt'])
+        && request.resource.data.uid is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt'])
+        && request.resource.data.status == 'completed'
+        && request.resource.data.completedAt == request.time
+        && exists(/databases/$(database)/documents/feedbackResponses/$(invitationId));
+      allow delete: if isAdmin();
+    }
+
+    match /feedbackResponses/{responseId} {
+      allow get: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && exists(/databases/$(database)/documents/feedbackInvitations/$(responseId))
+        && get(/databases/$(database)/documents/feedbackInvitations/$(responseId)).data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/feedbackInvitations/$(responseId)).data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','rating','selectedRatings','topic','comment','improvementSuggestion','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','displayName','email','rating','selectedRatings','topic','comment','improvementSuggestion','trackTitle','taskId','trackIndex','listenSeconds','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 254
+        && request.resource.data.rating is int && request.resource.data.rating >= 0 && request.resource.data.rating <= 5
+        && request.resource.data.selectedRatings is list && request.resource.data.selectedRatings.size() <= 5
+        && request.resource.data.topic is string && request.resource.data.topic.size() <= 80
+        && request.resource.data.comment is string && request.resource.data.comment.size() >= 1 && request.resource.data.comment.size() <= 1200
+        && request.resource.data.improvementSuggestion == request.resource.data.comment
         && request.resource.data.trackTitle is string && request.resource.data.trackTitle.size() <= 150
         && request.resource.data.taskId is string && request.resource.data.taskId.size() <= 200
         && request.resource.data.trackIndex is int && request.resource.data.trackIndex >= 0 && request.resource.data.trackIndex <= 10
