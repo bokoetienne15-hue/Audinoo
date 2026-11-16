@@ -951,7 +951,9 @@ workspaceSettingsPage.innerHTML = `
     <section class="settings-card">
       <div class="settings-card-heading"><span class="settings-icon">♧</span><div><h2>Notifications</h2><p>Choisis les notifications visibles dans ton espace.</p></div></div>
       <label class="settings-switch-row"><span><strong>Annonces Audinoo</strong><small>Afficher les actualités et annonces publiées dans ton espace.</small></span><input id="settings-announcements" type="checkbox" role="switch"></label>
+      <label class="settings-switch-row"><span><strong>Newsletter Audinoo par e-mail</strong><small>Recevoir les nouveautés, conseils de création et actualités d’Audinoo. Désinscription possible à tout moment.</small></span><input id="settings-email-newsletter" type="checkbox" role="switch"></label>
       <p class="settings-status" id="settings-notifications-status" role="status"></p>
+      <p class="settings-status" id="settings-email-newsletter-status" role="status"></p>
     </section>
     <section class="settings-card">
       <div class="settings-card-heading"><span class="settings-icon">♫</span><div><h2>Préférences audio</h2><p>Personnalise la lecture de tes chansons.</p></div></div>
@@ -968,7 +970,7 @@ workspaceSettingsPage.innerHTML = `
   </div>`
 workspaceLayout.append(workspaceSettingsPage)
 let settingsProfileCache = null
-let settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1 }
+let settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, emailNewsletter: false, playbackRate: 1 }
 let settingsThemeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null
 function applyWorkspaceTheme(theme) {
   const resolvedTheme = theme === 'system' ? (settingsThemeMedia?.matches ? 'light' : 'dark') : theme
@@ -1026,7 +1028,7 @@ async function loadWorkspaceSettings(user) {
     const snapshot = await getDoc(doc(db, 'users', user.uid))
     if (!snapshot.exists() || auth.currentUser?.uid !== user.uid) throw new Error('Profil introuvable.')
     settingsProfileCache = { ...snapshot.data(), uid: user.uid }
-    settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, playbackRate: 1, ...(settingsProfileCache.preferences || {}) }
+    settingsPreferences = { theme: readBrowserStorage('localStorage', 'audinoo-workspace-theme') || 'dark', announcements: true, emailNewsletter: false, playbackRate: 1, ...(settingsProfileCache.preferences || {}) }
     const profile = settingsProfileCache
     const avatar = workspaceSettingsPage.querySelector('#settings-profile-avatar')
     const photoURL = typeof profile.photoURL === 'string' && /^https:\/\//i.test(profile.photoURL) ? profile.photoURL : ''
@@ -1048,6 +1050,7 @@ async function loadWorkspaceSettings(user) {
     workspaceSettingsPage.querySelector('#settings-country-value').textContent = profile.country || 'Non renseigné'
     workspaceSettingsPage.querySelector('#settings-theme').value = settingsPreferences.theme
     workspaceSettingsPage.querySelector('#settings-announcements').checked = settingsPreferences.announcements !== false
+    workspaceSettingsPage.querySelector('#settings-email-newsletter').checked = settingsPreferences.emailNewsletter === true
     workspaceSettingsPage.querySelector('#settings-playback-rate').value = String(settingsPreferences.playbackRate || 1)
     syncPasswordResetAvailability(user)
     applyWorkspaceTheme(settingsPreferences.theme)
@@ -1111,6 +1114,31 @@ workspaceSettingsPage.querySelector('#settings-announcements').addEventListener(
   notificationControl.hidden = !event.target.checked
   try { await saveWorkspacePreferences({ announcements: event.target.checked }, status) }
   catch { event.target.checked = previous; notificationControl.hidden = !previous }
+})
+workspaceSettingsPage.querySelector('#settings-email-newsletter').addEventListener('change', async (event) => {
+  const checkbox = event.target
+  const status = workspaceSettingsPage.querySelector('#settings-email-newsletter-status')
+  const previous = settingsPreferences.emailNewsletter === true
+  checkbox.disabled = true
+  status.textContent = 'Enregistrement de ton choix…'
+  try {
+    const next = { ...settingsPreferences, emailNewsletter: checkbox.checked }
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+      preferences: next,
+      emailNewsletterUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+    settingsPreferences = next
+    settingsProfileCache = { ...(settingsProfileCache || {}), preferences: next }
+    status.textContent = checkbox.checked
+      ? 'Inscription à la newsletter enregistrée. Tu pourras te désinscrire ici à tout moment.'
+      : 'Désinscription de la newsletter enregistrée.'
+  } catch (error) {
+    checkbox.checked = previous
+    status.textContent = 'Impossible d’enregistrer ton choix : ' + exactErrorDetails(error)
+  } finally {
+    checkbox.disabled = false
+  }
 })
 workspaceSettingsPage.querySelector('#settings-playback-rate').addEventListener('change', async (event) => {
   const status = workspaceSettingsPage.querySelector('#settings-audio-status')
@@ -1514,6 +1542,7 @@ function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) 
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
+  renderAdminEmailContacts()
   renderFeedbackInviteUsers()
   renderAdminRetention()
   renderAdminGenerationsTable()
@@ -1699,7 +1728,7 @@ adminExportGroup.querySelector('.admin-export-actions').append(excelReportButton
 const adminNavigation = document.createElement('nav')
 adminNavigation.className = 'admin-section-nav'
 adminNavigation.setAttribute('aria-label', 'Rubriques de l’administration')
-adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="users"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11a4 4 0 1 0-1-7.9M17 14.5a4 4 0 0 1 4 4V20"/></svg></span>Utilisateurs</button><button type="button" class="admin-section-link" data-admin-section="generations"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>Générations</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button>'
+adminNavigation.innerHTML = '<p class="admin-section-nav-title">CENTRE DE PILOTAGE</p><button type="button" class="admin-section-link is-active" data-admin-section="overview"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>Vue d’ensemble</button><button type="button" class="admin-section-link" data-admin-section="users"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11a4 4 0 1 0-1-7.9M17 14.5a4 4 0 0 1 4 4V20"/></svg></span>Utilisateurs</button><button type="button" class="admin-section-link" data-admin-section="generations"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>Générations</button><button type="button" class="admin-section-link" data-admin-section="credits"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.8-1-3-1-1.8 0-3 .8-3 2s1.1 1.8 3 2.2 3 1 3 2.3-1.2 2.3-3.2 2.3c-1.2 0-2.4-.4-3.3-1.2M12 5.5v13"/></svg></span>Crédits et offres</button><button type="button" class="admin-section-link" data-admin-section="communications"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>Communication</button><button type="button" class="admin-section-link" data-admin-section="exports"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 13h8M8 17h8"/></svg></span>Rapports et exportations</button><button type="button" class="admin-section-link" data-admin-section="emails"><span class="admin-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span>Emails &amp; Newsletter</button>'
 const adminContent = document.createElement('div')
 adminContent.className = 'admin-section-content'
 const adminShell = document.createElement('div')
@@ -1746,6 +1775,7 @@ const adminGenerationsSection = createAdminSection('generations', 'Générations
 const adminCreditsSection = createAdminSection('credits', 'Crédits et offres', 'Gestion de la promotion de bienvenue et des crédits gratuits.')
 const adminCommunicationSection = createAdminSection('communications', 'Communication', 'Suggestions reçues et annonces destinées aux utilisateurs.')
 const adminExportsSection = createAdminSection('exports', 'Rapports et exportations', 'Documents de suivi générés à partir des données disponibles.')
+const adminEmailsSection = createAdminSection('emails', 'Emails & Newsletter', 'Répertoire centralisé des adresses des comptes Audinoo et gestion des préférences de newsletter.')
 const adminRevenueSection = createAdminSection('revenue', 'Revenus et ventes', 'Paiements confirmés par FedaPay et créations payées, avec filtres par période et pays.')
 const adminAcquisitionSection = createAdminSection('acquisition', 'Acquisition & inscriptions', 'Découvre d’où viennent les visiteurs et combien ouvrent le formulaire d’inscription.')
 const adminOnlineSection = createAdminSection('online', 'Utilisateurs en ligne', 'Les comptes actuellement actifs sur Audinoo, avec leur présence actualisée automatiquement.')
@@ -1763,6 +1793,7 @@ adminOnlineSection.innerHTML += '<section class="admin-panel admin-online-panel"
 adminFeedbackSection.innerHTML += '<div class="admin-feedback-preview-toolbar"><p>APERÇU DU PARCOURS UTILISATEUR</p><button type="button" class="admin-publish-button" id="admin-feedback-preview-button">Voir l’aperçu côté utilisateur <span aria-hidden="true">↗</span></button><small>Affiche le formulaire comme chez les membres, sans enregistrer de note.</small></div><section class="admin-panel admin-feedback-invite-panel"><div class="admin-panel-heading"><div><p>INVITATION MANUELLE</p><h2>Demander un avis aux membres</h2></div></div><form id="admin-feedback-invite-form" class="admin-notification-form"><label for="admin-feedback-invite-search">Rechercher un membre</label><input id="admin-feedback-invite-search" type="search" placeholder="Nom, e-mail ou pays…"><label for="admin-feedback-invite-users">Choisir un ou plusieurs destinataires</label><select id="admin-feedback-invite-users" name="recipients" multiple size="7" required><option value="">Chargement des profils…</option></select><p class="admin-panel-status">Les invitations restent en attente si un membre est hors ligne. Le formulaire s’ouvrira automatiquement à sa prochaine connexion. « Plus tard » conserve l’invitation.</p><button class="admin-publish-button" type="submit" disabled>Envoyer l’invitation <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-feedback-invite-status" role="status" aria-live="polite"></p></form></section><div class="admin-feedback-summary"><article class="admin-stat-card"><span>AVIS REÇUS</span><strong id="admin-feedback-total">—</strong><small>Suggestions envoyées par les membres</small></article><article class="admin-stat-card"><span>NOTE MOYENNE</span><strong id="admin-feedback-average">—</strong><small>Sur 5 étoiles</small></article><article class="admin-stat-card"><span>AVIS AVEC COMMENTAIRE</span><strong id="admin-feedback-comments">—</strong><small>Retours écrits des membres</small></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>RETOURS CLIENTS</p><h2>Suggestions et retours des membres</h2></div><span class="admin-data-count" id="admin-feedback-count">—</span></div><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-feedback-search" type="search" placeholder="Rechercher un nom, e-mail ou commentaire…" autocomplete="off"></label></div><p class="admin-panel-status" id="admin-feedback-status" role="status">Chargement des avis Firebase…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Avis des utilisateurs, faire défiler horizontalement"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Étoiles</th><th>Sujet</th><th>Suggestion</th><th>Date</th></tr></thead><tbody id="admin-feedback-rows"><tr><td colspan="5">Chargement des avis…</td></tr></tbody></table></div></section><p class="admin-panel-status">Chaque compte peut envoyer un seul avis sur sa première écoute suivie. Les avis sont enregistrés dans Firebase et visibles uniquement par l’administration.</p>';
 adminRetentionSection.innerHTML += '<div class="admin-retention-summary"><article class="admin-stat-card"><span>MEMBRES DE RETOUR</span><strong id="admin-retention-returning">—</strong><small>Au moins deux sessions enregistrées</small></article><article class="admin-stat-card"><span>RETOURS AUJOURD’HUI</span><strong id="admin-retention-today">—</strong><small>Membres déjà venus auparavant</small></article><article class="admin-stat-card"><span>ACTIFS · 7 JOURS</span><strong id="admin-retention-week">—</strong><small>Au moins une session récente</small></article><article class="admin-stat-card"><span>RETOURS · 30 JOURS</span><strong id="admin-retention-month">—</strong><small>Au moins deux sessions sur la période</small></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>FIDÉLISATION</p><h2>Qui revient sur Audinoo ?</h2></div><span class="admin-data-count" id="admin-retention-count">—</span></div><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-retention-search" type="search" placeholder="Rechercher un nom ou un e-mail…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Période</span><select id="admin-retention-period"><option value="30">30 derniers jours</option><option value="7">7 derniers jours</option><option value="all">Tout l’historique</option></select></label></div><p class="admin-panel-status" id="admin-retention-status" role="status">Chargement des sessions Firebase…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Historique de fidélisation, faire défiler horizontalement"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Visites</th><th>Dernière activité</th><th>Chansons créées</th><th>Fidélisation</th></tr></thead><tbody id="admin-retention-rows"><tr><td colspan="5">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Une visite correspond à une session authentifiée enregistrée. Le suivi commence après le déploiement : les visites antérieures ne peuvent pas être reconstituées. Les chansons affichées proviennent des 1 000 dernières créations synchronisées dans l’administration.</p>';
 adminUsersSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-user-search" type="search" placeholder="Rechercher un nom, e-mail ou pays…" autocomplete="off"></label><span class="admin-data-count" id="admin-user-count">Chargement…</span></div><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Tableau des utilisateurs, faire défiler horizontalement pour voir toutes les colonnes"><table class="admin-data-table"><thead><tr><th>Utilisateur</th><th>Inscription</th><th>Pays</th><th>Identifiant</th></tr></thead><tbody id="admin-user-rows"><tr><td colspan="4">Chargement des profils…</td></tr></tbody></table></div>'
+adminEmailsSection.innerHTML += '<div class="admin-email-kpis"><article class="admin-stat-card"><span>ADRESSES DISPONIBLES</span><strong id="admin-email-total">—</strong><small>Comptes Firebase authentifiés</small></article><article class="admin-stat-card"><span>ADRESSES GMAIL</span><strong id="admin-email-gmail">—</strong><small>Comptes utilisant Gmail</small></article><article class="admin-stat-card"><span>NEWSLETTER AUTORISÉE</span><strong id="admin-email-consented">—</strong><small>Choix explicite enregistré par les membres</small></article></div><section class="admin-panel admin-email-panel"><div class="admin-panel-heading"><div><p>BASE DE CONTACTS</p><h2>Adresses e-mail des membres</h2></div><span class="admin-data-count" id="admin-email-count">Synchronisation…</span></div><p class="admin-panel-status">Toutes les adresses affichées proviennent des profils associés à un compte Firebase Authentication. Les contacts sans consentement restent exportables pour la gestion interne, mais ne doivent pas être ajoutés à une campagne marketing.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-email-search" type="search" placeholder="Rechercher un nom, une adresse ou un pays…" autocomplete="off"></label><label class="admin-email-filter"><span>Statut newsletter</span><select id="admin-email-filter"><option value="all">Tous les contacts</option><option value="subscribed">Abonnés autorisés</option><option value="not-subscribed">Non abonnés</option><option value="gmail">Gmail uniquement</option></select></label></div><div class="admin-email-export-actions"><button type="button" class="admin-export-button" id="admin-email-export-all">Télécharger tous les e-mails · CSV</button><button type="button" class="admin-export-button is-secondary" id="admin-email-export-consented">Exporter les abonnés autorisés</button></div><p class="admin-panel-status" id="admin-email-status" role="status">Chargement des contacts…</p><div class="admin-data-table-wrap" tabindex="0" role="region" aria-label="Répertoire des adresses e-mail"><table class="admin-data-table"><thead><tr><th>Nom</th><th>Adresse e-mail</th><th>Pays</th><th>Newsletter</th><th>Date d’inscription</th></tr></thead><tbody id="admin-email-rows"><tr><td colspan="5">Chargement des contacts…</td></tr></tbody></table></div></section>'
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
 adminAcquisitionSection.innerHTML += `<section class="admin-panel admin-acquisition-diagnostics"><div class="admin-panel-heading"><div><p>DIAGNOSTIC DU PARCOURS</p><h2>Où les visiteurs abandonnent-ils ?</h2></div><span class="admin-data-count" id="admin-acquisition-events-count">En direct</span></div><div class="admin-acquisition-funnel"><article><span>Page chargée</span><strong id="diag-page-loaded">—</strong></article><article><span>Clic inscription</span><strong id="diag-signup-clicked">—</strong></article><article><span>Fenêtre affichée</span><strong id="diag-signup-opened">—</strong></article><article><span>Formulaire envoyé</span><strong id="diag-signup-submitted">—</strong></article><article><span>Compte Firebase créé</span><strong id="diag-auth-created">—</strong></article><article><span>Profil enregistré</span><strong id="diag-profile-saved">—</strong></article><article><span>Inscription terminée</span><strong id="diag-signup-completed">—</strong></article><article><span>Échecs détectés</span><strong id="diag-signup-failed">—</strong></article></div><p class="admin-panel-status" id="admin-acquisition-events-status" role="status">Les étapes du parcours seront enregistrées après le déploiement de cette version.</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Date</th><th>Source</th><th>Navigateur</th><th>Étape atteinte</th><th>Résultat / explication</th></tr></thead><tbody id="admin-acquisition-events-rows"><tr><td colspan="5">En attente des événements…</td></tr></tbody></table></div><p class="admin-panel-status">Aucune adresse e-mail, aucun mot de passe, nom, numéro de téléphone ou identifiant personnel n’est enregistré dans ce diagnostic. Les événements sont associés à une session anonyme.</p></section>`
 adminAcquisitionSection.innerHTML += '<div class="admin-acquisition-summary"><article class="admin-stat-card"><span>VISITEURS ENREGISTRÉS</span><strong id="admin-acquisition-visits">—</strong><small>Sessions uniques enregistrées dans Firebase</small></article><article class="admin-stat-card"><span>CLICS SUR S’INSCRIRE</span><strong id="admin-acquisition-clicks">—</strong><small>Une seule fois par session</small></article><article class="admin-stat-card"><span>TAUX DE CLIC</span><strong id="admin-acquisition-rate">—</strong><small>Visiteurs ayant ouvert l’inscription</small></article><article class="admin-stat-card"><span>COMPTES CRÉÉS</span><strong id="admin-acquisition-accounts">—</strong><small>Total des profils présents dans Firebase</small></article></div><section class="admin-panel admin-acquisition-sources"><div class="admin-panel-heading"><div><p>ORIGINE DU TRAFIC</p><h2>Visiteurs et inscriptions par source</h2></div><span class="admin-data-count" id="admin-acquisition-source-count">—</span></div><p class="admin-panel-status" id="admin-acquisition-status" role="status">En attente des données Firebase…</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Source</th><th>Visiteurs</th><th>Clics sur S’inscrire</th><th>Taux de clic</th></tr></thead><tbody id="admin-acquisition-rows"><tr><td colspan="4">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Les visites historiques enregistrées avant l’activation du suivi par source apparaissent comme « Non attribué ». Les chiffres concernent des sessions de navigateur, pas des personnes identifiées.</p>'
@@ -1975,6 +2006,65 @@ function renderAdminRetention() {
 }
 adminRetentionSearch.addEventListener('input', renderAdminRetention)
 adminRetentionPeriod.addEventListener('change', renderAdminRetention)
+function renderAdminEmailContacts() {
+  const search = adminEmailsSection.querySelector('#admin-email-search')
+  const filter = adminEmailsSection.querySelector('#admin-email-filter')
+  const body = adminEmailsSection.querySelector('#admin-email-rows')
+  if (!search || !filter || !body) return
+  const validEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
+  const contacts = latestAdminUsers.filter(user => validEmail(user.email))
+    .map(user => ({ ...user, email: String(user.email).trim(), subscribed: user.preferences?.emailNewsletter === true }))
+    .sort((a,b) => String(a.email).localeCompare(String(b.email), 'fr'))
+  const uniqueContacts = [...new Map(contacts.map(user => [user.email.toLowerCase(), user])).values()]
+  const gmailCount = uniqueContacts.filter(user => user.email.toLowerCase().endsWith('@gmail.com')).length
+  const subscribedCount = uniqueContacts.filter(user => user.subscribed).length
+  adminEmailsSection.querySelector('#admin-email-total').textContent = adminNumber(uniqueContacts.length)
+  adminEmailsSection.querySelector('#admin-email-gmail').textContent = adminNumber(gmailCount)
+  adminEmailsSection.querySelector('#admin-email-consented').textContent = adminNumber(subscribedCount)
+  const term = search.value.trim().toLocaleLowerCase('fr')
+  const selectedFilter = filter.value
+  const filtered = uniqueContacts.filter(user => {
+    const matchesSearch = [user.displayName,user.username,user.email,user.country,user.countryCode].some(value => String(value || '').toLocaleLowerCase('fr').includes(term))
+    const matchesFilter = selectedFilter === 'subscribed' ? user.subscribed : selectedFilter === 'not-subscribed' ? !user.subscribed : selectedFilter === 'gmail' ? user.email.toLowerCase().endsWith('@gmail.com') : true
+    return matchesSearch && matchesFilter
+  })
+  adminEmailsSection.querySelector('#admin-email-count').textContent = adminNumber(filtered.length) + ' / ' + adminNumber(uniqueContacts.length) + ' adresse(s)'
+  replaceNodeChildren(body)
+  if (!filtered.length) {
+    const row = document.createElement('tr'), cell = document.createElement('td')
+    cell.colSpan = 5; cell.textContent = 'Aucune adresse correspondante.'; row.append(cell); body.append(row)
+  } else filtered.slice(0,500).forEach(user => {
+    const row = document.createElement('tr')
+    const name = document.createElement('td'); name.textContent = user.displayName || user.username || 'Membre Audinoo'
+    const email = document.createElement('td'); email.textContent = user.email
+    const country = document.createElement('td'); country.textContent = user.country || user.countryCode || '—'
+    const consent = document.createElement('td')
+    const badge = document.createElement('span'); badge.className = user.subscribed ? 'admin-email-consent is-yes' : 'admin-email-consent'
+    badge.textContent = user.subscribed ? 'Abonné' : 'Non abonné'; consent.append(badge)
+    const created = document.createElement('td'); created.textContent = adminDateLabel(user.createdAt)
+    row.append(name,email,country,consent,created); body.append(row)
+  })
+  if (filtered.length > 500) {
+    const row = document.createElement('tr'), cell = document.createElement('td')
+    cell.colSpan = 5; cell.textContent = 'Affichage limité aux 500 premiers résultats. Utilise la recherche pour affiner.'; row.append(cell); body.append(row)
+  }
+  const exportCsv = (items, filename) => {
+    const escapeCsv = value => '"' + String(value ?? '').replace(/"/g, '""') + '"'
+    const rows = [['Nom','Adresse e-mail','Pays','Inscription newsletter','Date inscription'], ...items.map(user => [user.displayName || user.username || '',user.email,user.country || user.countryCode || '',user.subscribed ? 'Oui' : 'Non',adminDateLabel(user.createdAt)])]
+    const csv = '\uFEFF' + rows.map(row => row.map(escapeCsv).join(';')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a'); link.href = url; link.download = filename; link.style.display = 'none'
+    document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1500)
+  }
+  adminEmailsSection.querySelector('#admin-email-export-all').disabled = !uniqueContacts.length
+  adminEmailsSection.querySelector('#admin-email-export-consented').disabled = !subscribedCount
+  adminEmailsSection.querySelector('#admin-email-export-all').onclick = () => exportCsv(uniqueContacts, 'audinoo-contacts-' + new Date().toISOString().slice(0,10) + '.csv')
+  adminEmailsSection.querySelector('#admin-email-export-consented').onclick = () => exportCsv(uniqueContacts.filter(user => user.subscribed), 'audinoo-newsletter-abonnes-' + new Date().toISOString().slice(0,10) + '.csv')
+  adminEmailsSection.querySelector('#admin-email-status').textContent = uniqueContacts.length + ' adresse(s) uniques synchronisées. ' + subscribedCount + ' membre(s) ont donné leur accord explicite pour la newsletter.'
+}
+adminEmailsSection.querySelector('#admin-email-search').addEventListener('input', renderAdminEmailContacts)
+adminEmailsSection.querySelector('#admin-email-filter').addEventListener('change', renderAdminEmailContacts)
 function renderAdminUsersTable() {
   const term = adminUserSearch.value.trim().toLocaleLowerCase('fr')
   const users = latestAdminUsers.filter(user => [user.username,user.displayName,user.email,user.uid,user.country,user.countryCode].some(value => String(value || '').toLocaleLowerCase('fr').includes(term)))
@@ -2524,6 +2614,7 @@ adminNavigation.addEventListener('click', (event) => {
   }
   if (button.dataset.adminSection === 'revenue') void loadAdminRevenue()
   if (button.dataset.adminSection === 'acquisition') renderAdminAcquisition()
+  if (button.dataset.adminSection === 'emails') renderAdminEmailContacts()
 })
 activateAdminSection('overview')
 
