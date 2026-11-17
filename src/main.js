@@ -699,6 +699,7 @@ function windowPricingOpen() {
 
 const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
 workspaceUpgradeButton.addEventListener('click', windowPricingOpen)
+workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')?.addEventListener('click', windowPricingOpen)
 workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener('click', () => {
   const destination = pricingPreviousDestination === '#workspace-pricing' ? '#studio' : pricingPreviousDestination
   workspaceSidebar.querySelector(`.workspace-nav[href="${destination}"]`)?.click()
