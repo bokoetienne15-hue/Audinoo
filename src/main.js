@@ -2957,7 +2957,6 @@ async function refreshAdminAccess(uid) {
     if (auth.currentUser?.uid !== uid || !adminRecord.exists() || adminRecord.data().enabled !== true) return false
     verifiedAdminUid = uid
     adminSidebarButton.hidden = false
-    void refreshDiscoveryPlan(uid)
     startAdminStatsListeners(uid)
     startAdminNotificationListener()
     void loadAdminGenerations()
