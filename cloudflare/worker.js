@@ -543,7 +543,12 @@ async function voiceCreate(request, env, db, user) {
   await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { voiceName: requestedVoiceName }, true)
   const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
   const payload = await result.json().catch(() => ({}))
-  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) return response(502, { error: 'voice-creation-rejected', providerMessage: String(payload.msg || '') })
+  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) return response(502, {
+    error: 'voice-creation-rejected',
+    providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
+    providerCode: payload.code ?? null,
+    providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
+  })
   await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
   return response(200, { taskId, creationTaskId: String(payload.data.taskId) })
 }
@@ -576,14 +581,25 @@ async function voiceStatus(request, env, db, user, url) {
   if (!task.exists || !task.data.creationTaskId) return response(404, { error: 'voice-task-not-found' })
   const result = await fetch(SUNO_VOICE_RECORD_URL + '?taskId=' + encodeURIComponent(task.data.creationTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
   const payload = await result.json().catch(() => ({}))
-  if (!result.ok || payload.code !== 200) return response(502, { error: 'voice-status-unavailable' })
-  const state = String(payload.data?.status || 'processing')
+  if (!result.ok || payload.code !== 200) return response(502, {
+    error: 'voice-status-unavailable',
+    providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur ne renvoie pas le statut de la voix.'),
+    providerCode: payload.code ?? null,
+    providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
+  })
+  const state = String(payload.data?.status || 'processing').toLowerCase()
   let ready = false
   const voiceId = String(payload.data?.voiceId || '')
   if (state === 'success' && voiceId) {
     const check = await fetch(SUNO_VOICE_CHECK_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ task_id: task.data.creationTaskId }), signal: AbortSignal.timeout(20000) })
     const checkPayload = await check.json().catch(() => ({}))
-    ready = check.ok && checkPayload.code === 200 && checkPayload.data?.isAvailable === true
+    if (!check.ok || checkPayload.code !== 200) return response(502, {
+      error: 'voice-availability-check-failed',
+      providerMessage: String(checkPayload.msg || checkPayload.data?.errorMessage || 'Impossible de confirmer la disponibilité de la voix.'),
+      providerCode: checkPayload.code ?? null,
+      providerDetails: String(checkPayload.data?.errorMessage || '').slice(0, 240)
+    })
+    ready = checkPayload.data?.isAvailable === true
     if (ready) {
       const profileRef = db.doc('users/' + user.uid)
       await db.runTransaction(async tx => {
@@ -599,7 +615,15 @@ async function voiceStatus(request, env, db, user, url) {
       await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
     }
   }
-  return response(200, { status: state, ready, voiceName: task.data.voiceName || 'Ma voix', errorMessage: payload.data?.errorMessage || '' })
+  return response(200, {
+    status: state,
+    ready,
+    voiceId: voiceId || null,
+    voiceName: task.data.voiceName || 'Ma voix',
+    errorCode: payload.data?.errorCode ?? null,
+    errorMessage: String(payload.data?.errorMessage || ''),
+    providerMessage: String(payload.msg || '')
+  })
 }
 
 async function confirmCreditPayment(env, db, transactionId) {
@@ -1420,6 +1444,10 @@ export default {
         ])
         const error = allowedTrackPaymentErrors.has(e.message) ? e.message : 'track-purchase-failed'
         return response(status, { error })
+      }
+      if (url.pathname.startsWith('/api/voice/')) {
+        const voiceError = status === 401 ? 'invalid-session' : String(e?.message || 'voice-operation-failed').slice(0, 160)
+        return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','acquisition-data-limit-reached','acquisition-reset-confirmation-mismatch'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
