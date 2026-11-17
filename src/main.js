@@ -3814,10 +3814,22 @@ replaceNodeChildren(suggestionButtons, ...creationSuggestionIdeas.map(({ label, 
 const generationPanel = document.createElement('section')
 generationPanel.className = 'generation-panel'
 generationPanel.setAttribute('aria-live', 'polite')
-studioWorkspacePage.querySelector('.workspace-empty').before(generationPanel)
+const studioEmptyAnchor = studioWorkspacePage.querySelector('.workspace-empty')
+if (studioEmptyAnchor) {
+  studioEmptyAnchor.before(generationPanel)
+} else {
+  console.warn('[Audinoo] Repère de génération absent dans le studio ; insertion de secours activée.')
+  studioWorkspacePage.append(generationPanel)
+}
 const libraryGenerationList = document.createElement('div')
 libraryGenerationList.className = 'generation-list library-generation-list'
-libraryWorkspacePage.querySelector('.workspace-library-empty').after(libraryGenerationList)
+const libraryEmptyAnchor = libraryWorkspacePage.querySelector('.workspace-library-empty')
+if (libraryEmptyAnchor) {
+  libraryEmptyAnchor.after(libraryGenerationList)
+} else {
+  console.warn('[Audinoo] Repère de bibliothèque absent ; insertion de secours activée.')
+  libraryWorkspacePage.append(libraryGenerationList)
+}
 const libraryLoading = document.createElement('div')
 libraryLoading.className = 'library-loading'
 libraryLoading.setAttribute('role', 'status')
