@@ -1144,7 +1144,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
     if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); let viewer = null; try { viewer = await userFrom(request, env) } catch {} return await publicTracks(request, db, viewer) }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
-    const voiceFileMatch = url.pathname.match(/^\\/api\\/voice-file\\/([a-f0-9]{48})$/)
+    const voiceFileMatch = url.pathname.match(/^\/api\/voice-file\/([a-f0-9]{48})$/)
     if (voiceFileMatch) return await publicVoiceFile(request, env, new FirestoreRest(env), voiceFileMatch[1])
     if (url.pathname === '/api/profile-photo' && request.method === 'GET') return await profilePhoto(request, env, null, url)
     if (url.pathname === '/api/suno-callback') {
