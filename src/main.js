@@ -4630,7 +4630,11 @@ function showAuthError(error, mode, operationStep = '') {
     'auth/invalid-login-credentials': 'L’adresse e-mail ou le mot de passe est incorrect. Vérifie tes identifiants.',
     'auth/user-disabled': 'Ce compte a été désactivé. Contacte le support Audinoo.',
     'auth/too-many-requests': 'Trop de tentatives ont été effectuées. Attends un peu avant de réessayer.',
-    'auth/network-request-failed': 'Connexion réseau impossible. Vérifie Internet puis réessaie.',
+    'auth/network-request-failed': 'Connexion réseau impossible. Ton compte est conservé ; reconnecte-toi pour reprendre la finalisation dès que le réseau revient.',
+    'unavailable': 'Le service est momentanément inaccessible. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre automatiquement la finalisation.',
+    'firestore/unavailable': 'Le service est momentanément inaccessible. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre automatiquement la finalisation.',
+    'deadline-exceeded': 'La connexion au service a pris trop de temps. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre la finalisation.',
+    'firestore/deadline-exceeded': 'La connexion au service a pris trop de temps. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre la finalisation.',
     'auth/email-already-in-use': 'Cette adresse e-mail possède déjà un compte. Connecte-toi avec la méthode utilisée lors de l’inscription.',
     'auth/account-exists-with-different-credential': 'Cette adresse Gmail est déjà liée à un compte créé avec une autre méthode. Connecte-toi avec cette méthode pour éviter de créer un second compte.',
     'auth/credential-already-in-use': 'Cette méthode de connexion est déjà liée à un autre compte Audinoo.',
@@ -5274,7 +5278,7 @@ authForm.addEventListener('submit', async (event) => {
       }
 
       operationStep = 'attribution automatique et réservation du pseudo unique'
-      const reservedProfile = await createEmailProfile(credential.user, displayName)
+      await createEmailProfile(credential.user, displayName)
       const profileSnapshot = await getDoc(doc(db, 'users', credential.user.uid))
       if (!profileSnapshot.exists()) throw new Error('profile-save-incomplete')
       const savedProfile = { ...profileSnapshot.data(), uid: credential.user.uid }
