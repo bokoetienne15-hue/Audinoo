@@ -4831,7 +4831,7 @@ async function createGoogleProfile(user) {
   throw new Error('username-generation-failed')
 }
 
-async function createEmailProfile(user, preferredDisplayName = '') {
+async function createEmailProfile(user, preferredDisplayName = '', grantFreeCredit = true) {
   const emailName = (user.email || '').split('@')[0]
   const displayName = preferredDisplayName || user.displayName || emailName
     .split(/[._-]+/)
@@ -4841,7 +4841,7 @@ async function createEmailProfile(user, preferredDisplayName = '') {
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      return await reserveProfileWithRetry(user, generatedUsername({ displayName, email: user.email }), 'password', displayName, user.photoURL || '', false)
+      return await reserveProfileWithRetry(user, generatedUsername({ displayName, email: user.email }), 'password', displayName, user.photoURL || '', grantFreeCredit)
     } catch (error) {
       if (error.message !== 'username-taken') throw error
     }
