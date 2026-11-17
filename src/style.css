@@ -3589,3 +3589,46 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 .library-generation-group>.library-generation-entry{order:1}
 .library-video-song-cover{display:grid;place-items:center}
 .library-video-song-cover:not(:has(img)){color:#d9c6ff;font-size:24px}
+
+
+/* Badge de nouveauté : petit repère vert flottant au-dessus de chaque onglet. */
+.library-view-switch{
+  overflow:visible;
+  margin-top:10px;
+  margin-bottom:22px;
+}
+.library-view-tab{
+  position:relative;
+  overflow:visible;
+  padding-top:2px;
+}
+.library-view-tab .library-view-new{
+  display:inline-flex!important;
+  position:absolute;
+  top:-10px;
+  right:7px;
+  z-index:2;
+  align-items:center;
+  justify-content:center;
+  min-height:15px;
+  padding:0 6px;
+  border:1px solid rgba(74,222,128,.48);
+  border-radius:999px;
+  background:#14532d;
+  color:#bbf7d0;
+  font-size:8px!important;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:.035em;
+  box-shadow:0 2px 8px rgba(0,0,0,.28);
+  pointer-events:none;
+}
+@media(max-width:380px){
+  .library-view-tab .library-view-new{
+    top:-9px;
+    right:4px;
+    min-height:14px;
+    padding:0 5px;
+    font-size:7px!important;
+  }
+}
