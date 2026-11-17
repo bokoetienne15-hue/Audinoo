@@ -3520,3 +3520,11 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 @media(max-width:600px){
  #workspace button.discovery-voice-card{min-width:190px!important;flex:1 1 190px!important}
   }
+
+/* Parcours Ma voix en trois écrans strictement séparés. */
+#discovery-voice-panel [hidden]{display:none!important}
+.discovery-voice-final-step{display:grid;gap:12px;width:min(760px,100%);margin:16px auto 0;padding-top:18px;border-top:1px solid #333}
+.discovery-voice-final-step h3{margin:0;color:#fff;font-size:18px}
+.discovery-voice-final-step>p:not(.discovery-voice-step){margin:0;color:#c8c8c8;font-size:13px;line-height:1.6}
+.discovery-voice-final-step label{color:#eee;font-size:12px;font-weight:650}
+.discovery-voice-final-step input{box-sizing:border-box;width:100%;min-height:46px;padding:10px 12px;border:1px solid #373737;border-radius:10px;background:#151515;color:#fff;font-size:14px}
