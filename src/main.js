@@ -3416,6 +3416,7 @@ function setDiscoveryVoiceStep(step) {
 discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceLibrary.hidden = true
   discoveryVoiceCreation.hidden = false
+  discoveryVoiceProgress.hidden = false
   discoveryVoiceSourceChoices.hidden = false
   discoveryVoiceSourceForm.hidden = true
   discoveryVoiceVerification.hidden = true
@@ -3438,6 +3439,7 @@ discoveryVoiceToggle?.addEventListener('click', () => {
     discoveryVoicePanel.hidden = false
     discoveryVoiceLibrary.hidden = false
     discoveryVoiceCreation.hidden = true
+    discoveryVoiceProgress.hidden = true
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
@@ -3790,6 +3792,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceToggle.setAttribute('aria-expanded', 'true')
     discoveryVoiceLibrary.hidden = false
     discoveryVoiceCreation.hidden = true
+    discoveryVoiceProgress.hidden = true
     await refreshDiscoveryPlan(auth.currentUser?.uid)
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
