@@ -3574,3 +3574,15 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 
 .library-view-tab .library-view-tab-label{font-size:13px}
 @media(max-width:520px){.library-view-tab .library-view-tab-label{font-size:12px}}
+
+
+/* Bibliothèque : capsules accessibles à tous et icônes vectorielles dédiées. */
+.library-view-switch{display:flex!important}
+.library-view-tab-icon{display:inline-grid;place-items:center;width:19px;height:19px;flex:0 0 19px}
+.library-view-tab-icon svg{display:block;width:18px;height:18px}
+.library-view-tab-label{display:inline-block}
+.library-pending-generation{padding:0!important;border:0!important;background:transparent!important}
+.library-generation-group>.library-generation-date{order:0}
+.library-generation-group>.library-generation-entry{order:1}
+.library-video-song-cover{display:grid;place-items:center}
+.library-video-song-cover:not(:has(img)){color:#d9c6ff;font-size:24px}
