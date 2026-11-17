@@ -177,9 +177,9 @@ app.innerHTML = `
     </footer>
   </main>
   <main class="workspace" id="workspace" hidden>
-    <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
+    <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><div class="workspace-side-note"><span id="workspace-plan-label">Forfait actif</span><strong id="workspace-free-credit-count">0 crédit</strong><small id="workspace-free-credit-caption">Crédits disponibles</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Voir les avantages →</button></div><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
-      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
+      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
   <div class="discovery-voice-card-slot">
     <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix">
@@ -1466,15 +1466,11 @@ const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credi
 const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
 workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span id="workspace-mobile-credit-plan">Plan standard</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div><button class="workspace-upgrade-button" id="workspace-mobile-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button>'
-document.querySelector('.workspace-content').prepend(workspaceMobileCredit)
+// Le résumé mobile est conservé hors du Studio : le solde principal est dans l’en-tête du compte.
 const communityNotice = document.querySelector('#community-listen-notice')
 const syncCommunityNoticePlacement = () => {
   if (!communityNotice) return
-  if (window.matchMedia('(max-width: 760px)').matches) {
-    workspaceMobileCredit.before(communityNotice)
-  } else {
-    document.querySelector('.workspace-side-note')?.before(communityNotice)
-  }
+  workspaceSidebar.append(communityNotice)
 }
 syncCommunityNoticePlacement()
 window.addEventListener('resize', syncCommunityNoticePlacement)
@@ -3366,9 +3362,13 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     const sidebarPlanCaption = workspaceCredits.querySelector('small')
     const sidebarUpgradeButton = workspaceCredits.querySelector('.workspace-upgrade-button')
     if (sidebarPlanLabel) sidebarPlanLabel.textContent = planLabel
+    const accountPlanLabel = document.querySelector('#workspace-plan-label')
+    if (accountPlanLabel) accountPlanLabel.textContent = planLabel
     if (sidebarPlanCount) sidebarPlanCount.textContent = discoveryActive ? countLabel : freeSummary
     if (sidebarPlanCaption) sidebarPlanCaption.textContent = discoveryActive ? caption : freeCaption
     if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = discoveryActive ? 'Voir les avantages →' : 'Mettre à niveau →'
+    const accountUpgradeButton = document.querySelector('#workspace-upgrade-button')
+    if (accountUpgradeButton) accountUpgradeButton.textContent = discoveryActive ? 'Avantages' : 'Forfaits'
     const mobilePlanLabel = workspaceMobileCredit.querySelector('#workspace-mobile-credit-plan')
     if (mobilePlanLabel) mobilePlanLabel.textContent = planLabel
     if (workspaceMobileCreditCount) workspaceMobileCreditCount.textContent = countLabel
