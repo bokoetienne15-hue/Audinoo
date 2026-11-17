@@ -181,10 +181,12 @@ app.innerHTML = `
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
-  <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Ouvrir Ma voix">
-    <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Gérer mes voix</small></span>
-    <span class="discovery-voice-card-plus" aria-hidden="true">+</span>
-  </button>
+  <div class="discovery-voice-card-slot">
+    <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix">
+      <span class="discovery-voice-card-plus" aria-hidden="true">+</span>
+      <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Configurer ma voix</small></span>
+    </button>
+  </div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
@@ -3404,6 +3406,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   }
 }
 const discoveryVoicePanelHome = discoveryVoicePanel.parentElement
+const discoveryVoiceCopy = discoveryVoiceCreation.querySelector('.discovery-voice-copy')
 const discoveryVoiceProgress = document.createElement('div')
 discoveryVoiceProgress.className = 'discovery-voice-progress'
 discoveryVoiceProgress.setAttribute('aria-label', 'Progression de configuration')
@@ -3420,6 +3423,7 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceLibrary.hidden = true
   discoveryVoiceCreation.hidden = false
   discoveryVoiceProgress.hidden = false
+  discoveryVoiceCopy.hidden = false
   discoveryVoiceSourceChoices.hidden = false
   discoveryVoiceSourceForm.hidden = true
   discoveryVoiceVerification.hidden = true
@@ -3443,6 +3447,7 @@ discoveryVoiceToggle?.addEventListener('click', () => {
     discoveryVoiceLibrary.hidden = false
     discoveryVoiceCreation.hidden = true
     discoveryVoiceProgress.hidden = true
+    discoveryVoiceCopy.hidden = false
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
@@ -3702,9 +3707,11 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     setDiscoveryVoiceStep(3)
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = false
+    discoveryVoiceCopy.hidden = true
     discoveryVoiceStatus.textContent = 'Étape 2/2 · Répète la phrase à voix haute, puis enregistre-la ou importe-la.'
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Impossible de préparer ta voix : ' + (error.providerMessage || generationErrorMessage(error.message))
+    discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     updateDiscoveryVoiceNext()
   }
@@ -3716,12 +3723,14 @@ const verificationImportStep = document.querySelector('#discovery-voice-verifica
 const verificationRecordStep = document.querySelector('#discovery-voice-verification-record-step')
 verificationImportChoice.addEventListener('click', () => {
   verificationChoices.hidden = true
+  discoveryVoiceCopy.hidden = true
   verificationImportStep.hidden = false
   verificationRecordStep.hidden = true
   discoveryVoiceVerificationFile.click()
 })
 verificationRecordChoice.addEventListener('click', () => {
   verificationChoices.hidden = true
+  discoveryVoiceCopy.hidden = true
   verificationImportStep.hidden = true
   verificationRecordStep.hidden = false
   discoveryVoiceStatus.textContent = 'Lis la phrase affichée. Le compte à rebours démarre avant l’enregistrement.'
@@ -3800,6 +3809,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     await refreshDiscoveryPlan(auth.currentUser?.uid)
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
+    discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     discoveryVoiceCreate.disabled = !discoveryVoiceVerificationDurationValid
   }
