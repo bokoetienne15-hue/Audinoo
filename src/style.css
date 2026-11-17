@@ -3342,3 +3342,20 @@ body.discovery-voice-screen-open{overflow:hidden!important}
 @media(max-width:600px){.discovery-voice-heading{gap:10px!important}.discovery-voice-back{min-height:38px;padding:0 10px}.discovery-voice-back span:last-child{display:none}.discovery-voice-item{gap:9px;padding:10px}.discovery-voice-item-icon{flex-basis:36px;width:36px;height:36px}.discovery-voice-select{padding:0 9px}}
 
 .discovery-voice-progress[hidden]{display:none!important}
+
+
+/* Ma voix : une seule tuile d'accès dans le studio, sans aperçu de voix sous le bouton. */
+.discovery-voice-entry{display:block!important;width:100%!important;max-width:100%!important;margin:0 0 18px!important}
+button.discovery-voice-card{display:flex!important;align-items:center!important;gap:13px!important;width:100%!important;max-width:100%!important;min-height:68px!important;height:68px!important;box-sizing:border-box!important;margin:0!important;padding:12px 16px!important;border:1px solid #34313d!important;border-radius:16px!important;background:#080808!important;color:#fff!important;text-align:left!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important;cursor:pointer!important}
+.discovery-voice-card-symbol{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid #51445f;border-radius:12px;background:#19131f;color:#e5b9ff;font-size:22px}
+.discovery-voice-card-title{display:flex!important;flex:1;flex-direction:column;justify-content:center;gap:4px;min-width:0}
+.discovery-voice-card-title strong{color:#fff;font-size:14px;font-weight:750}
+.discovery-voice-card-title small{color:#aaa;font-size:11px;font-weight:400}
+.discovery-voice-card-arrow{color:#cda4ed;font-size:20px}
+.discovery-voice-item{cursor:default}
+.discovery-voice-choice{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;cursor:pointer}
+.discovery-voice-choice input[type=radio]{appearance:none;-webkit-appearance:none;display:grid;place-items:center;width:23px;height:23px;margin:0;border:1.5px solid #777;border-radius:50%;background:#101010;cursor:pointer}
+.discovery-voice-choice input[type=radio]::after{content:"";width:11px;height:11px;border-radius:50%;background:#d7a9ff;transform:scale(0);transition:transform .14s ease}
+.discovery-voice-choice input[type=radio]:checked{border-color:#d7a9ff;box-shadow:0 0 0 3px rgba(215,169,255,.13)}
+.discovery-voice-choice input[type=radio]:checked::after{transform:scale(1)}
+.discovery-voice-choice input[type=radio]:focus-visible{outline:2px solid #d7a9ff;outline-offset:3px}
