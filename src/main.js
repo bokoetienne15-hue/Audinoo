@@ -4621,7 +4621,8 @@ function showAuthError(error, mode, operationStep = '') {
   const messages = {
     'display-name-required': 'Saisis ton nom et prénom ou ton prénom pour continuer.',
     'password-confirmation-mismatch': 'Les deux mots de passe ne correspondent pas. Vérifie-les puis réessaie.',
-    'username-generation-failed': 'Audinoo n’a pas pu attribuer un identifiant unique. Réessaie.',
+    'username-generation-failed': 'Audinoo n’a pas pu finaliser ton identifiant unique. Ton compte est conservé : reconnecte-toi pour reprendre automatiquement.',
+    'profile-save-incomplete': 'Ton compte est bien conservé, mais ton profil n’a pas encore été finalisé. Reconnecte-toi pour reprendre cette étape.',
     'auth/invalid-email': 'Cette adresse e-mail n’est pas valide. Vérifie-la puis réessaie.',
     'auth/user-not-found': 'Aucun compte ne correspond à cette adresse e-mail. Vérifie l’adresse ou crée un compte.',
     'auth/wrong-password': 'Le mot de passe est incorrect. Vérifie-le puis réessaie.',
@@ -4629,7 +4630,11 @@ function showAuthError(error, mode, operationStep = '') {
     'auth/invalid-login-credentials': 'L’adresse e-mail ou le mot de passe est incorrect. Vérifie tes identifiants.',
     'auth/user-disabled': 'Ce compte a été désactivé. Contacte le support Audinoo.',
     'auth/too-many-requests': 'Trop de tentatives ont été effectuées. Attends un peu avant de réessayer.',
-    'auth/network-request-failed': 'Connexion réseau impossible. Vérifie Internet puis réessaie.',
+    'auth/network-request-failed': 'Connexion réseau impossible. Ton compte est conservé ; reconnecte-toi pour reprendre la finalisation dès que le réseau revient.',
+    'unavailable': 'Le service est momentanément inaccessible. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre automatiquement la finalisation.',
+    'firestore/unavailable': 'Le service est momentanément inaccessible. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre automatiquement la finalisation.',
+    'deadline-exceeded': 'La connexion au service a pris trop de temps. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre la finalisation.',
+    'firestore/deadline-exceeded': 'La connexion au service a pris trop de temps. Ton compte est conservé ; réessaie ou reconnecte-toi pour reprendre la finalisation.',
     'auth/email-already-in-use': 'Cette adresse e-mail possède déjà un compte. Connecte-toi avec la méthode utilisée lors de l’inscription.',
     'auth/account-exists-with-different-credential': 'Cette adresse Gmail est déjà liée à un compte créé avec une autre méthode. Connecte-toi avec cette méthode pour éviter de créer un second compte.',
     'auth/credential-already-in-use': 'Cette méthode de connexion est déjà liée à un autre compte Audinoo.',
@@ -4752,12 +4757,28 @@ function generatedUsername(user) {
   return `@${usernameBase(user)}_${suffix}`
 }
 
+function isRetryableProfileError(error) {
+  const code = String(error?.code || error?.message || '').toLowerCase()
+  return ['unavailable', 'deadline-exceeded', 'aborted', 'resource-exhausted', 'internal', 'unknown', 'network-request-failed'].some((part) => code.includes(part))
+}
+
+function waitForProfileRetry(attempt) {
+  return new Promise((resolve) => window.setTimeout(resolve, Math.min(400 * (2 ** attempt), 4000)))
+}
+
+async function reserveProfileWithRetry(user, username, provider, displayName = '', photoURL = '', grantFreeCredit = true) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await reserveProfile(user, username, provider, displayName, photoURL, grantFreeCredit)
+    } catch (error) {
+      if (!isRetryableProfileError(error) || attempt >= 4) throw error
+      await waitForProfileRetry(attempt)
+    }
+  }
+}
+
 async function reserveProfile(user, username, provider, displayName = '', photoURL = '', grantFreeCredit = true) {
   const profileRef = doc(db, 'users', user.uid)
-  const existingProfile = await getDoc(profileRef)
-
-  if (existingProfile.exists()) return { created: false, username: existingProfile.data().username, freeCreditCampaignId: existingProfile.data().freeCreditCampaignId || null }
-
   const usernameRef = doc(db, 'usernames', username)
 
   return runTransaction(db, async (transaction) => {
@@ -4768,7 +4789,14 @@ async function reserveProfile(user, username, provider, displayName = '', photoU
     ])
 
     if (profileSnapshot.exists()) {
-      return { created: false, username: profileSnapshot.data().username, freeCreditCampaignId: profileSnapshot.data().freeCreditCampaignId || null }
+      const existingProfile = profileSnapshot.data()
+      if (existingProfile.username) {
+        return { created: false, username: existingProfile.username, freeCreditCampaignId: existingProfile.freeCreditCampaignId || null }
+      }
+      if (usernameSnapshot.exists() && usernameSnapshot.data().uid !== user.uid) throw new Error('username-taken')
+      if (!usernameSnapshot.exists()) transaction.set(usernameRef, { uid: user.uid, createdAt: serverTimestamp() })
+      transaction.update(profileRef, { username, updatedAt: serverTimestamp() })
+      return { created: false, username, freeCreditCampaignId: existingProfile.freeCreditCampaignId || null }
     }
 
     if (usernameSnapshot.exists()) throw new Error('username-taken')
@@ -4797,33 +4825,31 @@ async function reserveProfile(user, username, provider, displayName = '', photoU
 }
 
 async function createGoogleProfile(user) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      return await reserveProfile(user, generatedUsername(user), 'google.com', user.displayName || '', user.photoURL || '')
+      return await reserveProfileWithRetry(user, generatedUsername(user), 'google.com', user.displayName || '', user.photoURL || '')
     } catch (error) {
       if (error.message !== 'username-taken') throw error
     }
   }
-
   throw new Error('username-generation-failed')
 }
 
-async function createEmailProfile(user) {
+async function createEmailProfile(user, preferredDisplayName = '', grantFreeCredit = true) {
   const emailName = (user.email || '').split('@')[0]
-  const displayName = user.displayName || emailName
+  const displayName = preferredDisplayName || user.displayName || emailName
     .split(/[._-]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      return await reserveProfile(user, generatedUsername(user), 'password', displayName, user.photoURL || '', false)
+      return await reserveProfileWithRetry(user, generatedUsername({ displayName, email: user.email }), 'password', displayName, user.photoURL || '', grantFreeCredit)
     } catch (error) {
       if (error.message !== 'username-taken') throw error
     }
   }
-
   throw new Error('username-generation-failed')
 }
 
@@ -5118,14 +5144,16 @@ async function completeGoogleSignIn(result, mode) {
   const user = result.user
   const name = user.displayName || user.email
   const profileSnapshot = await getDoc(doc(db, 'users', user.uid))
-  if (mode === 'login' && !profileSnapshot.exists()) {
-    if (getAdditionalUserInfo(result)?.isNewUser) await deleteUser(user)
+  if (mode === 'login' && !profileSnapshot.exists() && getAdditionalUserInfo(result)?.isNewUser) {
+    await deleteUser(user)
     await signOut(auth)
     const error = new Error('account-not-found')
     error.code = 'account-not-found'
     throw error
   }
 
+  // An existing Google identity without a Firestore profile is treated as an
+  // interrupted signup: recreate only the missing profile, never a new Auth user.
   let profile = profileSnapshot.exists()
     ? { ...profileSnapshot.data(), created: false }
     : await createGoogleProfile(user)
@@ -5234,51 +5262,45 @@ authForm.addEventListener('submit', async (event) => {
       if (password !== authPasswordConfirm.value) throw new Error('password-confirmation-mismatch')
        if (password.length < 8) throw new Error('weak-password-format')
 
-      operationStep = 'création du compte Firebase Auth'
-      const credential = await createUserWithEmailAndPassword(auth, email, password)
-      void recordAcquisitionEvent('auth_account_created', 'Compte Firebase Authentication créé')
-      let reservedProfile = null
-      let username = ''
+      operationStep = 'création ou récupération du compte Firebase Auth'
+      let credential
+      let accountCreated = false
       try {
-        operationStep = 'attribution automatique et réservation du pseudo unique'
-        for (let attempt = 0; attempt < 20; attempt += 1) {
-          username = generatedUsername({ displayName, email })
-          try {
-            reservedProfile = await reserveProfile(credential.user, username, 'password', displayName)
-            break
-          } catch (error) {
-            if (error.message !== 'username-taken') throw error
-          }
-        }
-        if (!reservedProfile) throw new Error('username-generation-failed')
-        void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
-        hasAudinooProfile = true
+        credential = await createUserWithEmailAndPassword(auth, email, password)
+        accountCreated = true
+        void recordAcquisitionEvent('auth_account_created', 'Compte Firebase Authentication créé')
       } catch (error) {
-        try {
-          await deleteUser(credential.user)
-        } catch (cleanupError) {
-          console.error('[Audinoo signup] Failed to roll back the newly created auth user', cleanupError)
-        }
-        throw error
+        if (error.code !== 'auth/email-already-in-use') throw error
+        // The previous signup may have created Auth successfully before a later
+        // Firestore step failed. Verify the same password, then resume that UID.
+        operationStep = 'reconnexion au compte existant après inscription interrompue'
+        credential = await signInWithEmailAndPassword(auth, email, password)
       }
-      closeAuth()
-      const newProfile = { uid: credential.user.uid, username, displayName, freeCreditCampaignId: reservedProfile.freeCreditCampaignId }
+
+      operationStep = 'attribution automatique et réservation du pseudo unique'
+      await createEmailProfile(credential.user, displayName)
+      const profileSnapshot = await getDoc(doc(db, 'users', credential.user.uid))
+      if (!profileSnapshot.exists()) throw new Error('profile-save-incomplete')
+      const savedProfile = { ...profileSnapshot.data(), uid: credential.user.uid }
+      if (accountCreated) void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
       hasAudinooProfile = true
+      closeAuth()
       profileUid = credential.user.uid
-      // The studio is shown first; the country step then opens on top of it.
-      operationStep = 'ouverture du studio et du choix du pays'
-      openProfile(newProfile, { requireCountry: true })
-      toast.textContent = 'Compte Audinoo créé avec succès.'
+      operationStep = 'ouverture du studio et reprise des étapes obligatoires'
+      openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
+      toast.textContent = accountCreated
+        ? 'Compte Audinoo créé avec succès.'
+        : 'Ton compte existant a été retrouvé. Bon retour !'
     } else {
       operationStep = 'connexion Firebase Auth et lecture du profil Firestore'
       const credential = await signInWithEmailAndPassword(auth, email, password)
       let profile = await getDoc(doc(db, 'users', credential.user.uid))
       let profileRecovered = false
-      if (!profile.exists()) {
-        operationStep = 'récupération du profil Audinoo manquant dans Firestore'
+      if (!profile.exists() || !profile.data().username) {
+        operationStep = 'reprise de l’attribution du pseudo et récupération du profil Audinoo'
         await createEmailProfile(credential.user)
         profile = await getDoc(doc(db, 'users', credential.user.uid))
-        if (!profile.exists()) {
+        if (!profile.exists() || !profile.data().username) {
           const missingProfileError = new Error('account-not-found')
           missingProfileError.code = 'account-not-found'
           throw missingProfileError
@@ -5288,7 +5310,7 @@ authForm.addEventListener('submit', async (event) => {
       hasAudinooProfile = true
       closeAuth()
       const savedProfile = { ...profile.data(), uid: credential.user.uid }
-      openProfile(savedProfile)
+      openProfile(savedProfile, { requireCountry: !savedProfile.countryCode || !savedProfile.country })
       toast.textContent = profileRecovered ? 'Ton profil Audinoo a été restauré. Bon retour !' : 'Connexion réussie.'
     }
     toast.classList.add('show')
@@ -5384,12 +5406,17 @@ onAuthStateChanged(auth, async (user) => {
   if (hasAudinooProfile && profileUid === user.uid) return
 
   try {
-    const profile = await getDoc(doc(db, 'users', user.uid))
+    let profile = await getDoc(doc(db, 'users', user.uid))
     if (auth.currentUser?.uid !== user.uid || (hasAudinooProfile && profileUid === user.uid)) return
-    if (!profile.exists()) {
-      hasAudinooProfile = false
-      profileUid = null
-      return
+    if (!profile.exists() || !profile.data().username) {
+      // Recover interrupted account setup after a browser restart or lost network.
+      const providerId = user.providerData?.some((provider) => provider.providerId === 'google.com') ? 'google.com' : 'password'
+      const recovered = providerId === 'google.com'
+        ? await createGoogleProfile(user)
+        : await createEmailProfile(user)
+      profile = await getDoc(doc(db, 'users', user.uid))
+      if (!profile.exists() || !profile.data().username) throw new Error('profile-save-incomplete')
+      console.info('[Audinoo signup] Interrupted profile setup recovered', { uid: user.uid, providerId, username: recovered.username })
     }
     hasAudinooProfile = true
     let savedProfile = { ...profile.data(), uid: user.uid }
