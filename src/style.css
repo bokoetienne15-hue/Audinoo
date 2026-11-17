@@ -3486,3 +3486,24 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 #workspace .discovery-voice-status.is-loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;color:#eee!important;text-align:center}
 #workspace .discovery-voice-status.is-loading::before{content:"";display:inline-block;flex:0 0 18px;width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#d8a9f2;border-radius:50%;animation:discovery-voice-spinner .75s linear infinite}
 @keyframes discovery-voice-spinner{to{transform:rotate(360deg)}}
+
+
+/* Ma voix : accès compact à gauche et éléments alignés. */
+#discovery-voice-entry{display:flex!important;align-items:center!important;justify-content:flex-start!important;width:100%!important;max-width:100%!important;margin:0 0 18px!important}
+#discovery-voice-entry .discovery-voice-card-slot{display:flex;flex:0 0 auto;width:auto;max-width:100%}
+button.discovery-voice-card{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:13px!important;width:auto!important;min-width:220px!important;max-width:100%!important;height:64px!important;min-height:64px!important;margin:0!important;padding:10px 14px!important}
+.discovery-voice-card-plus{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid #51445f;border-radius:12px;background:#19131f;color:#e5b9ff;font-size:26px;line-height:1}
+.discovery-voice-card-title{display:flex!important;flex:1;flex-direction:column;justify-content:center;gap:4px;min-width:0;text-align:left}
+.discovery-voice-card-title strong{color:#fff;font-size:14px;font-weight:750}
+.discovery-voice-card-title small{color:#aaa;font-size:11px;font-weight:400}
+.discovery-voice-status.is-loading{display:flex;align-items:center;gap:10px;color:#fff}
+.discovery-voice-status.is-loading::before{content:"";display:inline-block;flex:0 0 17px;width:17px;height:17px;border:2px solid rgba(255,255,255,.24);border-top-color:#fff;border-right-color:#fff;border-radius:50%;animation:discoveryVoiceSpin .75s linear infinite}
+@keyframes discoveryVoiceSpin{to{transform:rotate(360deg)}}
+.discovery-voice-audio-player{display:flex;align-items:center;gap:12px;width:min(100%,460px);margin:12px 0;padding:11px 13px;border:1px solid #34313d;border-radius:14px;background:linear-gradient(135deg,#19151f,#101014);box-sizing:border-box}
+.discovery-voice-audio-player[hidden]{display:none!important}
+.discovery-voice-audio-player audio{display:none!important}
+.discovery-voice-audio-play{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#111;font-size:15px;font-weight:800;cursor:pointer}
+.discovery-voice-audio-body{display:grid;gap:5px;flex:1;min-width:0}
+.discovery-voice-audio-seek{width:100%;height:4px;margin:0;accent-color:#d7a9ff;cursor:pointer}
+.discovery-voice-audio-times{display:flex;justify-content:space-between;color:#aaa;font-size:10px;font-variant-numeric:tabular-nums}
+@media(max-width:600px){button.discovery-voice-card{min-width:200px!important;height:60px!important;min-height:60px!important;padding:8px 11px!important}.discovery-voice-card-plus{flex-basis:38px;width:38px;height:38px}.discovery-voice-audio-player{padding:9px 10px}}
