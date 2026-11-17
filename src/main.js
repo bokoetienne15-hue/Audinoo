@@ -2873,6 +2873,9 @@ function startAdminStatsListeners(uid) {
       const messages = {
         'firebase-auth-list-permission-required': 'Le compte de service Cloudflare doit recevoir le rôle Firebase Authentication Admin (permissions firebaseauth.users.get et firebaseauth.users.delete).',
         'firebase-auth-list-limit-reached': 'Le nombre de comptes dépasse la limite de synchronisation actuelle.',
+        'firebase-quota-exceeded': 'Quota Firebase dépassé. Le service concerné et le détail exact sont affichés ci-dessous.',
+        'firestore-permission-required': 'Le compte de service Cloudflare ne dispose pas des autorisations Firestore nécessaires.',
+        'firestore-admin-check-failed': 'La vérification des droits administrateur dans Firestore a échoué.',
         'backend-not-configured': 'La configuration du compte de service Firebase côté Cloudflare est incomplète.'
       }
       adminStatsStatus.textContent = messages[error.message] || 'Impossible de vérifier les comptes Firebase Authentication : ' + exactErrorDetails(error)
@@ -4841,6 +4844,9 @@ async function callAudinooApi(path, options = {}) {
     error.providerMessage = typeof body.providerMessage === 'string' ? body.providerMessage.slice(0, 240) : ''
     error.providerCode = body.providerCode == null ? '' : String(body.providerCode)
     error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : typeof body.details === 'string' ? body.details.slice(0, 240) : ''
+    error.status = response.status
+    error.code = body.upstreamCode == null ? '' : String(body.upstreamCode)
+    error.service = typeof body.service === 'string' ? body.service : ''
     throw error
   }
   return body
