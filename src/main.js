@@ -3413,13 +3413,21 @@ function attachVoiceRecorder(options) {
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
       chunks = []
       recorder.addEventListener('dataavailable', event => { if (event.data?.size) chunks.push(event.data) })
-      recorder.addEventListener('stop', () => {
+      recorder.addEventListener('stop', async () => {
         const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' })
         if (blob.size) {
           const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
           const audioFile = new File([blob], filename + '.' + extension, { type: blob.type || 'audio/webm' })
-          setVoiceFile(input, audioFile, preview, readyButton)
-          statusMessage.textContent = 'Enregistrement terminé. Écoute-le, puis appuie sur Suivant.'
+          const duration = await voiceFileDuration(audioFile)
+          if (duration && duration < 5) {
+            input.value = ''
+            if (readyButton) readyButton.disabled = true
+            statusMessage.textContent = 'L’enregistrement doit durer au moins 5 secondes. Recommence en parlant un peu plus longtemps.'
+          } else {
+            if (input === discoveryVoiceSource) document.querySelector('#discovery-voice-end').value = String(Math.max(5, Math.min(30, Math.floor(duration || 15))))
+            setVoiceFile(input, audioFile, preview, readyButton)
+            statusMessage.textContent = 'Enregistrement terminé. Écoute-le, puis appuie sur Suivant.'
+          }
         }
         stopVisuals()
         startButton.hidden = false
@@ -3430,22 +3438,28 @@ function attachVoiceRecorder(options) {
       })
       const AudioContextClass = window.AudioContext || window.webkitAudioContext
       if (AudioContextClass) {
-        audioContext = new AudioContextClass()
-        await audioContext.resume().catch(() => {})
-        const source = audioContext.createMediaStreamSource(stream)
-        const analyser = audioContext.createAnalyser()
-        analyser.fftSize = 128
-        source.connect(analyser)
-        const samples = new Uint8Array(analyser.frequencyBinCount)
-        const draw = () => {
-          analyser.getByteFrequencyData(samples)
-          bars.forEach((bar, index) => {
-            const sample = samples[Math.min(samples.length - 1, Math.floor(index * samples.length / bars.length))] || 0
-            bar.style.transform = 'scaleY(' + (0.18 + sample / 255 * 2.2) + ')'
-          })
-          animationFrame = requestAnimationFrame(draw)
+        try {
+          audioContext = new AudioContextClass()
+          await audioContext.resume().catch(() => {})
+          const source = audioContext.createMediaStreamSource(stream)
+          const analyser = audioContext.createAnalyser()
+          analyser.fftSize = 128
+          source.connect(analyser)
+          const samples = new Uint8Array(analyser.frequencyBinCount)
+          const draw = () => {
+            analyser.getByteFrequencyData(samples)
+            bars.forEach((bar, index) => {
+              const sample = samples[Math.min(samples.length - 1, Math.floor(index * samples.length / bars.length))] || 0
+              bar.style.transform = 'scaleY(' + (0.18 + sample / 255 * 2.2) + ')'
+            })
+            animationFrame = requestAnimationFrame(draw)
+          }
+          draw()
+        } catch (error) {
+          if (audioContext && audioContext.state !== 'closed') void audioContext.close().catch(() => {})
+          audioContext = null
+          statusMessage.textContent = 'Microphone connecté. Enregistrement audio en cours…'
         }
-        draw()
       }
       for (let count = 3; count > 0; count--) {
         countdown.textContent = String(count)
