@@ -3209,8 +3209,6 @@ button.is-generating:disabled {
 .discovery-voice-step{margin:0;color:#aaa;font-size:10px;letter-spacing:.12em}
 .discovery-voice-verification blockquote{margin:0;padding:14px;border-left:3px solid #fff;border-radius:0 9px 9px 0;background:#151515;color:#fff;font-size:15px;line-height:1.6}
 .discovery-voice-status{min-height:20px;margin:12px 0 0;color:#d0d0d0;font-size:12px;line-height:1.5}
-.discovery-admin-test-panel{margin-top:20px}
-.discovery-admin-test-panel>p{color:var(--muted,#888);font-size:13px;line-height:1.6}
 @media(max-width:600px){.discovery-voice-panel{padding:15px}.discovery-voice-toggle small{font-size:10px}.discovery-voice-heading h2{font-size:17px}.discovery-voice-segment{gap:8px}}
 
 .discovery-voice-record-controls{display:flex;gap:10px;flex-wrap:wrap}
@@ -3239,5 +3237,31 @@ button.is-generating:disabled {
 html:has(#workspace:not([hidden])) { overflow-y:auto; }
 body:has(#workspace:not([hidden])) { overflow-y:auto; }
 .page-shell:has(#workspace:not([hidden])) { overflow:visible; min-height:100vh; }
-.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note { display:block !important; }
-.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note strong { font-size:22px; }
+
+
+/* Discovery Studio: one wide Ma voix card, with the plus control anchored on the left. */
+.discovery-voice-entry { width:100%; max-width:100%; margin:0 0 26px; }
+.discovery-voice-card { width:100%; padding:18px; border:1px solid #292929; border-radius:18px; background:#080808; color:#f8f8f8; box-shadow:0 12px 34px rgba(0,0,0,.18); }
+.discovery-voice-card-header { display:flex; align-items:center; gap:14px; }
+.discovery-voice-toggle { display:grid; place-items:center; flex:0 0 46px; width:46px; height:46px; min-height:46px; padding:0; border:1px solid #777; border-radius:13px; background:#fff; color:#080808; cursor:pointer; }
+.discovery-voice-plus { display:grid; place-items:center; width:100%; height:100%; color:#080808; font-size:30px; font-weight:400; line-height:1; }
+.discovery-voice-card-title { min-width:0; }
+.discovery-voice-card-title h2 { margin:0; color:#fff; font-size:18px; font-weight:750; }
+.discovery-voice-card-title p { margin:4px 0 0; color:#aaa; font-size:12px; line-height:1.5; }
+.discovery-voice-profile-card { display:flex; align-items:center; gap:12px; margin-top:16px; padding:13px 14px; border:1px solid #343434; border-radius:13px; background:#121212; }
+.discovery-voice-profile-card[hidden] { display:none !important; }
+.discovery-voice-profile-icon { display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px; border-radius:10px; background:#25202b; color:#e9b6ff; font-size:18px; }
+.discovery-voice-profile-card strong,.discovery-voice-profile-card small { display:block; }
+.discovery-voice-profile-card strong { color:#fff; font-size:13px; }
+.discovery-voice-profile-card small { margin-top:3px; color:#aaa; font-size:11px; }
+.discovery-voice-profile-status { margin-left:auto; color:#9fe2b0; font-size:9px; font-weight:800; letter-spacing:.1em; }
+.discovery-voice-card .discovery-voice-panel { width:100%; margin-top:16px; }
+#workspace .workspace-mobile-credit[hidden] { display:none !important; }
+.workspace.is-discovery-active .workspace-mobile-credit { display:none !important; }
+.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note { display:none !important; }
+@media(max-width:600px) {
+  .discovery-voice-card { padding:15px; }
+  .discovery-voice-toggle { flex-basis:44px; width:44px; height:44px; min-height:44px; }
+  .discovery-voice-card-title h2 { font-size:17px; }
+  .discovery-voice-profile-card { padding:11px; }
+}
