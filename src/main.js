@@ -3277,21 +3277,23 @@ function renderDiscoveryVoiceLibrary() {
     const icon = document.createElement('span'); icon.className = 'discovery-voice-item-icon'; icon.textContent = '♫'
     const info = document.createElement('div'); info.className = 'discovery-voice-item-info'
     const name = document.createElement('strong'); name.textContent = profile.name || 'Ma voix'
-    const status = document.createElement('small'); status.textContent = profile.voiceId === discoverySelectedVoiceId ? 'Sélectionnée pour tes prochaines chansons' : 'Voix prête à utiliser'
+    const isSelected = profile.voiceId === discoverySelectedVoiceId
+    const status = document.createElement('small'); status.textContent = isSelected ? 'Sélectionnée pour tes prochaines chansons' : 'Voix prête à utiliser'
     info.append(name, status)
     const choice = document.createElement('label'); choice.className = 'discovery-voice-choice'
-    const select = document.createElement('input'); select.type = 'radio'; select.name = 'discovery-selected-voice'; select.value = profile.voiceId; select.checked = profile.voiceId === discoverySelectedVoiceId; select.setAttribute('aria-label', 'Sélectionner ' + (profile.name || 'Ma voix'))
+    const select = document.createElement('input'); select.type = 'checkbox'; select.name = 'discovery-selected-voice'; select.value = profile.voiceId; select.checked = isSelected; select.setAttribute('aria-label', isSelected ? 'Désélectionner ' + (profile.name || 'Ma voix') : 'Sélectionner ' + (profile.name || 'Ma voix'))
     select.addEventListener('change', async () => {
-      if (!select.checked) return
+      const nextVoiceId = select.checked ? profile.voiceId : ''
       select.disabled = true
       try {
-        await callAudinooApi('/api/voice/select', { method: 'POST', body: JSON.stringify({ voiceId: profile.voiceId }) })
-        discoverySelectedVoiceId = profile.voiceId
-        discoveryVoiceStatus.textContent = 'Voix sélectionnée. Elle sera utilisée pour tes prochaines chansons.'
+        await callAudinooApi('/api/voice/select', { method: 'POST', body: JSON.stringify({ voiceId: nextVoiceId || null }) })
+        discoverySelectedVoiceId = nextVoiceId
+        discoveryVoiceStatus.textContent = nextVoiceId
+          ? 'Voix sélectionnée. Elle sera utilisée pour tes prochaines chansons.'
+          : 'Aucune voix sélectionnée. Les prochaines chansons utiliseront la voix standard.'
         renderDiscoveryVoiceLibrary()
       } catch (error) {
-        discoveryVoiceStatus.textContent = 'Impossible de sélectionner cette voix : ' + generationErrorMessage(error.message)
-        select.disabled = false
+        discoveryVoiceStatus.textContent = 'Impossible de modifier la sélection : ' + generationErrorMessage(error.message)
         renderDiscoveryVoiceLibrary()
       }
     })
