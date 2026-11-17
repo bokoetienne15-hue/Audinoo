@@ -3170,3 +3170,15 @@ button.is-generating:disabled {
 .admin-feedback-stars { color:#ffc65c; white-space:nowrap; letter-spacing:1px; }
 .admin-feedback-comment { min-width:180px; max-width:340px; white-space:normal; overflow-wrap:anywhere; }
 @media(max-width:640px){.admin-feedback-summary{grid-template-columns:1fr 1fr;gap:10px}.admin-feedback-summary .admin-stat-card:last-child{grid-column:1/-1}}
+
+
+/* Admin email directory and newsletter contacts */
+.admin-email-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+.admin-email-panel{margin-top:18px}
+.admin-email-filter{display:flex;flex-direction:column;gap:7px;min-width:190px;color:var(--muted,#aaa);font-size:12px}
+.admin-email-filter select{min-height:42px;padding:0 12px;border:1px solid rgba(180,160,220,.2);border-radius:12px;background:rgba(255,255,255,.045);color:inherit}
+.admin-email-export-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.admin-export-button.is-secondary{background:rgba(255,255,255,.07);border:1px solid rgba(180,160,220,.22);color:inherit}
+.admin-email-consent{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;color:#b8adca}
+.admin-email-consent.is-yes{background:rgba(54,190,142,.13);color:#73dfb7}
+@media(max-width:760px){.admin-email-kpis{grid-template-columns:1fr}.admin-email-filter{width:100%}.admin-email-export-actions>*{width:100%}}

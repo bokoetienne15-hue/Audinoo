@@ -74,7 +74,7 @@ service cloud.firestore {
       allow update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'countryCode', 'country', 'preferences', 'username', 'updatedAt'
+          'displayName', 'photoURL', 'countryCode', 'country', 'preferences', 'username', 'updatedAt', 'emailNewsletterUpdatedAt'
         ])
         && (
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['countryCode', 'country'])
@@ -115,13 +115,18 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['preferences'])
           || (
             request.resource.data.preferences is map
-            && request.resource.data.preferences.keys().hasOnly(['theme', 'announcements', 'playbackRate'])
+            && request.resource.data.preferences.keys().hasOnly(['theme', 'announcements', 'playbackRate', 'emailNewsletter'])
             && request.resource.data.preferences.theme in ['dark', 'light', 'system']
             && request.resource.data.preferences.announcements is bool
             && request.resource.data.preferences.playbackRate in [0.75, 1, 1.25, 1.5, 2]
+            && (!('emailNewsletter' in request.resource.data.preferences) || request.resource.data.preferences.emailNewsletter is bool)
             && request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
             && request.resource.data.updatedAt == request.time
           )
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['emailNewsletterUpdatedAt'])
+          || request.resource.data.emailNewsletterUpdatedAt == request.time
         );
       allow delete: if false;
     }
