@@ -330,6 +330,7 @@ async function accountPlan(request, db, user) {
     active: currentActive,
     expiresAt: currentActive ? expires.toISOString() : null,
     discoveryCredits: currentActive ? Math.max(0, Number(profile.data?.discoveryCredits || 0)) : 0,
+    paidCredits: Math.max(0, Number(profile.data?.paidCredits || 0)),
     voiceProfile: currentActive && profile.data?.voiceProfile?.voiceId ? { name: profile.data.voiceProfile.name || 'Ma voix', ready: true } : null,
     voiceProfiles: currentActive ? (Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])).map(item => ({ voiceId: String(item.voiceId || ''), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null })).filter(item => item.voiceId) : [],
     selectedVoiceId: currentActive ? (Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')) : ''
