@@ -2950,6 +2950,7 @@ async function refreshAdminAccess(uid) {
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
   if (!uid || auth.currentUser?.uid !== uid) return false
+  void refreshDiscoveryPlan(uid)
 
   try {
     const adminRecord = await getDoc(doc(db, 'admins', uid))
