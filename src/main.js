@@ -491,6 +491,7 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const isDiscoveryPlan = card?.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte'
   if (isDiscoveryPlan) {
     button.textContent = 'S’abonner · 1 000 FCFA'
+    button.dataset.xofLabel = button.textContent
     button.addEventListener('click', async event => {
       event.preventDefault()
       if (workspacePricingPage.querySelector('.currency-toggle').classList.contains('is-eur')) { toast.textContent = 'Les paiements en euros seront bientôt disponibles.'; toast.classList.add('show'); window.setTimeout(() => toast.classList.remove('show'), 3600); return }
