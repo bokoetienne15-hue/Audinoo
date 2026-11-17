@@ -3473,3 +3473,16 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   .workspace-account .workspace-upgrade-button { padding:4px 5px; font-size:8px; }
   .workspace-account .workspace-logout { padding:7px 8px; font-size:9px; white-space:nowrap; }
 }
+
+
+/* Ma voix — tuile large, centrée et lisible dans le Studio. */
+#workspace .discovery-voice-entry{width:100%!important;max-width:none!important}
+#workspace .discovery-voice-card-slot{display:flex!important;justify-content:center!important;width:100%!important}
+#workspace button.discovery-voice-card{width:100%!important;max-width:none!important;flex:1 1 100%!important;justify-content:center!important;background:#21172d!important;border:1px solid #9b72bd!important;color:#fff!important;text-align:center!important;box-shadow:0 8px 24px rgba(0,0,0,.22)!important}
+#workspace .discovery-voice-card-plus{color:#f0caff!important}
+#workspace .discovery-voice-card-title{align-items:center!important;text-align:center!important}
+#workspace .discovery-voice-card-title strong{color:#fff!important}
+#workspace .discovery-voice-card-title small{color:#e3d5ed!important}
+#workspace .discovery-voice-status.is-loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;color:#eee!important;text-align:center}
+#workspace .discovery-voice-status.is-loading::before{content:"";display:inline-block;flex:0 0 18px;width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#d8a9f2;border-radius:50%;animation:discovery-voice-spinner .75s linear infinite}
+@keyframes discovery-voice-spinner{to{transform:rotate(360deg)}}
