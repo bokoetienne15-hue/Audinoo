@@ -3271,7 +3271,7 @@ let discoveryVoiceTaskId = ''
 let discoveryVoiceName = 'Ma voix'
 let discoveryVoiceSourceDurationValid = false
 let discoveryVoiceVerificationDurationValid = false
-let discoveryVoiceRecorder = null
+let stopActiveVoiceRecording = null
 let discoveryVoiceStream = null
 let discoveryVoiceChunks = []
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
@@ -3359,6 +3359,8 @@ discoveryVoiceToggle?.addEventListener('click', () => {
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
+  } else {
+    stopActiveVoiceRecording?.()
   }
 })
 function voiceFileDuration(file) {
@@ -3423,6 +3425,8 @@ function attachVoiceRecorder(options) {
       recorder.addEventListener('dataavailable', event => { if (event.data?.size) chunks.push(event.data) })
       recorder.addEventListener('stop', async () => {
         const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' })
+        stopVisuals()
+        stopActiveVoiceRecording = null
         if (blob.size) {
           const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
           const audioFile = new File([blob], filename + '.' + extension, { type: blob.type || 'audio/webm' })
@@ -3443,7 +3447,6 @@ function attachVoiceRecorder(options) {
             statusMessage.textContent = 'Enregistrement terminé. Écoute-le, puis appuie sur Suivant.'
           }
         }
-        stopVisuals()
         startButton.hidden = false
         startButton.disabled = false
         startButton.textContent = 'Recommencer'
@@ -3481,6 +3484,7 @@ function attachVoiceRecorder(options) {
       }
       countdown.textContent = 'Parle maintenant'
       recorder.start(250)
+      stopActiveVoiceRecording = () => { if (recorder?.state === 'recording') recorder.stop() }
       startedAt = Date.now()
       timerInterval = window.setInterval(() => {
         const seconds = Math.floor((Date.now() - startedAt) / 1000)
