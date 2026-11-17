@@ -206,7 +206,7 @@ app.innerHTML = `
           <p class="discovery-voice-record-timer" id="discovery-voice-record-timer">00:00</p>
           <div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-record-start">Démarrer l’enregistrement</button><button type="button" class="discovery-voice-action" id="discovery-voice-record-stop" hidden>Terminer l’enregistrement</button></div>
         </section>
-        <audio id="discovery-voice-record-preview" controls hidden></audio>
+        <div id="discovery-voice-record-preview" class="discovery-voice-audio-player" hidden></div>
         <input id="discovery-voice-start" type="hidden" value="0">
         <input id="discovery-voice-end" type="hidden" value="15">
         <label class="discovery-voice-consent"><input id="discovery-voice-consent" type="checkbox" required><span>Je confirme que cet enregistrement est ma voix ou que je dispose de l'autorisation explicite de la personne enregistrée.</span></label>
@@ -224,7 +224,7 @@ app.innerHTML = `
           <p class="discovery-voice-record-timer" id="discovery-voice-verification-record-timer">00:00</p>
           <div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-start">Démarrer l’enregistrement</button><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-stop" hidden>Terminer l’enregistrement</button></div>
         </section>
-        <audio id="discovery-voice-verification-preview" controls hidden></audio>
+        <div id="discovery-voice-verification-preview" class="discovery-voice-audio-player" hidden></div>
         <button type="button" class="discovery-voice-action" id="discovery-voice-create" disabled>Valider ma voix</button>
       </div>
       </div>
@@ -3472,12 +3472,69 @@ function voiceFileDuration(file) {
     audio.src = url
   })
 }
+function clearVoicePreview(preview) {
+  if (!preview) return
+  if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl)
+  preview.dataset.objectUrl = ''
+  preview.replaceChildren()
+  preview.hidden = true
+}
 function setVoiceFile(input, file, preview, readyButton) {
-  if (!file) return
+  if (!file || !preview) return
+  clearVoicePreview(preview)
   const transfer = new DataTransfer()
   transfer.items.add(file)
   input.files = transfer.files
-  preview.src = URL.createObjectURL(file)
+  const url = URL.createObjectURL(file)
+  preview.dataset.objectUrl = url
+  const audio = document.createElement('audio')
+  audio.preload = 'metadata'
+  audio.src = url
+  const play = document.createElement('button')
+  play.type = 'button'
+  play.className = 'discovery-voice-audio-play'
+  play.textContent = '▶'
+  play.setAttribute('aria-label', 'Écouter l’enregistrement')
+  const body = document.createElement('div')
+  body.className = 'discovery-voice-audio-body'
+  const seek = document.createElement('input')
+  seek.type = 'range'
+  seek.min = '0'
+  seek.max = '1000'
+  seek.value = '0'
+  seek.step = '1'
+  seek.className = 'discovery-voice-audio-seek'
+  seek.setAttribute('aria-label', 'Position dans l’enregistrement')
+  const times = document.createElement('div')
+  times.className = 'discovery-voice-audio-times'
+  const current = document.createElement('span')
+  const duration = document.createElement('span')
+  const formatTime = value => {
+    const seconds = Math.max(0, Math.floor(Number(value) || 0))
+    return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0')
+  }
+  current.textContent = '00:00'
+  duration.textContent = '--:--'
+  times.append(current, duration)
+  body.append(seek, times)
+  play.addEventListener('click', async () => {
+    if (audio.paused) {
+      if (audio.ended || audio.currentTime >= audio.duration) audio.currentTime = 0
+      try { await audio.play() } catch (error) { console.error('[Audinoo voice preview] Playback failed', error) }
+    } else audio.pause()
+  })
+  audio.addEventListener('play', () => { play.textContent = 'Ⅱ'; play.setAttribute('aria-label', 'Mettre en pause') })
+  audio.addEventListener('pause', () => { play.textContent = '▶'; play.setAttribute('aria-label', 'Écouter l’enregistrement') })
+  audio.addEventListener('loadedmetadata', () => { duration.textContent = formatTime(audio.duration) })
+  audio.addEventListener('timeupdate', () => {
+    current.textContent = formatTime(audio.currentTime)
+    seek.value = String(audio.duration ? Math.round(audio.currentTime / audio.duration * 1000) : 0)
+  })
+  audio.addEventListener('ended', () => { play.textContent = '▶'; play.setAttribute('aria-label', 'Réécouter depuis le début') })
+  seek.addEventListener('input', () => {
+    if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(seek.value) / 1000
+  })
+  preview.replaceChildren(audio, play, body)
   preview.hidden = false
   if (input === discoveryVoiceSource) discoveryVoiceValidate.disabled = !(file && discoveryVoiceConsent.checked && discoveryVoiceSourceDurationValid)
   else if (input === discoveryVoiceVerificationFile) discoveryVoiceCreate.disabled = !(file && discoveryVoiceVerificationDurationValid)
@@ -3631,7 +3688,7 @@ discoveryVoiceSourceBack.addEventListener('click', () => {
   discoveryVoiceSourceForm.hidden = true
   discoveryVoiceSourceChoices.hidden = false
   discoveryVoiceRecordPreview.hidden = true
-  discoveryVoiceRecordPreview.removeAttribute('src')
+  clearVoicePreview(discoveryVoiceRecordPreview)
   discoveryVoiceValidate.disabled = true
   discoveryVoiceStatus.textContent = ''
 })
@@ -3678,7 +3735,7 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
   discoveryVoiceSourceForm.hidden = true
   discoveryVoiceCopy.hidden = true
   discoveryVoiceStatus.classList.add('is-loading')
-  discoveryVoiceStatus.textContent = 'Vérification de ton enregistrement auprès du serveur…'
+  discoveryVoiceStatus.textContent = 'Vérification…'
   try {
     const form = new FormData()
     form.append('audio', file)
@@ -3686,10 +3743,10 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
     const started = await callAudinooApi('/api/voice/validate', { method: 'POST', body: JSON.stringify({ token: uploaded.token, voiceName: discoveryVoiceName, vocalStartS: start, vocalEndS: end }) })
     discoveryVoiceTaskId = started.taskId
-    discoveryVoiceStatus.textContent = 'Analyse en cours. Préparation de ta phrase de vérification…'
+    discoveryVoiceStatus.textContent = 'Vérification…'
     let validation = null
     for (let attempt = 0; attempt < 40; attempt++) {
-      await new Promise(resolve => window.setTimeout(resolve, 3000))
+      if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 2000))
       validation = await callAudinooApi('/api/voice/validate-info?taskId=' + encodeURIComponent(discoveryVoiceTaskId))
       if (validation.validateInfo || validation.status === 'wait_validating') break
       if (validation.status === 'fail' || validation.status === 'processing_validate_fail') throw new Error(validation.errorMessage || 'voice-validation-failed')
@@ -3710,7 +3767,8 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     discoveryVoiceSourceForm.hidden = false
     discoveryVoiceCopy.hidden = false
     discoveryVoiceStatus.classList.remove('is-loading')
-    discoveryVoiceStatus.textContent = 'Impossible de préparer ta voix : ' + (error.providerMessage || generationErrorMessage(error.message))
+    console.error('[Audinoo voice validation] Technical failure', { stage: 'validation', message: error?.message, providerMessage: error?.providerMessage, error })
+    discoveryVoiceStatus.textContent = 'La vérification a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-validation-unknown')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     updateDiscoveryVoiceNext()
@@ -3764,17 +3822,17 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
   }
   discoveryVoiceCreate.disabled = true
   discoveryVoiceStatus.classList.add('is-loading')
-  discoveryVoiceStatus.textContent = 'Envoi de la vérification et création de ta voix…'
+  discoveryVoiceStatus.textContent = 'Vérification…'
   try {
     const form = new FormData()
     form.append('audio', file)
     form.append('kind', 'verification')
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
     await callAudinooApi('/api/voice/create', { method: 'POST', body: JSON.stringify({ taskId: discoveryVoiceTaskId, token: uploaded.token }) })
-    discoveryVoiceStatus.textContent = 'Ta voix est en cours de création. Cela peut prendre quelques minutes…'
+    discoveryVoiceStatus.textContent = 'Vérification…'
     let result = null
     for (let attempt = 0; attempt < 60; attempt++) {
-      await new Promise(resolve => window.setTimeout(resolve, 5000))
+      if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 3000))
       result = await callAudinooApi('/api/voice/status?taskId=' + encodeURIComponent(discoveryVoiceTaskId))
       if (result.ready) break
       if (result.status === 'fail') throw new Error(result.errorMessage || 'voice-creation-failed')
@@ -3794,7 +3852,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceVerificationFile.value = ''
     discoveryVoiceVerificationDurationValid = false
     discoveryVoiceVerificationPreview.hidden = true
-    discoveryVoiceVerificationPreview.removeAttribute('src')
+    clearVoicePreview(discoveryVoiceVerificationPreview)
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoicePanel.hidden = false
@@ -3804,7 +3862,9 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceProgress.hidden = true
     await refreshDiscoveryPlan(auth.currentUser?.uid)
   } catch (error) {
-    discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
+    console.error('[Audinoo voice creation] Technical failure', { stage: 'creation', taskId: discoveryVoiceTaskId, message: error?.message, providerMessage: error?.providerMessage, error })
+    discoveryVoiceStatus.classList.remove('is-loading')
+    discoveryVoiceStatus.textContent = 'La vérification ou la création a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     discoveryVoiceCreate.disabled = !discoveryVoiceVerificationDurationValid
