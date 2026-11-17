@@ -3228,3 +3228,16 @@ button.is-generating:disabled {
 @media (min-width:761px) {
   .workspace-mobile-credit.is-discovery-voice { display:flex !important; }
 }
+
+/* Keep the studio and its suggestions in the normal document scroll flow. */
+#workspace { min-height:100vh; height:auto !important; overflow:visible !important; }
+#workspace .workspace-layout { min-height:calc(100vh - 84px); height:auto !important; overflow:visible !important; align-items:start; }
+#workspace .workspace-content { min-height:100vh; height:auto !important; max-height:none !important; overflow:visible !important; padding-bottom:110px; }
+#workspace .workspace-content > * { max-height:none; }
+#workspace .studio-suggestions { margin-bottom:28px; }
+#workspace .workspace-pricing-page { min-height:100vh; height:auto; overflow:visible; padding-bottom:90px; }
+html:has(#workspace:not([hidden])) { overflow-y:auto; }
+body:has(#workspace:not([hidden])) { overflow-y:auto; }
+.page-shell:has(#workspace:not([hidden])) { overflow:visible; min-height:100vh; }
+.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note { display:block !important; }
+.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note strong { font-size:22px; }

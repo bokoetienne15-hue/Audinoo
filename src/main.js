@@ -495,7 +495,13 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
     button.addEventListener('click', async event => {
       event.preventDefault()
       const user = auth.currentUser
-      if (!user || verifiedAdminUid !== user.uid) {
+      if (!user) {
+        toast.textContent = 'Connecte-toi pour accéder à cette offre.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3600)
+        return
+      }
+      if (verifiedAdminUid !== user.uid) {
         toast.textContent = 'Le plan Découverte sera bientôt disponible.'
         toast.classList.add('show')
         window.setTimeout(() => toast.classList.remove('show'), 3600)
@@ -510,11 +516,12 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
         if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) throw new Error('admin-required')
         await refreshDiscoveryPlan(user.uid)
         if (!workspace.classList.contains('is-discovery-active')) throw new Error('discovery-activation-failed')
-        toast.textContent = 'Plan Découverte activé. Bienvenue dans ton espace vocal.'
+        toast.textContent = 'Plan Découverte activé : 3 crédits et 3 chansons disponibles pendant 30 jours.'
         toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 3600)
+        window.setTimeout(() => toast.classList.remove('show'), 4200)
         workspacePricingPage.hidden = true
         workspaceSidebar.querySelector('.workspace-nav[href="#studio"]')?.click()
+        window.scrollTo({ top: 0, behavior: 'instant' })
       } catch (error) {
         toast.textContent = generationErrorMessage(error.message)
         toast.classList.add('show')
@@ -3168,6 +3175,21 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     const plan = await callAudinooApi('/api/plan')
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     const discoveryActive = plan?.active === true && plan?.plan === 'discovery'
+    const sidebarPlanLabel = workspaceCredits.querySelector('span')
+    const sidebarPlanCount = workspaceCredits.querySelector('strong')
+    const sidebarPlanCaption = workspaceCredits.querySelector('small')
+    const sidebarUpgradeButton = workspaceCredits.querySelector('.workspace-upgrade-button')
+    if (discoveryActive) {
+      if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Forfait Découverte actif'
+      if (sidebarPlanCount) sidebarPlanCount.textContent = '3 crédits'
+      if (sidebarPlanCaption) sidebarPlanCaption.textContent = '3 chansons · 6 variantes · profil vocal · 30 jours'
+      if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Voir les avantages'
+    } else {
+      if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Crédit gratuit disponible'
+      if (sidebarPlanCount) sidebarPlanCount.textContent = document.querySelector('#workspace-free-credit-count')?.textContent || '0'
+      if (sidebarPlanCaption) sidebarPlanCaption.textContent = document.querySelector('#workspace-free-credit-caption')?.textContent || 'Offre de bienvenue'
+      if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Mettre à niveau →'
+    }
     const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
     const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
     if (discoveryPriceButton) {
@@ -3175,7 +3197,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
       discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
     }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
-    workspaceCredits.hidden = discoveryActive
+    workspaceCredits.hidden = false
     workspaceMobileCredit.classList.toggle('is-discovery-voice', discoveryActive)
     if (discoveryActive) {
       discoveryVoiceEntry.hidden = false
