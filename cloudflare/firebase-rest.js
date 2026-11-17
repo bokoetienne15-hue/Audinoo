@@ -89,9 +89,12 @@ export class FirestoreRest {
   }
   async request(path, init = {}) {
     const response = await fetch('https://firestore.googleapis.com/v1/' + path, { ...init, headers: { authorization: 'Bearer ' + await this.accessToken(), 'content-type': 'application/json', ...(init.headers || {}) } })
-    const body = await response.json().catch(() => ({}))
+    const rawBody = await response.text()
+    let body = {}
+    try { body = rawBody ? JSON.parse(rawBody) : {} } catch {}
     if (!response.ok) {
-      const error = new Error(body.error?.message || 'firestore-request-failed')
+      const detail = body.error?.message || rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
+      const error = new Error(detail || 'firestore-request-failed-' + response.status)
       error.status = response.status
       throw error
     }
