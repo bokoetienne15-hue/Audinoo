@@ -3127,23 +3127,32 @@ const discoveryVoiceStatus = document.querySelector('#discovery-voice-status')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
 let discoveryVoiceTaskId = ''
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
-  if (!uid || auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) { if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true; return }
+  if (!uid || auth.currentUser?.uid !== uid) {
+    if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+    return
+  }
+  const isAdmin = verifiedAdminUid === uid
+  discoveryVoiceEntry.hidden = false
+  discoveryVoiceToggle.disabled = !isAdmin
+  discoveryVoiceToggle.setAttribute('aria-disabled', String(!isAdmin))
+  document.querySelector('#discovery-voice-summary').textContent = isAdmin ? 'Configure ta voix' : 'Bientôt disponible'
+  if (!isAdmin) {
+    discoveryVoicePanel.hidden = true
+    return
+  }
   try {
     const plan = await callAudinooApi('/api/plan')
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
-    discoveryVoiceEntry.hidden = false
     if (plan.voiceProfile?.ready) {
       document.querySelector('#discovery-voice-summary').textContent = 'Voix prête · ' + plan.voiceProfile.name
       discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
-    } else {
-      document.querySelector('#discovery-voice-summary').textContent = 'Configure ta voix'
     }
   } catch (error) {
-    discoveryVoiceEntry.hidden = true
     console.warn('[Audinoo discovery plan]', error)
   }
 }
 discoveryVoiceToggle?.addEventListener('click', () => {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   discoveryVoicePanel.hidden = !discoveryVoicePanel.hidden
 })
 let discoveryVoiceRecorder = null
@@ -5301,6 +5310,8 @@ function openLanding() {
   stopUserPresence()
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
+  if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+  if (discoveryVoicePanel) discoveryVoicePanel.hidden = true
   adminWorkspacePage.hidden = true
   workspaceSettingsPage.hidden = true
   workspace.hidden = true
