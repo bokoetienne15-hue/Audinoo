@@ -1003,7 +1003,7 @@ const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><div class="library-view-switch" id="library-view-switch" role="tablist" aria-label="Type de bibliothèque"><button class="library-view-tab is-active" id="library-music-tab" type="button" role="tab" aria-selected="true" aria-controls="library-music-view"><span class="library-view-tab-icon" aria-hidden="true">♫</span><span class="library-view-tab-label">Musique</span><span class="library-view-new">Nouveau</span></button><button class="library-view-tab" id="library-video-tab" type="button" role="tab" aria-selected="false" aria-controls="library-video-view"><span class="library-view-tab-icon" aria-hidden="true">▣</span><span class="library-view-tab-label">Clip vidéo</span><span class="library-view-new">Nouveau</span></button></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><div class="library-view-switch" id="library-view-switch" role="tablist" aria-label="Type de bibliothèque"><button class="library-view-tab is-active" id="library-music-tab" type="button" role="tab" aria-selected="true" aria-controls="library-music-view"><span class="library-view-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 18V5l12-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="16" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg></span><span class="library-view-tab-label">Musique</span><span class="library-view-new">Nouveau</span></button><button class="library-view-tab" id="library-video-tab" type="button" role="tab" aria-selected="false" aria-controls="library-video-view"><span class="library-view-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="13" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 10 5-3v10l-5-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span class="library-view-tab-label">Clip vidéo</span><span class="library-view-new">Nouveau</span></button></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -4689,7 +4689,9 @@ function renderLibraryGeneration(generation) {
       entry.append(row)
     })
   }
-  group.append(entry)
+  const dateHeading = group.querySelector(':scope > .library-generation-date')
+  if (dateHeading) dateHeading.after(entry)
+  else group.prepend(entry)
 
   // La vue vidéo reprend chaque chanson de la bibliothèque, sans lancer de génération.
   const previousVideoEntry = [...libraryVideoList.querySelectorAll('.library-video-generation-entry')]
@@ -4746,7 +4748,9 @@ function renderLibraryGeneration(generation) {
       card.append(cover, info, action)
       videoEntry.append(card)
     })
-    videoGroup.append(videoEntry)
+    const videoDateHeading = videoGroup.querySelector(':scope > .library-generation-date')
+    if (videoDateHeading) videoDateHeading.after(videoEntry)
+    else videoGroup.prepend(videoEntry)
     const videoGroups = [...libraryVideoList.querySelectorAll('.library-video-generation-group')]
     videoGroups.sort((a, b) => {
       const first = a.dataset.libraryDate === 'unknown' ? 0 : Date.parse(a.dataset.libraryDate + 'T00:00:00')
@@ -4834,7 +4838,7 @@ async function callAudinooApi(path, options = {}) {
     const error = new Error(body.error || 'generation-failed')
     error.providerMessage = typeof body.providerMessage === 'string' ? body.providerMessage.slice(0, 240) : ''
     error.providerCode = body.providerCode == null ? '' : String(body.providerCode)
-    error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : ''
+    error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : typeof body.details === 'string' ? body.details.slice(0, 240) : ''
     throw error
   }
   return body
@@ -5085,43 +5089,50 @@ function openLibraryForGenerationPreview(preview) {
   workspaceModelChoice.classList.remove('is-active')
   window.history.replaceState(null, '', '#library')
   setWorkspaceSidebarOpen(false)
+  setLibraryView('music')
 
-  const group = document.createElement('section')
-  group.className = 'library-generation-group'
-  group.dataset.libraryTask = preview.id
-  const card = document.createElement('article')
-  card.className = 'library-song-item library-generation-preview is-preparing'
-  card.dataset.previewId = preview.id
+  const createdAt = new Date().toISOString()
+  const dateKey = libraryGenerationDateKey(createdAt)
+  let group = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
+    .find((item) => item.dataset.libraryDate === dateKey)
+  if (!group) {
+    group = document.createElement('section')
+    group.className = 'library-generation-group'
+    group.dataset.libraryDate = dateKey
+    const dateLabel = document.createElement('div')
+    dateLabel.className = 'library-generation-date'
+    dateLabel.textContent = libraryGenerationDateLabel(createdAt)
+    group.append(dateLabel)
+    libraryGenerationList.prepend(group)
+  }
+
+  const entry = document.createElement('div')
+  entry.className = 'library-generation-entry'
+  entry.dataset.libraryTask = preview.id
+  entry.dataset.createdAt = createdAt
+  const card = createGenerationCard({ taskId: preview.id, title: preview.title || 'Ta création Audinoo', status: 'PENDING', tracks: [] })
+  card.classList.add('library-pending-generation')
   card.setAttribute('aria-label', 'Nouvelle chanson en cours de génération')
+  entry.append(card)
+  const dateHeading = group.querySelector(':scope > .library-generation-date')
+  if (dateHeading) dateHeading.after(entry)
+  else group.prepend(entry)
 
-  const cover = document.createElement('div')
-  cover.className = 'generation-track-cover generation-preview-cover'
-  cover.setAttribute('aria-hidden', 'true')
-  const progress = document.createElement('div')
-  progress.className = 'generation-preview-progress'
-  progress.setAttribute('role', 'progressbar')
-  progress.setAttribute('aria-label', 'Progression de la génération')
-  progress.setAttribute('aria-valuemin', '0')
-  progress.setAttribute('aria-valuemax', '100')
-  progress.setAttribute('aria-valuenow', '0')
-  progress.innerHTML = '<span class="generation-preview-progress-label">0%</span>'
-  cover.append(progress)
-  card.append(cover)
-  group.append(card)
-  libraryGenerationList.prepend(group)
   libraryGenerationList.hidden = false
   libraryLoading.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
-
   preview.card = card
-  preview.group = group
-  preview.progressNode = progress
-  preview.percent = 0
+  preview.group = entry
+  preview.percent = 10
   preview.progressTimer = window.setInterval(() => {
     if (pendingGenerationPreview !== preview || !card.isConnected) return
     preview.percent = Math.min(92, preview.percent + (preview.percent < 60 ? 2 : 1))
-    progress.querySelector('.generation-preview-progress-label').textContent = preview.percent + '%'
-    progress.setAttribute('aria-valuenow', String(preview.percent))
+    const percent = card.querySelector('.generation-progress-percent')
+    const bar = card.querySelector('.generation-progress-track span')
+    const message = card.querySelector('.generation-progress-message')
+    if (percent) percent.textContent = preview.percent + '%'
+    if (bar) bar.style.width = preview.percent + '%'
+    if (message) message.textContent = 'Audinoo compose ta chanson…'
   }, 1100)
 }
 
@@ -5174,9 +5185,13 @@ async function pollLibraryGenerationPreview(preview, taskId) {
         window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3500)
         return
       }
-      const label = preview.progressNode?.querySelector('.generation-preview-progress-label')
-      if (label) label.textContent = Math.max(preview.percent, 60 + (messageIndex % 30)) + '%'
-      if (preview.progressNode) preview.progressNode.setAttribute('aria-valuenow', String(Math.max(preview.percent, 60 + (messageIndex % 30))))
+      const shownPercent = Math.max(preview.percent, 60 + (messageIndex % 30))
+      const label = preview.card?.querySelector('.generation-progress-percent')
+      const bar = preview.card?.querySelector('.generation-progress-track span')
+      const message = preview.card?.querySelector('.generation-progress-message')
+      if (label) label.textContent = shownPercent + '%'
+      if (bar) bar.style.width = shownPercent + '%'
+      if (message) message.textContent = messages[messageIndex % messages.length]
       messageIndex = (messageIndex + 1) % messages.length
     } catch (error) {
       if (error.message === 'invalid-session' || error.message === 'generation-not-found') {
