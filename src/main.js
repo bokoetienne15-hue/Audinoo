@@ -180,7 +180,61 @@ app.innerHTML = `
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden><section class="discovery-voice-card" aria-label="Ma voix"><div class="discovery-voice-card-header"><button class="discovery-voice-toggle" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Ouvrir le formulaire de voix personnalisée"><span class="discovery-voice-plus" aria-hidden="true">+</span></button><div class="discovery-voice-card-title"><h2>Ma voix</h2><p id="discovery-voice-summary">Personnalise tes chansons</p></div></div><div class="discovery-voice-profile-card" id="discovery-voice-profile-card" hidden><span class="discovery-voice-profile-icon" aria-hidden="true">♫</span><div><strong id="discovery-voice-profile-name">Ma voix</strong><small>Prête pour tes prochaines chansons</small></div><span class="discovery-voice-profile-status">PRÊTE</span></div><section class="discovery-voice-panel" id="discovery-voice-panel" hidden><div class="discovery-voice-heading"><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Crée ta voix personnalisée</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div><p class="discovery-voice-copy">Enregistre un extrait de ta propre voix, puis répète la phrase de vérification. Ta voix sera ensuite proposée dans tes créations musicales.</p><form id="discovery-voice-source-form" class="discovery-voice-form"><label for="discovery-voice-name">Nom de ta voix</label><input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required><p class="discovery-voice-copy">Tu peux importer un fichier audio ou enregistrer ta voix directement ici.</p><div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-record-start">Enregistrer ma voix</button><button type="button" class="discovery-voice-action" id="discovery-voice-record-stop" hidden>Arrêter l’enregistrement</button></div><audio id="discovery-voice-record-preview" controls hidden></audio><label for="discovery-voice-source">Importer un audio (5 secondes minimum, 15 à 30 secondes conseillées)</label><input id="discovery-voice-source" name="audio" type="file" accept="audio/*" required><div class="discovery-voice-segment"><label>Début (secondes)<input id="discovery-voice-start" type="number" min="0" max="300" value="0" required></label><label>Fin (secondes)<input id="discovery-voice-end" type="number" min="5" max="300" value="15" required></label></div><label class="discovery-voice-consent"><input id="discovery-voice-consent" type="checkbox" required><span>Je confirme que cet enregistrement est ma voix ou que je dispose de l'autorisation explicite de la personne enregistrée.</span></label><button type="submit" class="discovery-voice-action" id="discovery-voice-validate">Analyser ma voix</button></form><div class="discovery-voice-verification" id="discovery-voice-verification" hidden><p class="discovery-voice-step">ÉTAPE 2 · VÉRIFICATION</p><p>Enregistre cette phrase en la chantant, puis importe le nouvel audio :</p><blockquote id="discovery-voice-phrase"></blockquote><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"><button type="button" class="discovery-voice-action" id="discovery-voice-create">Créer ma voix</button></div><p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p></section></section></div><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
+  <section class="discovery-voice-card" aria-label="Ma voix">
+    <div class="discovery-voice-card-header">
+      <button class="discovery-voice-toggle" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix"><span class="discovery-voice-plus" aria-hidden="true">+</span></button>
+      <div class="discovery-voice-card-title"><h2>Ma voix</h2><p id="discovery-voice-summary">Configurer ma voix</p></div>
+    </div>
+    <div class="discovery-voice-profile-card" id="discovery-voice-profile-card" hidden><span class="discovery-voice-profile-icon" aria-hidden="true">♫</span><div><strong id="discovery-voice-profile-name">Ma voix</strong><small>Prête pour tes prochaines chansons</small></div><span class="discovery-voice-profile-status">PRÊTE</span></div>
+    <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
+      <div class="discovery-voice-heading"><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Configure ta voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
+      <p class="discovery-voice-copy">Choisis une seule méthode pour fournir un extrait de ta voix. Rien n’est envoyé avant que tu appuies sur « Suivant ».</p>
+      <div class="discovery-voice-source-choices" id="discovery-voice-source-choices">
+        <button class="discovery-voice-source-choice" id="discovery-voice-import-choice" type="button"><span aria-hidden="true">↥</span><strong>Importer un audio</strong><small>Choisir un fichier existant</small></button>
+        <button class="discovery-voice-source-choice" id="discovery-voice-record-choice" type="button"><span aria-hidden="true">●</span><strong>Enregistrer ma voix</strong><small>Parler directement ici</small></button>
+      </div>
+      <form id="discovery-voice-source-form" class="discovery-voice-form" hidden>
+        <label for="discovery-voice-name">Nom de ta voix</label>
+        <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
+        <section class="discovery-voice-step-panel" id="discovery-voice-import-step" hidden>
+          <label for="discovery-voice-source">Choisis ton fichier audio (5 secondes minimum)</label>
+          <input id="discovery-voice-source" name="audio" type="file" accept="audio/*">
+        </section>
+        <section class="discovery-voice-step-panel" id="discovery-voice-record-step" hidden>
+          <p class="discovery-voice-countdown" id="discovery-voice-countdown">Prêt à enregistrer</p>
+          <div class="discovery-voice-waveform" id="discovery-voice-waveform" aria-label="Niveau sonore du microphone"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <p class="discovery-voice-record-timer" id="discovery-voice-record-timer">00:00</p>
+          <div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-record-start">Démarrer l’enregistrement</button><button type="button" class="discovery-voice-action" id="discovery-voice-record-stop" hidden>Terminer l’enregistrement</button></div>
+        </section>
+        <audio id="discovery-voice-record-preview" controls hidden></audio>
+        <input id="discovery-voice-start" type="hidden" value="0">
+        <input id="discovery-voice-end" type="hidden" value="15">
+        <label class="discovery-voice-consent"><input id="discovery-voice-consent" type="checkbox" required><span>Je confirme que cet enregistrement est ma voix ou que je dispose de l'autorisation explicite de la personne enregistrée.</span></label>
+        <div class="discovery-voice-form-actions"><button type="button" class="discovery-voice-action secondary" id="discovery-voice-source-back">Retour</button><button type="submit" class="discovery-voice-action" id="discovery-voice-validate" disabled>Suivant</button></div>
+      </form>
+      <div class="discovery-voice-verification" id="discovery-voice-verification" hidden>
+        <p class="discovery-voice-step">ÉTAPE 2 · VÉRIFICATION</p>
+        <p>Lis cette phrase à voix haute en la chantant, puis enregistre-la ou importe ton audio.</p>
+        <blockquote id="discovery-voice-phrase"></blockquote>
+        <div class="discovery-voice-source-choices">
+          <button class="discovery-voice-source-choice" id="discovery-voice-verification-import-choice" type="button"><span aria-hidden="true">↥</span><strong>Importer la phrase</strong><small>Choisir un fichier audio</small></button>
+          <button class="discovery-voice-source-choice" id="discovery-voice-verification-record-choice" type="button"><span aria-hidden="true">●</span><strong>Enregistrer la phrase</strong><small>La lire au microphone</small></button>
+        </div>
+        <section class="discovery-voice-step-panel" id="discovery-voice-verification-import-step" hidden><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"></section>
+        <section class="discovery-voice-step-panel" id="discovery-voice-verification-record-step" hidden>
+          <p class="discovery-voice-countdown" id="discovery-voice-verification-countdown">Prêt à enregistrer</p>
+          <div class="discovery-voice-waveform" id="discovery-voice-verification-waveform" aria-label="Niveau sonore du microphone"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <p class="discovery-voice-record-timer" id="discovery-voice-verification-record-timer">00:00</p>
+          <div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-start">Démarrer l’enregistrement</button><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-stop" hidden>Terminer l’enregistrement</button></div>
+        </section>
+        <audio id="discovery-voice-verification-preview" controls hidden></audio>
+        <button type="button" class="discovery-voice-action" id="discovery-voice-create" disabled>Valider ma voix</button>
+      </div>
+      <p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p>
+    </section>
+  </section>
+</div><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
         <h1>Pars d’un <span>modèle</span>.</h1>
@@ -1352,6 +1406,52 @@ adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace
 workspaceLayout.append(adminWorkspacePage)
 
 let verifiedAdminUid = null
+const adminDiscoveryPanel = document.createElement('section')
+adminDiscoveryPanel.className = 'admin-panel admin-discovery-plan-panel'
+adminDiscoveryPanel.innerHTML = '<div class="admin-panel-heading"><div><p>ABONNEMENT DU COMPTE ADMIN</p><h2>Forfait Découverte</h2></div><span class="admin-credit-state" id="admin-discovery-state">Vérification…</span></div><p class="admin-panel-status" id="admin-discovery-detail">Chargement du forfait et des crédits Découverte…</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-discovery-cancel" type="button" disabled>Annuler le forfait</button><small>Seuls les crédits Découverte et ses avantages seront retirés. Les crédits achetés à l’unité resteront disponibles.</small></div>'
+adminWorkspacePage.insertBefore(adminDiscoveryPanel, adminWorkspacePage.querySelector('.admin-stats-grid'))
+const adminDiscoveryState = adminDiscoveryPanel.querySelector('#admin-discovery-state')
+const adminDiscoveryDetail = adminDiscoveryPanel.querySelector('#admin-discovery-detail')
+const adminDiscoveryCancel = adminDiscoveryPanel.querySelector('#admin-discovery-cancel')
+function renderAdminDiscoveryPanel(plan = {}) {
+  const active = plan.active === true && plan.plan === 'discovery'
+  adminDiscoveryState.textContent = active ? 'ACTIF' : 'INACTIF'
+  adminDiscoveryDetail.textContent = active
+    ? Math.max(0, Number(plan.discoveryCredits || 0)) + ' crédit(s) Découverte restant(s) · expiration le ' + (plan.expiresAt ? new Date(plan.expiresAt).toLocaleDateString('fr-FR') : '—') + '. Les crédits achetés séparément sont conservés.'
+    : 'Aucun forfait Découverte actif. Le compte utilise le fonctionnement normal par achat unique.'
+  adminDiscoveryCancel.disabled = !active || adminDiscoveryCancel.dataset.loading === 'true'
+}
+adminDiscoveryCancel.addEventListener('click', async () => {
+  const user = auth.currentUser
+  if (!user || verifiedAdminUid !== user.uid) {
+    adminDiscoveryDetail.textContent = 'Accès administrateur requis.'
+    return
+  }
+  if (!window.confirm('Annuler immédiatement le forfait Découverte ? Les crédits Découverte restants et ses avantages seront retirés. Les crédits achetés séparément seront conservés.')) return
+  adminDiscoveryCancel.disabled = true
+  adminDiscoveryCancel.dataset.loading = 'true'
+  adminDiscoveryCancel.textContent = 'Annulation…'
+  adminDiscoveryDetail.textContent = 'Annulation sécurisée du forfait…'
+  try {
+    const result = await callAudinooApi('/api/admin/discovery/cancel', { method: 'POST', body: JSON.stringify({}) })
+    if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) return
+    if (result.cancelled) {
+      await refreshDiscoveryPlan(user.uid)
+      adminDiscoveryDetail.textContent = 'Forfait Découverte annulé. Ses crédits et avantages ont été retirés ; tes crédits achetés séparément sont conservés.'
+    } else {
+      await refreshDiscoveryPlan(user.uid)
+      adminDiscoveryDetail.textContent = 'Aucun forfait Découverte actif à annuler.'
+    }
+  } catch (error) {
+    adminDiscoveryDetail.textContent = error.message === 'generation-in-progress'
+      ? 'Une génération est en cours. Attends sa fin puis réessaie.'
+      : 'Annulation impossible : ' + generationErrorMessage(error.message)
+  } finally {
+    adminDiscoveryCancel.dataset.loading = 'false'
+    adminDiscoveryCancel.textContent = 'Annuler le forfait'
+    adminDiscoveryCancel.disabled = !workspace.classList.contains('is-discovery-active')
+  }
+})
 const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestions-status')
 const adminSuggestionList = adminWorkspacePage.querySelector('#admin-suggestion-list')
 const adminNotificationForm = adminWorkspacePage.querySelector('#admin-notification-form')
@@ -2960,20 +3060,35 @@ async function refreshAdminAccess(uid) {
   stopAdminStatsListeners = null
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
-  if (!uid || auth.currentUser?.uid !== uid) return false
-  void refreshDiscoveryPlan(uid)
+  workspace.classList.add('is-plan-checking')
+  if (!uid || auth.currentUser?.uid !== uid) {
+    workspace.classList.remove('is-plan-checking')
+    return false
+  }
 
   try {
     const adminRecord = await getDoc(doc(db, 'admins', uid))
-    if (auth.currentUser?.uid !== uid || !adminRecord.exists() || adminRecord.data().enabled !== true) return false
+    if (auth.currentUser?.uid !== uid) {
+      workspace.classList.remove('is-plan-checking')
+      return false
+    }
+    if (!adminRecord.exists() || adminRecord.data().enabled !== true) {
+      workspace.classList.remove('is-plan-checking')
+      workspace.classList.remove('is-discovery-active')
+      workspaceCredits.hidden = false
+      workspaceMobileCredit.hidden = false
+      renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
+      return false
+    }
     verifiedAdminUid = uid
-    void refreshDiscoveryPlan(uid)
+    await refreshDiscoveryPlan(uid)
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
     startAdminNotificationListener()
     void loadAdminGenerations()
-      return true
+    return true
   } catch (error) {
+    workspace.classList.remove('is-plan-checking')
     console.warn('[Audinoo admin] Could not verify admin access', error)
     return false
   }
@@ -3138,12 +3253,27 @@ const discoveryVoiceSummary = document.querySelector('#discovery-voice-summary')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
 const discoveryVoiceProfileCard = document.querySelector('#discovery-voice-profile-card')
 const discoveryVoiceProfileName = document.querySelector('#discovery-voice-profile-name')
+const discoveryVoiceSourceChoices = document.querySelector('#discovery-voice-source-choices')
+const discoveryVoiceSourceForm = document.querySelector('#discovery-voice-source-form')
+const discoveryVoiceSource = document.querySelector('#discovery-voice-source')
+const discoveryVoiceImportStep = document.querySelector('#discovery-voice-import-step')
+const discoveryVoiceRecordStep = document.querySelector('#discovery-voice-record-step')
+const discoveryVoiceRecordPreview = document.querySelector('#discovery-voice-record-preview')
+const discoveryVoiceValidate = document.querySelector('#discovery-voice-validate')
+const discoveryVoiceConsent = document.querySelector('#discovery-voice-consent')
+const discoveryVoiceVerificationFile = document.querySelector('#discovery-voice-verification-file')
+const discoveryVoiceCreate = document.querySelector('#discovery-voice-create')
+const discoveryVoiceVerificationPreview = document.querySelector('#discovery-voice-verification-preview')
 let discoveryVoiceTaskId = ''
+let discoveryVoiceName = 'Ma voix'
+let discoveryVoiceRecorder = null
+let discoveryVoiceStream = null
+let discoveryVoiceChunks = []
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   if (!uid || auth.currentUser?.uid !== uid) {
     if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
     if (discoveryVoiceProfileCard) discoveryVoiceProfileCard.hidden = true
-    workspace?.classList.remove('is-discovery-active')
+    workspace?.classList.remove('is-discovery-active', 'is-plan-checking')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
     return
@@ -3153,7 +3283,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   discoveryVoicePanel.hidden = true
   discoveryVoiceToggle?.setAttribute('aria-expanded', 'false')
   if (!isAdmin) {
-    workspace.classList.remove('is-discovery-active')
+    workspace.classList.remove('is-discovery-active', 'is-plan-checking')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
     discoveryVoiceProfileCard.hidden = true
@@ -3169,7 +3299,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     const sidebarUpgradeButton = workspaceCredits.querySelector('.workspace-upgrade-button')
     if (discoveryActive) {
       if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Forfait Découverte actif'
-      if (sidebarPlanCount) sidebarPlanCount.textContent = '3 crédits'
+      if (sidebarPlanCount) sidebarPlanCount.textContent = Math.max(0, Number(plan.discoveryCredits || 0)) + ' crédits'
       if (sidebarPlanCaption) sidebarPlanCaption.textContent = '3 chansons · 6 variantes · profil vocal · 30 jours'
       if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Voir les avantages'
     } else {
@@ -3181,23 +3311,23 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
     const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
     if (discoveryPriceButton) {
-      discoveryPriceButton.textContent = isAdmin ? (discoveryActive ? 'Plan activé · 1 000 FCFA' : 'Activer le plan · 1 000 FCFA') : 'Bientôt disponible'
+      discoveryPriceButton.textContent = discoveryActive ? 'Plan activé · 1 000 FCFA' : 'Activer le plan · 1 000 FCFA'
       discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
     }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
     workspaceCredits.hidden = discoveryActive
     workspaceMobileCredit.hidden = discoveryActive
     discoveryVoiceEntry.hidden = !discoveryActive
+    renderAdminDiscoveryPanel(plan)
     if (discoveryActive) {
       const voiceProfile = plan.voiceProfile
+      discoveryVoiceSummary.textContent = 'Configurer ma voix'
       if (voiceProfile?.ready) {
         const voiceName = voiceProfile.name || 'Ma voix'
-        discoveryVoiceSummary.textContent = 'Voix prête · ' + voiceName
         discoveryVoiceProfileName.textContent = voiceName
         discoveryVoiceProfileCard.hidden = false
         discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
       } else {
-        discoveryVoiceSummary.textContent = 'Personnalise tes chansons'
         discoveryVoiceProfileCard.hidden = true
       }
     } else {
@@ -3210,6 +3340,9 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspaceMobileCredit.hidden = false
     discoveryVoiceEntry.hidden = true
     discoveryVoiceProfileCard.hidden = true
+    renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
+  } finally {
+    workspace.classList.remove('is-plan-checking')
   }
 }
 discoveryVoiceToggle?.addEventListener('click', () => {
@@ -3217,74 +3350,202 @@ discoveryVoiceToggle?.addEventListener('click', () => {
   const opening = discoveryVoicePanel.hidden
   discoveryVoicePanel.hidden = !opening
   discoveryVoiceToggle.setAttribute('aria-expanded', String(opening))
+  if (opening) {
+    discoveryVoiceSourceChoices.hidden = false
+    discoveryVoiceSourceForm.hidden = true
+    discoveryVoiceVerification.hidden = true
+  }
 })
-let discoveryVoiceRecorder = null
-let discoveryVoiceStream = null
-let discoveryVoiceChunks = []
-const discoveryVoiceRecordStart = document.querySelector('#discovery-voice-record-start')
-const discoveryVoiceRecordStop = document.querySelector('#discovery-voice-record-stop')
-const discoveryVoiceRecordPreview = document.querySelector('#discovery-voice-record-preview')
-discoveryVoiceRecordStart?.addEventListener('click', async () => {
-  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    discoveryVoiceStatus.textContent = 'L’enregistrement direct n’est pas pris en charge sur cet appareil. Tu peux importer un fichier audio.'
+function voiceFileDuration(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file)
+    const audio = new Audio()
+    audio.preload = 'metadata'
+    audio.onloadedmetadata = () => {
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0
+      URL.revokeObjectURL(url)
+      resolve(duration)
+    }
+    audio.onerror = () => { URL.revokeObjectURL(url); resolve(0) }
+    audio.src = url
+  })
+}
+function setVoiceFile(input, file, preview, readyButton) {
+  if (!file) return
+  const transfer = new DataTransfer()
+  transfer.items.add(file)
+  input.files = transfer.files
+  preview.src = URL.createObjectURL(file)
+  preview.hidden = false
+  if (readyButton) readyButton.disabled = false
+  if (input === discoveryVoiceSource) discoveryVoiceValidate.disabled = !(file && discoveryVoiceConsent.checked)
+}
+function attachVoiceRecorder(options) {
+  const { input, preview, startButton, stopButton, countdown, timer, waveform, filename, readyButton, statusMessage } = options
+  let recorder = null
+  let stream = null
+  let chunks = []
+  let audioContext = null
+  let animationFrame = 0
+  let timerInterval = 0
+  let startedAt = 0
+  const bars = [...waveform.querySelectorAll('i')]
+  const stopVisuals = () => {
+    if (animationFrame) cancelAnimationFrame(animationFrame)
+    if (timerInterval) clearInterval(timerInterval)
+    animationFrame = 0
+    timerInterval = 0
+    bars.forEach(bar => { bar.style.transform = 'scaleY(.18)' })
+    if (audioContext && audioContext.state !== 'closed') void audioContext.close().catch(() => {})
+    audioContext = null
+    stream?.getTracks().forEach(track => track.stop())
+    stream = null
+  }
+  startButton.addEventListener('click', async () => {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      statusMessage.textContent = 'L’enregistrement direct n’est pas pris en charge sur cet appareil. Utilise l’import audio.'
+      return
+    }
+    startButton.disabled = true
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported?.(type))
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      chunks = []
+      recorder.addEventListener('dataavailable', event => { if (event.data?.size) chunks.push(event.data) })
+      recorder.addEventListener('stop', () => {
+        const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' })
+        if (blob.size) {
+          const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
+          const audioFile = new File([blob], filename + '.' + extension, { type: blob.type || 'audio/webm' })
+          setVoiceFile(input, audioFile, preview, readyButton)
+          statusMessage.textContent = 'Enregistrement terminé. Écoute-le, puis appuie sur Suivant.'
+        }
+        stopVisuals()
+        startButton.hidden = false
+        startButton.disabled = false
+        startButton.textContent = 'Recommencer'
+        stopButton.hidden = true
+        countdown.textContent = 'Enregistrement terminé'
+      })
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      if (AudioContextClass) {
+        audioContext = new AudioContextClass()
+        await audioContext.resume().catch(() => {})
+        const source = audioContext.createMediaStreamSource(stream)
+        const analyser = audioContext.createAnalyser()
+        analyser.fftSize = 128
+        source.connect(analyser)
+        const samples = new Uint8Array(analyser.frequencyBinCount)
+        const draw = () => {
+          analyser.getByteFrequencyData(samples)
+          bars.forEach((bar, index) => {
+            const sample = samples[Math.min(samples.length - 1, Math.floor(index * samples.length / bars.length))] || 0
+            bar.style.transform = 'scaleY(' + (0.18 + sample / 255 * 2.2) + ')'
+          })
+          animationFrame = requestAnimationFrame(draw)
+        }
+        draw()
+      }
+      for (let count = 3; count > 0; count--) {
+        countdown.textContent = String(count)
+        await new Promise(resolve => window.setTimeout(resolve, 700))
+      }
+      countdown.textContent = 'Parle maintenant'
+      recorder.start(250)
+      startedAt = Date.now()
+      timerInterval = window.setInterval(() => {
+        const seconds = Math.floor((Date.now() - startedAt) / 1000)
+        timer.textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0')
+      }, 250)
+      startButton.hidden = true
+      stopButton.hidden = false
+      statusMessage.textContent = 'Ta voix est enregistrée en direct. Appuie sur « Terminer » lorsque tu as fini.'
+    } catch (error) {
+      stopVisuals()
+      startButton.disabled = false
+      statusMessage.textContent = 'Impossible d’accéder au microphone. Autorise le micro ou importe un fichier audio.'
+    }
+  })
+  stopButton.addEventListener('click', () => {
+    if (recorder?.state === 'recording') recorder.stop()
+  })
+}
+function updateDiscoveryVoiceNext() {
+  discoveryVoiceValidate.disabled = !discoveryVoiceSource.files?.[0] || !discoveryVoiceConsent.checked
+}
+const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-import-choice')
+const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
+const discoveryVoiceSourceBack = document.querySelector('#discovery-voice-source-back')
+discoveryVoiceImportChoice.addEventListener('click', () => {
+  discoveryVoiceSourceChoices.hidden = true
+  discoveryVoiceSourceForm.hidden = false
+  discoveryVoiceImportStep.hidden = false
+  discoveryVoiceRecordStep.hidden = true
+  discoveryVoiceStatus.textContent = 'Sélectionne un fichier audio. Il ne sera envoyé qu’après avoir appuyé sur Suivant.'
+  discoveryVoiceSource.click()
+})
+discoveryVoiceRecordChoice.addEventListener('click', () => {
+  discoveryVoiceSourceChoices.hidden = true
+  discoveryVoiceSourceForm.hidden = false
+  discoveryVoiceImportStep.hidden = true
+  discoveryVoiceRecordStep.hidden = false
+  discoveryVoiceStatus.textContent = 'Le microphone démarrera après le compte à rebours.'
+})
+discoveryVoiceSourceBack.addEventListener('click', () => {
+  discoveryVoiceSourceForm.reset()
+  discoveryVoiceSourceForm.hidden = true
+  discoveryVoiceSourceChoices.hidden = false
+  discoveryVoiceRecordPreview.hidden = true
+  discoveryVoiceRecordPreview.removeAttribute('src')
+  discoveryVoiceValidate.disabled = true
+  discoveryVoiceStatus.textContent = ''
+})
+discoveryVoiceSource.addEventListener('change', async () => {
+  const file = discoveryVoiceSource.files?.[0]
+  if (!file) return
+  setVoiceFile(discoveryVoiceSource, file, discoveryVoiceRecordPreview, discoveryVoiceValidate)
+  const duration = await voiceFileDuration(file)
+  if (duration && duration < 5) {
+    discoveryVoiceValidate.disabled = true
+    discoveryVoiceStatus.textContent = 'Ton audio doit durer au moins 5 secondes.'
     return
   }
-  try {
-    discoveryVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported?.(type))
-    discoveryVoiceRecorder = mimeType ? new MediaRecorder(discoveryVoiceStream, { mimeType }) : new MediaRecorder(discoveryVoiceStream)
-    discoveryVoiceChunks = []
-    discoveryVoiceRecorder.addEventListener('dataavailable', event => { if (event.data?.size) discoveryVoiceChunks.push(event.data) })
-    discoveryVoiceRecorder.addEventListener('stop', () => {
-      const blob = new Blob(discoveryVoiceChunks, { type: discoveryVoiceRecorder?.mimeType || 'audio/webm' })
-      if (blob.size) {
-        const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
-        const file = new File([blob], 'ma-voix.' + extension, { type: blob.type || 'audio/webm' })
-        const transfer = new DataTransfer()
-        transfer.items.add(file)
-        document.querySelector('#discovery-voice-source').files = transfer.files
-        discoveryVoiceRecordPreview.src = URL.createObjectURL(blob)
-        discoveryVoiceRecordPreview.hidden = false
-        discoveryVoiceStatus.textContent = 'Enregistrement prêt. Tu peux maintenant analyser ta voix.'
-      }
-      discoveryVoiceStream?.getTracks().forEach(track => track.stop())
-      discoveryVoiceStream = null
-      discoveryVoiceRecordStart.hidden = false
-      discoveryVoiceRecordStop.hidden = true
-    })
-    discoveryVoiceRecorder.start()
-    discoveryVoiceRecordStart.hidden = true
-    discoveryVoiceRecordStop.hidden = false
-    discoveryVoiceStatus.textContent = 'Enregistrement en cours… Appuie sur Arrêter quand tu as terminé.'
-  } catch (error) {
-    discoveryVoiceStream?.getTracks().forEach(track => track.stop())
-    discoveryVoiceStream = null
-    discoveryVoiceStatus.textContent = 'Impossible d’accéder au microphone. Vérifie son autorisation ou importe un fichier audio.'
-  }
+  document.querySelector('#discovery-voice-end').value = String(Math.max(5, Math.min(30, Math.floor(duration || 15))))
+  discoveryVoiceStatus.textContent = 'Audio prêt. Tu peux écouter ton fichier puis passer à l’étape suivante.'
+  updateDiscoveryVoiceNext()
 })
-discoveryVoiceRecordStop?.addEventListener('click', () => {
-  if (discoveryVoiceRecorder?.state === 'recording') discoveryVoiceRecorder.stop()
+discoveryVoiceConsent.addEventListener('change', updateDiscoveryVoiceNext)
+attachVoiceRecorder({
+  input: discoveryVoiceSource,
+  preview: discoveryVoiceRecordPreview,
+  startButton: document.querySelector('#discovery-voice-record-start'),
+  stopButton: document.querySelector('#discovery-voice-record-stop'),
+  countdown: document.querySelector('#discovery-voice-countdown'),
+  timer: document.querySelector('#discovery-voice-record-timer'),
+  waveform: document.querySelector('#discovery-voice-waveform'),
+  filename: 'ma-voix',
+  readyButton: discoveryVoiceValidate,
+  statusMessage: discoveryVoiceStatus
 })
-
 document.querySelector('#discovery-voice-source-form')?.addEventListener('submit', async event => {
   event.preventDefault()
-  const file = document.querySelector('#discovery-voice-source').files[0]
-  const name = document.querySelector('#discovery-voice-name').value.trim() || 'Ma voix'
-  const start = Number(document.querySelector('#discovery-voice-start').value)
-  const end = Number(document.querySelector('#discovery-voice-end').value)
-  if (!file || !file.type.startsWith('audio/') || end <= start || end - start < 5) {
-    discoveryVoiceStatus.textContent = 'Choisis un fichier audio valide et un extrait d’au moins 5 secondes.'
+  const file = discoveryVoiceSource.files?.[0]
+  discoveryVoiceName = document.querySelector('#discovery-voice-name').value.trim() || 'Ma voix'
+  const start = 0
+  const end = Number(document.querySelector('#discovery-voice-end').value || 15)
+  if (!file || !file.type.startsWith('audio/') || end < 5 || !discoveryVoiceConsent.checked) {
+    discoveryVoiceStatus.textContent = 'Choisis un audio d’au moins 5 secondes et confirme que tu as le droit d’utiliser cette voix.'
     return
   }
-  const submit = document.querySelector('#discovery-voice-validate')
-  submit.disabled = true
-  discoveryVoiceStatus.textContent = 'Envoi de ton enregistrement…'
+  discoveryVoiceValidate.disabled = true
+  discoveryVoiceStatus.textContent = 'Étape 1/2 · Envoi et analyse de ton extrait audio…'
   try {
     const form = new FormData()
     form.append('audio', file)
     form.append('kind', 'sample')
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
-    const started = await callAudinooApi('/api/voice/validate', { method: 'POST', body: JSON.stringify({ token: uploaded.token, voiceName: name, vocalStartS: start, vocalEndS: end }) })
+    const started = await callAudinooApi('/api/voice/validate', { method: 'POST', body: JSON.stringify({ token: uploaded.token, voiceName: discoveryVoiceName, vocalStartS: start, vocalEndS: end }) })
     discoveryVoiceTaskId = started.taskId
     discoveryVoiceStatus.textContent = 'Analyse en cours. Préparation de ta phrase de vérification…'
     let validation = null
@@ -3296,23 +3557,58 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     }
     if (!validation?.validateInfo) throw new Error('voice-validation-timeout')
     document.querySelector('#discovery-voice-phrase').textContent = validation.validateInfo
+    discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = false
-    discoveryVoiceStatus.textContent = 'Phrase prête. Enregistre-la en chantant, puis importe ton enregistrement.'
+    discoveryVoiceStatus.textContent = 'Étape 2/2 · Répète la phrase à voix haute, puis enregistre-la ou importe-la.'
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Impossible de préparer ta voix : ' + (error.providerMessage || generationErrorMessage(error.message))
   } finally {
-    submit.disabled = false
+    discoveryVoiceValidate.disabled = false
   }
 })
-document.querySelector('#discovery-voice-create')?.addEventListener('click', async () => {
-  const file = document.querySelector('#discovery-voice-verification-file').files[0]
-  const button = document.querySelector('#discovery-voice-create')
+const verificationChoices = document.querySelector('#discovery-voice-verification .discovery-voice-source-choices')
+const verificationImportChoice = document.querySelector('#discovery-voice-verification-import-choice')
+const verificationRecordChoice = document.querySelector('#discovery-voice-verification-record-choice')
+const verificationImportStep = document.querySelector('#discovery-voice-verification-import-step')
+const verificationRecordStep = document.querySelector('#discovery-voice-verification-record-step')
+verificationImportChoice.addEventListener('click', () => {
+  verificationChoices.hidden = true
+  verificationImportStep.hidden = false
+  verificationRecordStep.hidden = true
+  discoveryVoiceVerificationFile.click()
+})
+verificationRecordChoice.addEventListener('click', () => {
+  verificationChoices.hidden = true
+  verificationImportStep.hidden = true
+  verificationRecordStep.hidden = false
+  discoveryVoiceStatus.textContent = 'Lis la phrase affichée. Le compte à rebours démarre avant l’enregistrement.'
+})
+discoveryVoiceVerificationFile.addEventListener('change', () => {
+  const file = discoveryVoiceVerificationFile.files?.[0]
+  if (!file) return
+  setVoiceFile(discoveryVoiceVerificationFile, file, discoveryVoiceVerificationPreview, discoveryVoiceCreate)
+  discoveryVoiceStatus.textContent = 'Enregistrement de vérification prêt.'
+})
+attachVoiceRecorder({
+  input: discoveryVoiceVerificationFile,
+  preview: discoveryVoiceVerificationPreview,
+  startButton: document.querySelector('#discovery-voice-verification-record-start'),
+  stopButton: document.querySelector('#discovery-voice-verification-record-stop'),
+  countdown: document.querySelector('#discovery-voice-verification-countdown'),
+  timer: document.querySelector('#discovery-voice-verification-record-timer'),
+  waveform: document.querySelector('#discovery-voice-verification-waveform'),
+  filename: 'verification-voix',
+  readyButton: discoveryVoiceCreate,
+  statusMessage: discoveryVoiceStatus
+})
+discoveryVoiceCreate?.addEventListener('click', async () => {
+  const file = discoveryVoiceVerificationFile.files?.[0]
   if (!file || !file.type.startsWith('audio/') || !discoveryVoiceTaskId) {
     discoveryVoiceStatus.textContent = 'Ajoute ton enregistrement de vérification.'
     return
   }
-  button.disabled = true
-  discoveryVoiceStatus.textContent = 'Envoi de la vérification et création de ta voix…'
+  discoveryVoiceCreate.disabled = true
+  discoveryVoiceStatus.textContent = 'Étape 2/2 · Envoi de la vérification et création de ta voix…'
   try {
     const form = new FormData()
     form.append('audio', file)
@@ -3328,19 +3624,21 @@ document.querySelector('#discovery-voice-create')?.addEventListener('click', asy
       if (result.status === 'fail') throw new Error(result.errorMessage || 'voice-creation-failed')
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
-    const createdVoiceName = result.voiceName || name
+    const createdVoiceName = result.voiceName || discoveryVoiceName
     discoveryVoiceStatus.textContent = 'Bravo ! Ta voix est prête. Elle sera utilisée automatiquement dans tes prochaines chansons.'
-    document.querySelector('#discovery-voice-summary').textContent = 'Voix prête · ' + createdVoiceName
     discoveryVoiceProfileName.textContent = createdVoiceName
     discoveryVoiceProfileCard.hidden = false
     discoveryVoiceVerification.hidden = true
-    document.querySelector('#discovery-voice-source-form').reset()
+    discoveryVoiceSourceForm.reset()
+    discoveryVoiceSourceForm.hidden = true
+    discoveryVoiceSourceChoices.hidden = false
     discoveryVoicePanel.hidden = true
     discoveryVoiceToggle.setAttribute('aria-expanded', 'false')
+    await refreshDiscoveryPlan(auth.currentUser?.uid)
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
   } finally {
-    button.disabled = false
+    discoveryVoiceCreate.disabled = false
   }
 })
 
@@ -5378,6 +5676,9 @@ function openLanding() {
   stopUserPresence()
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
+  workspace.classList.remove('is-plan-checking', 'is-discovery-active')
+  workspaceCredits.hidden = false
+  workspaceMobileCredit.hidden = false
   if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
   if (discoveryVoicePanel) discoveryVoicePanel.hidden = true
   adminWorkspacePage.hidden = true
