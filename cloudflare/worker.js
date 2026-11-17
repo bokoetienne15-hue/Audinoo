@@ -1291,6 +1291,27 @@ export default {
       for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
     }
+    const userRows = await db.runQuery({ from: [{ collectionId: 'users' }], limit: 1000 })
+    for (const row of userRows || []) {
+      const document = row.document
+      if (!document?.name) continue
+      const uid = document.name.match(/\\/documents\\/users\\/([^/]+)$/)?.[1]
+      if (!uid) continue
+      const data = fromFields(document.fields || {})
+      const storedVoices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
+      const validVoices = storedVoices.filter(voice => {
+        if (!voice?.voiceId || !voice.expiresAt) return Boolean(voice?.voiceId)
+        const expiry = new Date(voice.expiresAt).getTime()
+        return Number.isFinite(expiry) && expiry > Date.now()
+      })
+      if (validVoices.length === storedVoices.length) continue
+      const selected = validVoices.find(voice => String(voice.voiceId) === String(data.selectedVoiceId || '')) || null
+      try {
+        await db.set('users/' + uid, { voiceProfiles: validVoices, selectedVoiceId: selected?.voiceId || '', voiceProfile: selected }, true)
+      } catch (error) {
+        console.error('[Audinoo voice retention cleanup]', { uid, error })
+      }
+    }
   },
   async fetch(request, env) {
     const url = new URL(request.url)
