@@ -555,19 +555,15 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
         window.setTimeout(() => toast.classList.remove('show'), 3600)
         return
       }
-      if (verifiedAdminUid !== user.uid) {
-        toast.textContent = 'Le plan Découverte sera bientôt disponible.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 3600)
-        return
-      }
+      // Le backend vérifie le rôle administrateur. Ne bloque pas l'action
+      // sur la vérification UI asynchrone, qui pouvait refuser une session déjà ouverte.
       const original = button.textContent
       button.textContent = 'Vérification administrateur…'
       button.disabled = true
       button.setAttribute('aria-busy', 'true')
       try {
         await callAudinooApi('/api/admin/discovery/activate-test', { method: 'POST', body: JSON.stringify({}) })
-        if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) throw new Error('admin-required')
+        if (auth.currentUser?.uid !== user.uid) throw new Error('authentication-required')
         await refreshDiscoveryPlan(user.uid)
         if (!workspace.classList.contains('is-discovery-active')) throw new Error('discovery-activation-failed')
         toast.textContent = 'Tu es maintenant sur le forfait Découverte : 3 crédits et 3 chansons pendant 30 jours.'
