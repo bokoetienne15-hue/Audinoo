@@ -327,7 +327,7 @@ async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '')
     const start = Number.isFinite(oldExpiry) && oldExpiry > now ? oldExpiry : now
     const expiresAt = new Date(start + DISCOVERY_DURATION_MS)
     tx.update(profileRef, {
-      paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + DISCOVERY_CREDITS,
+      discoveryCredits: DISCOVERY_CREDITS, discoveryCreditsExpiresAt: expiresAt,
       discoverySubscription: { status: 'active', startedAt: new Date(now), expiresAt, updatedAt: SERVER_TIMESTAMP, source: 'fedapay', lastTransactionId: transactionId },
       updatedAt: SERVER_TIMESTAMP
     })
@@ -348,7 +348,7 @@ async function adminActivateDiscovery(request, db, user) {
     const expiry = current.expiresAt instanceof Date ? current.expiresAt.getTime() : new Date(current.expiresAt || 0).getTime()
     if (current.source === 'admin-test' && current.status === 'active' && expiry > now) return
     tx.update(profileRef, {
-      paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + DISCOVERY_CREDITS,
+      discoveryCredits: DISCOVERY_CREDITS, discoveryCreditsExpiresAt: new Date(now + DISCOVERY_DURATION_MS),
       discoverySubscription: { status: 'active', startedAt: new Date(now), expiresAt: new Date(now + DISCOVERY_DURATION_MS), source: 'admin-test', updatedAt: SERVER_TIMESTAMP },
       updatedAt: SERVER_TIMESTAMP
     })
@@ -534,10 +534,14 @@ async function generate(request, env, db, user) {
       const reservations = counterMatchesCampaign ? Math.max(0, Number(rules.freeGenerationReservations || 0)) : 0
       const hasFreeSlot = freeCount + reservations < FREE_GENERATION_LIMIT
       const hasFreeCredit = Boolean(rules.enabled && hasFreeSlot && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const subscription = data.discoverySubscription || {}
+      const subscriptionExpiry = subscription.expiresAt instanceof Date ? subscription.expiresAt.getTime() : new Date(subscription.expiresAt || 0).getTime()
+      const hasDiscoveryCredit = subscription.status === 'active' && Number.isFinite(subscriptionExpiry) && subscriptionExpiry > Date.now() && Number(data.discoveryCredits || 0) > 0
       const hasPaidCredit = Number(data.paidCredits || 0) > 0
-      if (!hasFreeCredit && !hasPaidCredit) throw new Error('no-free-credit')
+      if (!hasFreeCredit && !hasDiscoveryCredit && !hasPaidCredit) throw new Error('no-free-credit')
       if (hasFreeCredit) tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
-      tx.create(db.doc(lock), { requestId, uid: user.uid, creditType: hasFreeCredit ? 'free' : 'paid', campaignId: hasFreeCredit ? campaign : null, createdAt: SERVER_TIMESTAMP })
+      const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : 'paid'
+      tx.create(db.doc(lock), { requestId, uid: user.uid, creditType, campaignId: hasFreeCredit ? campaign : null, createdAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
     const mapped = { 'profile-not-found': [404, 'profile-not-found'], 'generation-already-running': [409, 'generation-already-running'], 'no-free-credit': [402, 'no-free-credit'] }[error.message]
@@ -577,6 +581,12 @@ async function generate(request, env, db, user) {
       const remaining = Number(p.data().paidCredits || 0)
       if (remaining < 1) throw new Error('no-free-credit')
       tx.update(db.doc(profile), { paidCredits: remaining - 1, updatedAt: SERVER_TIMESTAMP })
+    } else if (l.data().creditType === 'discovery') {
+      const remaining = Number(p.data().discoveryCredits || 0)
+      const subscription = p.data().discoverySubscription || {}
+      const expiry = subscription.expiresAt instanceof Date ? subscription.expiresAt.getTime() : new Date(subscription.expiresAt || 0).getTime()
+      if (remaining < 1 || subscription.status !== 'active' || !Number.isFinite(expiry) || expiry <= Date.now()) throw new Error('no-free-credit')
+      tx.update(db.doc(profile), { discoveryCredits: remaining - 1, updatedAt: SERVER_TIMESTAMP })
     } else {
       tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
       if (policy.exists && policy.data().freeGenerationCampaignId === l.data().campaignId) {
