@@ -548,6 +548,9 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
     button.dataset.xofLabel = button.textContent
     button.addEventListener('click', async event => {
       event.preventDefault()
+      // Empêche le gestionnaire global des liens #signup d'ouvrir l'inscription :
+      // ce bouton doit exécuter l'activation Découverte dans la session existante.
+      event.stopImmediatePropagation()
       const user = auth.currentUser
       if (!user) {
         toast.textContent = 'Connecte-toi pour accéder à cette offre.'
