@@ -1463,7 +1463,7 @@ const workspaceFreeCreditCount = document.querySelector('#workspace-free-credit-
 const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credit-caption')
 const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
-workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div><strong id="workspace-mobile-credit-count">0 crédit gratuit</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div>'
+workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span id="workspace-mobile-credit-plan">Plan standard</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div><button class="workspace-upgrade-button" id="workspace-mobile-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button>'
 document.querySelector('.workspace-content').prepend(workspaceMobileCredit)
 const communityNotice = document.querySelector('#community-listen-notice')
 const syncCommunityNoticePlacement = () => {
@@ -3340,34 +3340,37 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     return
   }
   const isAdmin = verifiedAdminUid === uid
-  discoveryVoiceEntry.hidden = true
-  discoveryVoicePanel.hidden = true
+  if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+  if (discoveryVoicePanel) discoveryVoicePanel.hidden = true
   discoveryVoiceToggle?.setAttribute('aria-expanded', 'false')
-  if (!isAdmin) {
-    workspace.classList.remove('is-discovery-active', 'is-plan-checking')
-    workspaceCredits.hidden = false
-    workspaceMobileCredit.hidden = false
-    return
-  }
   try {
     const plan = await callAudinooApi('/api/plan')
-    if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
+    if (auth.currentUser?.uid !== uid) return
     const discoveryActive = plan?.active === true && plan?.plan === 'discovery'
+    const discoveryCredits = discoveryActive ? Math.max(0, Number(plan.discoveryCredits || 0)) : 0
+    const paidCredits = Math.max(0, Number(plan.paidCredits || 0))
+    const freeSummary = document.querySelector('#workspace-free-credit-count')?.textContent || '0'
+    const freeCaption = document.querySelector('#workspace-free-credit-caption')?.textContent || 'Offre de bienvenue'
+    const availableCredits = discoveryActive ? discoveryCredits + paidCredits : Math.max(0, Number(freeSummary) || 0)
+    const planLabel = discoveryActive ? 'Forfait Découverte actif' : 'Plan standard'
+    const countLabel = availableCredits + (availableCredits > 1 ? ' crédits disponibles' : ' crédit disponible')
+    const caption = discoveryActive
+      ? discoveryCredits + ' Découverte · ' + paidCredits + ' acheté(s)' + (plan.expiresAt ? ' · expire le ' + new Date(plan.expiresAt).toLocaleDateString('fr-FR') : '')
+      : freeCaption
     const sidebarPlanLabel = workspaceCredits.querySelector('span')
     const sidebarPlanCount = workspaceCredits.querySelector('strong')
     const sidebarPlanCaption = workspaceCredits.querySelector('small')
     const sidebarUpgradeButton = workspaceCredits.querySelector('.workspace-upgrade-button')
-    if (discoveryActive) {
-      if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Forfait Découverte actif'
-      if (sidebarPlanCount) sidebarPlanCount.textContent = Math.max(0, Number(plan.discoveryCredits || 0)) + ' crédits'
-      if (sidebarPlanCaption) sidebarPlanCaption.textContent = '3 chansons · 6 variantes · profil vocal · 30 jours'
-      if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Voir les avantages'
-    } else {
-      if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Crédit gratuit disponible'
-      if (sidebarPlanCount) sidebarPlanCount.textContent = document.querySelector('#workspace-free-credit-count')?.textContent || '0'
-      if (sidebarPlanCaption) sidebarPlanCaption.textContent = document.querySelector('#workspace-free-credit-caption')?.textContent || 'Offre de bienvenue'
-      if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Mettre à niveau →'
-    }
+    if (sidebarPlanLabel) sidebarPlanLabel.textContent = planLabel
+    if (sidebarPlanCount) sidebarPlanCount.textContent = discoveryActive ? countLabel : freeSummary
+    if (sidebarPlanCaption) sidebarPlanCaption.textContent = discoveryActive ? caption : freeCaption
+    if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = discoveryActive ? 'Voir les avantages →' : 'Mettre à niveau →'
+    const mobilePlanLabel = workspaceMobileCredit.querySelector('#workspace-mobile-credit-plan')
+    if (mobilePlanLabel) mobilePlanLabel.textContent = planLabel
+    if (workspaceMobileCreditCount) workspaceMobileCreditCount.textContent = countLabel
+    if (workspaceMobileCreditCaption) workspaceMobileCreditCaption.textContent = caption
+    const mobileUpgradeButton = workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')
+    if (mobileUpgradeButton) mobileUpgradeButton.textContent = discoveryActive ? 'Voir les avantages →' : 'Mettre à niveau →'
     const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
     const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
     if (discoveryPriceButton) {
@@ -3375,23 +3378,25 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
       discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
     }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
-    workspaceCredits.hidden = discoveryActive
-    workspaceMobileCredit.hidden = discoveryActive
-    discoveryVoiceEntry.hidden = !discoveryActive
-    discoveryVoiceProfiles = Array.isArray(plan.voiceProfiles) ? plan.voiceProfiles : (plan.voiceProfile?.ready ? [{ voiceId: plan.selectedVoiceId || '', name: plan.voiceProfile.name || 'Ma voix' }] : [])
-    discoverySelectedVoiceId = plan.selectedVoiceId || discoveryVoiceProfiles[0]?.voiceId || ''
-    renderDiscoveryVoiceLibrary()
-    renderAdminDiscoveryPanel(plan)
-    if (discoveryActive) {
-      if (plan.voiceProfile?.ready) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
+    workspaceCredits.hidden = false
+    workspaceMobileCredit.hidden = false
+    if (isAdmin) {
+      discoveryVoiceEntry.hidden = !discoveryActive
+      discoveryVoiceProfiles = Array.isArray(plan.voiceProfiles) ? plan.voiceProfiles : (plan.voiceProfile?.ready ? [{ voiceId: plan.selectedVoiceId || '', name: plan.voiceProfile.name || 'Ma voix' }] : [])
+      discoverySelectedVoiceId = plan.selectedVoiceId || discoveryVoiceProfiles[0]?.voiceId || ''
+      renderDiscoveryVoiceLibrary()
+      renderAdminDiscoveryPanel(plan)
+      if (discoveryActive && plan.voiceProfile?.ready) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
+    } else {
+      discoveryVoiceEntry.hidden = true
+      discoveryVoicePanel.hidden = true
     }
   } catch (error) {
     console.warn('[Audinoo discovery plan]', error)
     workspace.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
-    discoveryVoiceEntry.hidden = true
-    renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
+    if (isAdmin) renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
   } finally {
     workspace.classList.remove('is-plan-checking')
   }
