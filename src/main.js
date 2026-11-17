@@ -3269,6 +3269,8 @@ const discoveryVoiceCreate = document.querySelector('#discovery-voice-create')
 const discoveryVoiceVerificationPreview = document.querySelector('#discovery-voice-verification-preview')
 let discoveryVoiceTaskId = ''
 let discoveryVoiceName = 'Ma voix'
+let discoveryVoiceSourceDurationValid = false
+let discoveryVoiceVerificationDurationValid = false
 let discoveryVoiceRecorder = null
 let discoveryVoiceStream = null
 let discoveryVoiceChunks = []
@@ -3380,8 +3382,9 @@ function setVoiceFile(input, file, preview, readyButton) {
   input.files = transfer.files
   preview.src = URL.createObjectURL(file)
   preview.hidden = false
-  if (readyButton) readyButton.disabled = false
-  if (input === discoveryVoiceSource) discoveryVoiceValidate.disabled = !(file && discoveryVoiceConsent.checked)
+  if (input === discoveryVoiceSource) discoveryVoiceValidate.disabled = !(file && discoveryVoiceConsent.checked && discoveryVoiceSourceDurationValid)
+  else if (input === discoveryVoiceVerificationFile) discoveryVoiceCreate.disabled = !(file && discoveryVoiceVerificationDurationValid)
+  else if (readyButton) readyButton.disabled = false
 }
 function attachVoiceRecorder(options) {
   const { input, preview, startButton, stopButton, countdown, timer, waveform, filename, readyButton, statusMessage } = options
@@ -3424,10 +3427,16 @@ function attachVoiceRecorder(options) {
           const duration = await voiceFileDuration(audioFile)
           if (duration && duration < 5) {
             input.value = ''
+            if (input === discoveryVoiceSource) discoveryVoiceSourceDurationValid = false
+            if (input === discoveryVoiceVerificationFile) discoveryVoiceVerificationDurationValid = false
             if (readyButton) readyButton.disabled = true
             statusMessage.textContent = 'L’enregistrement doit durer au moins 5 secondes. Recommence en parlant un peu plus longtemps.'
           } else {
-            if (input === discoveryVoiceSource) document.querySelector('#discovery-voice-end').value = String(Math.max(5, Math.min(30, Math.floor(duration || 15))))
+            if (input === discoveryVoiceSource) {
+              discoveryVoiceSourceDurationValid = true
+              document.querySelector('#discovery-voice-end').value = String(Math.max(5, Math.min(30, Math.floor(duration || 15))))
+            }
+            if (input === discoveryVoiceVerificationFile) discoveryVoiceVerificationDurationValid = true
             setVoiceFile(input, audioFile, preview, readyButton)
             statusMessage.textContent = 'Enregistrement terminé. Écoute-le, puis appuie sur Suivant.'
           }
@@ -3489,7 +3498,7 @@ function attachVoiceRecorder(options) {
   })
 }
 function updateDiscoveryVoiceNext() {
-  discoveryVoiceValidate.disabled = !discoveryVoiceSource.files?.[0] || !discoveryVoiceConsent.checked
+  discoveryVoiceValidate.disabled = !discoveryVoiceSource.files?.[0] || !discoveryVoiceConsent.checked || !discoveryVoiceSourceDurationValid
 }
 const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-import-choice')
 const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
@@ -3510,6 +3519,7 @@ discoveryVoiceRecordChoice.addEventListener('click', () => {
   discoveryVoiceStatus.textContent = 'Le microphone démarrera après le compte à rebours.'
 })
 discoveryVoiceSourceBack.addEventListener('click', () => {
+  discoveryVoiceSourceDurationValid = false
   discoveryVoiceSourceForm.reset()
   discoveryVoiceSourceForm.hidden = true
   discoveryVoiceSourceChoices.hidden = false
@@ -3520,14 +3530,16 @@ discoveryVoiceSourceBack.addEventListener('click', () => {
 })
 discoveryVoiceSource.addEventListener('change', async () => {
   const file = discoveryVoiceSource.files?.[0]
-  if (!file) return
+  discoveryVoiceSourceDurationValid = false
+  if (!file) { updateDiscoveryVoiceNext(); return }
   setVoiceFile(discoveryVoiceSource, file, discoveryVoiceRecordPreview, discoveryVoiceValidate)
   const duration = await voiceFileDuration(file)
   if (duration && duration < 5) {
-    discoveryVoiceValidate.disabled = true
     discoveryVoiceStatus.textContent = 'Ton audio doit durer au moins 5 secondes.'
+    updateDiscoveryVoiceNext()
     return
   }
+  discoveryVoiceSourceDurationValid = true
   document.querySelector('#discovery-voice-end').value = String(Math.max(5, Math.min(30, Math.floor(duration || 15))))
   discoveryVoiceStatus.textContent = 'Audio prêt. Tu peux écouter ton fichier puis passer à l’étape suivante.'
   updateDiscoveryVoiceNext()
@@ -3600,10 +3612,19 @@ verificationRecordChoice.addEventListener('click', () => {
   verificationRecordStep.hidden = false
   discoveryVoiceStatus.textContent = 'Lis la phrase affichée. Le compte à rebours démarre avant l’enregistrement.'
 })
-discoveryVoiceVerificationFile.addEventListener('change', () => {
+discoveryVoiceVerificationFile.addEventListener('change', async () => {
   const file = discoveryVoiceVerificationFile.files?.[0]
+  discoveryVoiceVerificationDurationValid = false
   if (!file) return
   setVoiceFile(discoveryVoiceVerificationFile, file, discoveryVoiceVerificationPreview, discoveryVoiceCreate)
+  const duration = await voiceFileDuration(file)
+  if (duration && duration < 5) {
+    discoveryVoiceStatus.textContent = 'La phrase de vérification doit durer au moins 5 secondes.'
+    discoveryVoiceCreate.disabled = true
+    return
+  }
+  discoveryVoiceVerificationDurationValid = true
+  discoveryVoiceCreate.disabled = false
   discoveryVoiceStatus.textContent = 'Enregistrement de vérification prêt.'
 })
 attachVoiceRecorder({
