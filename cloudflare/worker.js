@@ -284,7 +284,7 @@ async function createDiscoveryPayment(request, env, db, user) {
   }) })
   const transaction = fedapayObject(created, 'v1/transaction')
   const transactionId = String(transaction?.id || '')
-  if (!/^\\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
   await db.set('fedapayOrders/' + transactionId, {
     uid: user.uid, transactionId, amount: DISCOVERY_PRICE_XOF, currency: 'XOF',
     kind: 'discovery_subscription', credits: DISCOVERY_CREDITS,
@@ -292,12 +292,12 @@ async function createDiscoveryPayment(request, env, db, user) {
   })
   const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
   const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
-  if (typeof checkoutUrl !== 'string' || !/^https:\\/\\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
 }
 async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '') {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
-  if (!/^\\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
   const orderRef = db.doc('fedapayOrders/' + transactionId)
   const order = await db.get(orderRef.path)
   if (!order.exists || order.data.kind !== 'discovery_subscription' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
