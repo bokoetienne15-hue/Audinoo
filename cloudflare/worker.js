@@ -1030,7 +1030,8 @@ async function adminAuthUsers(request, db, user) {
     if (error.message === 'firebase-admin-not-configured') return response(503, { error: 'backend-not-configured', service: 'firebase-config', details })
     if (isQuota) {
       const service = error.firestoreStatus ? 'firestore' : 'firebase-auth'
-      return response(429, { error: 'firebase-quota-exceeded', service, details, upstreamStatus: status || 429, upstreamCode: error.code || 429, upstreamStatusText: error.firestoreStatus || '' }, { 'retry-after': '60' })
+      const upstreamStatusText = error.firestoreStatus || error.identityStatusText || ''
+      return response(429, { error: 'firebase-quota-exceeded', service, details, upstreamStatus: status || 429, upstreamCode: error.code || 429, upstreamStatusText }, { 'retry-after': '60' })
     }
     if (status === 403) return response(503, { error: error.firestoreStatus ? 'firestore-permission-required' : 'firebase-auth-list-permission-required', service: error.firestoreStatus ? 'firestore' : 'firebase-auth', details })
     return response(status >= 500 ? status : 502, { error: error.firestoreStatus ? 'firestore-admin-check-failed' : 'firebase-auth-list-failed', service: error.firestoreStatus ? 'firestore' : 'firebase-auth', details, upstreamStatus: status })
@@ -1478,12 +1479,15 @@ export default {
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       if (url.pathname === '/api/my-library') {
-        const details = String(e?.message || 'firestore-library-query-failed').slice(0, 240)
+        const rawDetails = String(e?.message || 'firestore-library-query-failed').slice(0, 200)
+        const details = [e?.firestoreStatus, rawDetails].filter(Boolean).join(' · ')
         const isQuota = status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(details)
         return response(isQuota ? 429 : status, {
           error: isQuota ? 'firestore-quota-exceeded' : 'library-load-failed',
           service: 'firestore',
           details,
+          upstreamCode: e?.code || status,
+          upstreamStatusText: e?.firestoreStatus || '',
           ...(isQuota ? { retryable: true, retryAfterSeconds: 60 } : {})
         }, isQuota ? { 'retry-after': '60' } : {})
       }
