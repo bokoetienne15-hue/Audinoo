@@ -3186,13 +3186,13 @@ button.is-generating:disabled {
 
 /* Plan Découverte — carte Ma voix compacte et configuration guidée. */
 .discovery-voice-entry{width:max-content;max-width:100%;margin:0 0 18px}
-.discovery-voice-card{box-sizing:border-box;width:180px;min-height:64px;padding:9px 11px;border:1px solid #34313d;border-radius:16px;background:#080808;color:#f8f8f8;box-shadow:0 8px 24px rgba(0,0,0,.16)}
-.discovery-voice-card-header{display:flex;align-items:center;gap:9px;min-height:44px}
-.discovery-voice-toggle{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;min-height:34px;padding:0;border:1px solid #777;border-radius:11px;background:#fff;color:#080808;cursor:pointer}
+.discovery-voice-card{box-sizing:border-box;width:180px;height:48px;min-height:48px;padding:6px 9px;border:1px solid #34313d;border-radius:16px;background:#080808;color:#f8f8f8;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.discovery-voice-card-header{display:flex;align-items:center;gap:9px;min-height:34px}
+.discovery-voice-toggle{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;min-height:32px;padding:0;border:1px solid #777;border-radius:11px;background:#fff;color:#080808;cursor:pointer}
 .discovery-voice-plus{display:grid;place-items:center;width:100%;height:100%;color:#080808;font-size:25px;font-weight:400;line-height:1}
 .discovery-voice-card-title{min-width:0}
-.discovery-voice-card-title h2{margin:0;color:#fff;font-size:14px;font-weight:750;line-height:1.2}
-.discovery-voice-card-title p{margin:3px 0 0;color:#aaa;font-size:10px;line-height:1.3}
+.discovery-voice-card-title h2{margin:0;color:#fff;font-size:13px;font-weight:750;line-height:1.2}
+.discovery-voice-card-title p{margin:2px 0 0;color:#aaa;font-size:9px;line-height:1.3}
 .discovery-voice-profile-card{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;margin-top:9px;padding:9px;border:1px solid #343434;border-radius:11px;background:#121212}
 .discovery-voice-profile-card[hidden]{display:none!important}
 .discovery-voice-profile-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:9px;background:#25202b;color:#e9b6ff;font-size:16px}
@@ -3239,8 +3239,8 @@ button.is-generating:disabled {
 .workspace.is-plan-checking .workspace-side-note,.workspace.is-plan-checking .workspace-mobile-credit{visibility:hidden!important}
 .workspace.is-discovery-active .workspace-side-note,.workspace.is-discovery-active .workspace-mobile-credit{display:none!important}
 @media(max-width:600px){
-  .discovery-voice-card{width:180px;min-height:62px;padding:8px 10px}
-  .discovery-voice-toggle{flex-basis:32px;width:32px;height:32px;min-height:32px}
+  .discovery-voice-card{width:180px;height:48px;min-height:48px;padding:6px 9px}
+  .discovery-voice-toggle{flex-basis:30px;width:30px;height:30px;min-height:30px}
   .discovery-voice-card-title h2{font-size:13px}
   .discovery-voice-panel{width:calc(100vw - 32px);padding:15px}
   .discovery-voice-source-choices{gap:8px}
