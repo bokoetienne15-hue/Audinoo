@@ -3451,3 +3451,25 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
  #workspace .discovery-voice-card-slot{min-height:82px;padding:9px}
  #workspace button.discovery-voice-card{flex-basis:210px!important;width:210px!important;max-width:calc(100% - 4px)!important;min-height:60px!important;height:60px!important}
 }
+
+
+/* Résumé du forfait : uniquement dans l’en-tête du compte, avant Déconnexion. */
+.workspace-account .workspace-side-note {
+  display:flex; align-items:center; gap:8px; margin:0; padding:5px 9px;
+  border:1px solid rgba(185,106,232,.24); border-radius:10px;
+  background:rgba(87,32,119,.18); min-width:0;
+}
+.workspace-account .workspace-side-note > span { display:none; }
+.workspace-account .workspace-side-note strong { margin:0; color:#f3dcff; font:700 12px 'DM Sans',sans-serif; white-space:nowrap; }
+.workspace-account .workspace-side-note small { color:#aaa0b8; font-size:9px; white-space:nowrap; }
+.workspace-account .workspace-upgrade-button { width:auto; margin:0; padding:5px 7px; border-radius:7px; font-size:9px; white-space:nowrap; }
+.workspace-mobile-credit { display:none !important; }
+@media (max-width:760px) {
+  .workspace-account { gap:6px; }
+  .workspace-account .workspace-avatar { display:none; }
+  .workspace-account .workspace-side-note { gap:5px; padding:4px 6px; border-radius:8px; }
+  .workspace-account .workspace-side-note strong { font-size:10px; }
+  .workspace-account .workspace-side-note small { display:block; max-width:92px; white-space:normal; line-height:1.15; font-size:8px; }
+  .workspace-account .workspace-upgrade-button { padding:4px 5px; font-size:8px; }
+  .workspace-account .workspace-logout { padding:7px 8px; font-size:9px; white-space:nowrap; }
+}
