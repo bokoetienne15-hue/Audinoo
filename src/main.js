@@ -1525,6 +1525,7 @@ function listenToFreeCreditPolicy(profile) {
     if (auth.currentUser?.uid !== profile.uid || !snapshot.exists()) return
     activeWorkspaceProfile = { ...snapshot.data(), uid: profile.uid }
     renderWorkspaceFreeCredit()
+    refreshDiscoveryPlan(profile.uid)
   }, (error) => console.error('[Audinoo credits] Could not sync account credits', error))
   stopFreeCreditPolicyListener = onSnapshot(doc(db, 'settings', 'credits'), (snapshot) => {
     if (auth.currentUser?.uid !== profile.uid) return
