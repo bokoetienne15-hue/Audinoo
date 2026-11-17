@@ -544,6 +544,9 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   const isDiscoveryPlan = card?.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte'
   if (isDiscoveryPlan) {
+    // Ce CTA ne doit jamais correspondre au sélecteur global a[href="#signup"].
+    // Sinon le listener mobile touchend ouvre l'inscription avant l'activation admin.
+    button.href = '#activate-discovery'
     button.textContent = 'Bientôt disponible'
     button.dataset.xofLabel = button.textContent
     button.addEventListener('click', async event => {
