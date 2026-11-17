@@ -88,17 +88,29 @@ export class FirestoreRest {
     return result.access_token
   }
   async request(path, init = {}) {
-    const response = await fetch('https://firestore.googleapis.com/v1/' + path, { ...init, headers: { authorization: 'Bearer ' + await this.accessToken(), 'content-type': 'application/json', ...(init.headers || {}) } })
-    const rawBody = await response.text()
-    let body = {}
-    try { body = rawBody ? JSON.parse(rawBody) : {} } catch {}
-    if (!response.ok) {
-      const detail = body.error?.message || rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
-      const error = new Error(detail || 'firestore-request-failed-' + response.status)
-      error.status = response.status
-      throw error
+    const headers = { authorization: 'Bearer ' + await this.accessToken(), 'content-type': 'application/json', ...(init.headers || {}) }
+    const retryableQuery = path.endsWith(':runQuery') && (!init.method || init.method === 'POST')
+    for (let attempt = 0; ; attempt++) {
+      const response = await fetch('https://firestore.googleapis.com/v1/' + path, { ...init, headers })
+      const rawBody = await response.text()
+      let body = {}
+      try { body = rawBody ? JSON.parse(rawBody) : {} } catch {}
+      if (!response.ok) {
+        if (retryableQuery && response.status === 429 && attempt < 2) {
+          const retryAfter = Number(response.headers.get('retry-after') || 0)
+          const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 2500) : 300 * (2 ** attempt)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        const detail = body.error?.message || rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
+        const error = new Error(detail || 'firestore-request-failed-' + response.status)
+        error.status = response.status
+        error.code = body.error?.code || response.status
+        error.firestoreStatus = body.error?.status || ''
+        throw error
+      }
+      return body
     }
-    return body
   }
   async get(path, transaction) {
     const suffix = transaction ? '?transaction=' + encodeURIComponent(transaction) : ''
