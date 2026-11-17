@@ -3423,6 +3423,17 @@ function attachVoiceRecorder(options) {
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
       chunks = []
       recorder.addEventListener('dataavailable', event => { if (event.data?.size) chunks.push(event.data) })
+      let recordingCancelled = false
+      stopActiveVoiceRecording = () => {
+        recordingCancelled = true
+        if (recorder?.state === 'recording') recorder.stop()
+        else {
+          stopVisuals()
+          startButton.disabled = false
+          countdown.textContent = 'Enregistrement annulé'
+          stopActiveVoiceRecording = null
+        }
+      }
       recorder.addEventListener('stop', async () => {
         const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' })
         stopVisuals()
@@ -3482,9 +3493,9 @@ function attachVoiceRecorder(options) {
         countdown.textContent = String(count)
         await new Promise(resolve => window.setTimeout(resolve, 700))
       }
+      if (recordingCancelled) return
       countdown.textContent = 'Parle maintenant'
       recorder.start(250)
-      stopActiveVoiceRecording = () => { if (recorder?.state === 'recording') recorder.stop() }
       startedAt = Date.now()
       timerInterval = window.setInterval(() => {
         const seconds = Math.floor((Date.now() - startedAt) / 1000)
@@ -3495,6 +3506,7 @@ function attachVoiceRecorder(options) {
       statusMessage.textContent = 'Ta voix est enregistrée en direct. Appuie sur « Terminer » lorsque tu as fini.'
     } catch (error) {
       stopVisuals()
+      stopActiveVoiceRecording = null
       startButton.disabled = false
       statusMessage.textContent = 'Impossible d’accéder au microphone. Autorise le micro ou importe un fichier audio.'
     }
