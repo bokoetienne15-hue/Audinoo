@@ -1295,8 +1295,8 @@ export default {
     for (const row of userRows || []) {
       const document = row.document
       if (!document?.name) continue
-      const uid = document.name.match(/\\/documents\\/users\\/([^/]+)$/)?.[1]
-      if (!uid) continue
+      const uid = document.name.split('/documents/users/')[1]
+      if (!uid || uid.includes('/')) continue
       const data = fromFields(document.fields || {})
       const storedVoices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
       const validVoices = storedVoices.filter(voice => {
