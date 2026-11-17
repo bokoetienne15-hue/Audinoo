@@ -180,7 +180,7 @@ app.innerHTML = `
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden><button class="discovery-voice-toggle" id="discovery-voice-toggle" type="button"><span class="discovery-voice-plus">+</span><span>Ma voix</span><small id="discovery-voice-summary">Personnalise tes chansons</small></button><section class="discovery-voice-panel" id="discovery-voice-panel" hidden><div class="discovery-voice-heading"><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Crée ta voix personnalisée</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div><p class="discovery-voice-copy">Enregistre un extrait de ta propre voix, puis répète la phrase de vérification. Ta voix sera ensuite proposée dans tes créations musicales.</p><form id="discovery-voice-source-form" class="discovery-voice-form"><label for="discovery-voice-name">Nom de ta voix</label><input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required><p class="discovery-voice-copy">Tu peux importer un fichier audio ou enregistrer ta voix directement ici.</p><div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-record-start">Enregistrer ma voix</button><button type="button" class="discovery-voice-action" id="discovery-voice-record-stop" hidden>Arrêter l’enregistrement</button></div><audio id="discovery-voice-record-preview" controls hidden></audio><label for="discovery-voice-source">Importer un audio (5 secondes minimum, 15 à 30 secondes conseillées)</label><input id="discovery-voice-source" name="audio" type="file" accept="audio/*" required><div class="discovery-voice-segment"><label>Début (secondes)<input id="discovery-voice-start" type="number" min="0" max="300" value="0" required></label><label>Fin (secondes)<input id="discovery-voice-end" type="number" min="5" max="300" value="15" required></label></div><label class="discovery-voice-consent"><input id="discovery-voice-consent" type="checkbox" required><span>Je confirme que cet enregistrement est ma voix ou que je dispose de l'autorisation explicite de la personne enregistrée.</span></label><button type="submit" class="discovery-voice-action" id="discovery-voice-validate">Analyser ma voix</button></form><div class="discovery-voice-verification" id="discovery-voice-verification" hidden><p class="discovery-voice-step">ÉTAPE 2 · VÉRIFICATION</p><p>Enregistre cette phrase en la chantant, puis importe le nouvel audio :</p><blockquote id="discovery-voice-phrase"></blockquote><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"><button type="button" class="discovery-voice-action" id="discovery-voice-create">Créer ma voix</button></div><p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p></section></div><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden><section class="discovery-voice-card" aria-label="Ma voix"><div class="discovery-voice-card-header"><button class="discovery-voice-toggle" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Ouvrir le formulaire de voix personnalisée"><span class="discovery-voice-plus" aria-hidden="true">+</span></button><div class="discovery-voice-card-title"><h2>Ma voix</h2><p id="discovery-voice-summary">Personnalise tes chansons</p></div></div><div class="discovery-voice-profile-card" id="discovery-voice-profile-card" hidden><span class="discovery-voice-profile-icon" aria-hidden="true">♫</span><div><strong id="discovery-voice-profile-name">Ma voix</strong><small>Prête pour tes prochaines chansons</small></div><span class="discovery-voice-profile-status">PRÊTE</span></div><section class="discovery-voice-panel" id="discovery-voice-panel" hidden><div class="discovery-voice-heading"><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Crée ta voix personnalisée</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div><p class="discovery-voice-copy">Enregistre un extrait de ta propre voix, puis répète la phrase de vérification. Ta voix sera ensuite proposée dans tes créations musicales.</p><form id="discovery-voice-source-form" class="discovery-voice-form"><label for="discovery-voice-name">Nom de ta voix</label><input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required><p class="discovery-voice-copy">Tu peux importer un fichier audio ou enregistrer ta voix directement ici.</p><div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-record-start">Enregistrer ma voix</button><button type="button" class="discovery-voice-action" id="discovery-voice-record-stop" hidden>Arrêter l’enregistrement</button></div><audio id="discovery-voice-record-preview" controls hidden></audio><label for="discovery-voice-source">Importer un audio (5 secondes minimum, 15 à 30 secondes conseillées)</label><input id="discovery-voice-source" name="audio" type="file" accept="audio/*" required><div class="discovery-voice-segment"><label>Début (secondes)<input id="discovery-voice-start" type="number" min="0" max="300" value="0" required></label><label>Fin (secondes)<input id="discovery-voice-end" type="number" min="5" max="300" value="15" required></label></div><label class="discovery-voice-consent"><input id="discovery-voice-consent" type="checkbox" required><span>Je confirme que cet enregistrement est ma voix ou que je dispose de l'autorisation explicite de la personne enregistrée.</span></label><button type="submit" class="discovery-voice-action" id="discovery-voice-validate">Analyser ma voix</button></form><div class="discovery-voice-verification" id="discovery-voice-verification" hidden><p class="discovery-voice-step">ÉTAPE 2 · VÉRIFICATION</p><p>Enregistre cette phrase en la chantant, puis importe le nouvel audio :</p><blockquote id="discovery-voice-phrase"></blockquote><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"><button type="button" class="discovery-voice-action" id="discovery-voice-create">Créer ma voix</button></div><p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p></section></section></div><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
       <section class="workspace-content workspace-page" id="models-page" hidden>
         <p class="workspace-kicker">Modèles Audinoo</p>
         <h1>Pars d’un <span>modèle</span>.</h1>
@@ -516,7 +516,7 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
         if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) throw new Error('admin-required')
         await refreshDiscoveryPlan(user.uid)
         if (!workspace.classList.contains('is-discovery-active')) throw new Error('discovery-activation-failed')
-        toast.textContent = 'Plan Découverte activé : 3 crédits et 3 chansons disponibles pendant 30 jours.'
+        toast.textContent = 'Tu es maintenant sur le forfait Découverte : 3 crédits et 3 chansons pendant 30 jours.'
         toast.classList.add('is-success', 'show')
         window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3000)
         workspacePricingPage.hidden = true
@@ -1349,25 +1349,7 @@ adminWorkspacePage.id = 'admin-page'
 adminWorkspacePage.hidden = true
 adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace-kicker">AUDINOO · CENTRE DE PILOTAGE</p><h1>Vue d’ensemble</h1><p class="workspace-intro">La communauté en direct, réunie au même endroit.</p></div><div class="admin-live-pill"><i></i> En direct</div></div><div class="admin-toolbar"><label><span>Période</span><select id="admin-period-filter"><option value="day">Par jour · 30 jours</option><option value="week">Par semaine · 12 semaines</option><option value="month">Par mois · 12 mois</option><option value="year">Par année · 5 ans</option></select></label><label><span>Pays</span><select id="admin-country-filter"><option value="all">Tous les pays</option></select></label><button class="admin-export-button" id="admin-export-report" type="button"><span aria-hidden="true">↧</span> Télécharger le rapport</button></div><p class="admin-panel-status admin-live-status" id="admin-stats-status" role="status">Connexion à Firebase…</p><section class="admin-stats-grid" aria-label="Indicateurs de la communauté"><article class="admin-stat-card admin-stat-total"><span>INSCRITS AU TOTAL</span><strong id="admin-total-users">—</strong><small>Profils enregistrés dans Firebase</small><i aria-hidden="true">♙</i></article><article class="admin-stat-card admin-stat-signups"><span>INSCRIPTIONS · PÉRIODE</span><strong id="admin-week-users">—</strong><small id="admin-signup-period-label">Dans la période choisie</small><i aria-hidden="true">↗</i></article><article class="admin-stat-card admin-stat-visitors"><span>VISITES ANONYMES · PÉRIODE</span><strong id="admin-total-visitors">—</strong><small>Sessions sans compte, période filtrée</small><i aria-hidden="true">◉</i></article><article class="admin-stat-card admin-stat-generations"><span>GÉNÉRATIONS · PÉRIODE</span><strong id="admin-total-generations">—</strong><small id="admin-generation-detail">Historique récent synchronisé</small><i aria-hidden="true">♫</i></article></section><section class="admin-chart-grid"><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>CROISSANCE</p><h2>Inscriptions</h2></div><span class="admin-chart-total" id="admin-signup-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-signup-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des inscriptions par période"></svg></div><div class="admin-chart-legend"><i class="signup-legend-dot"></i> Nouveaux comptes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>FRÉQUENTATION</p><h2>Visites anonymes</h2></div><span class="admin-chart-total" id="admin-visitor-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-visitor-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des visiteurs anonymes par période"></svg></div><div class="admin-chart-legend"><i class="visitor-legend-dot"></i> Sessions anonymes</div></article><article class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>PRODUCTION MUSICALE</p><h2>Générations</h2></div><span class="admin-chart-total" id="admin-generation-chart-total">—</span></div><div class="admin-chart-wrap"><svg id="admin-generation-chart" viewBox="0 0 640 230" role="img" aria-label="Graphique des générations musicales par période"></svg></div><div class="admin-chart-legend"><i class="generation-legend-dot"></i> Créations enregistrées · échantillon récent</div></article></section><section class="admin-panel admin-country-panel"><div class="admin-panel-heading"><div><p>COMMUNAUTÉ MONDIALE</p><h2>Inscriptions par pays</h2></div><span class="admin-country-count" id="admin-country-total">—</span></div><p class="admin-panel-status">Chaque drapeau correspond au pays choisi par les membres.</p><div class="admin-country-list" id="admin-country-list"></div></section><div class="admin-dashboard-grid"><section class="admin-panel"><div class="admin-panel-heading"><div><p>BOÎTE À IDÉES</p><h2>Suggestions de modèles</h2></div><button class="admin-refresh-button" id="admin-refresh-suggestions" type="button">Actualiser</button></div><p class="admin-panel-status" id="admin-suggestions-status" role="status">Chargement des suggestions…</p><div class="admin-suggestion-list" id="admin-suggestion-list"></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>ANNONCES</p><h2>Envoyer une notification</h2></div></div><form class="admin-notification-form" id="admin-notification-form"><label for="admin-notification-title">Titre</label><input id="admin-notification-title" name="title" type="text" minlength="2" maxlength="80" placeholder="Ex. Nouveau modèle disponible" required /><label for="admin-notification-message">Message</label><textarea id="admin-notification-message" name="message" minlength="2" maxlength="600" rows="5" placeholder="Écris le message que les utilisateurs verront…" required></textarea><button class="admin-publish-button" type="submit">Publier à tous les utilisateurs <span aria-hidden="true">→</span></button><p class="admin-panel-status" id="admin-notification-status" role="status"></p></form></section></div>'
 
-const discoveryAdminTestPanel = document.createElement('section')
-discoveryAdminTestPanel.className = 'admin-panel discovery-admin-test-panel'
-discoveryAdminTestPanel.innerHTML = '<div class="admin-panel-heading"><div><p>TEST ABONNEMENT</p><h2>Plan Découverte · 1 000 FCFA</h2></div></div><p>Active le plan Découverte sur ton propre compte administrateur, sans paiement, pour vérifier le Studio et la voix personnalisée.</p><button type="button" class="admin-export-button" id="admin-discovery-activate">Activer Découverte pour mon compte</button><p class="admin-panel-status" id="admin-discovery-status" role="status"></p>'
 workspaceLayout.append(adminWorkspacePage)
-adminWorkspacePage.append(discoveryAdminTestPanel)
-document.querySelector('#admin-discovery-activate').addEventListener('click', async () => {
-  const button = document.querySelector('#admin-discovery-activate')
-  const status = document.querySelector('#admin-discovery-status')
-  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) { status.textContent = 'Accès administrateur requis.'; return }
-  button.disabled = true
-  status.textContent = 'Activation du plan de test…'
-  try {
-    const result = await callAudinooApi('/api/admin/discovery/activate-test', { method: 'POST', body: JSON.stringify({}) })
-    status.textContent = 'Plan Découverte actif jusqu’au ' + new Date(result.expiresAt).toLocaleDateString('fr-FR') + '. 3 crédits ont été ajoutés.'
-    await refreshDiscoveryPlan(auth.currentUser.uid)
-  } catch (error) {
-    status.textContent = 'Activation impossible : ' + generationErrorMessage(error.message)
-  } finally { button.disabled = false }
-})
 
 let verifiedAdminUid = null
 const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestions-status')
@@ -3152,23 +3134,29 @@ const discoveryVoiceEntry = document.querySelector('#discovery-voice-entry')
 const discoveryVoiceToggle = document.querySelector('#discovery-voice-toggle')
 const discoveryVoicePanel = document.querySelector('#discovery-voice-panel')
 const discoveryVoiceStatus = document.querySelector('#discovery-voice-status')
+const discoveryVoiceSummary = document.querySelector('#discovery-voice-summary')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
+const discoveryVoiceProfileCard = document.querySelector('#discovery-voice-profile-card')
+const discoveryVoiceProfileName = document.querySelector('#discovery-voice-profile-name')
 let discoveryVoiceTaskId = ''
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   if (!uid || auth.currentUser?.uid !== uid) {
     if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+    if (discoveryVoiceProfileCard) discoveryVoiceProfileCard.hidden = true
     workspace?.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
-    workspaceMobileCredit.classList.remove('is-discovery-voice')
+    workspaceMobileCredit.hidden = false
     return
   }
   const isAdmin = verifiedAdminUid === uid
   discoveryVoiceEntry.hidden = true
   discoveryVoicePanel.hidden = true
+  discoveryVoiceToggle?.setAttribute('aria-expanded', 'false')
   if (!isAdmin) {
     workspace.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
-    workspaceMobileCredit.classList.remove('is-discovery-voice')
+    workspaceMobileCredit.hidden = false
+    discoveryVoiceProfileCard.hidden = true
     return
   }
   try {
@@ -3197,27 +3185,38 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
       discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
     }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
-    workspaceCredits.hidden = false
-    workspaceMobileCredit.classList.toggle('is-discovery-voice', discoveryActive)
+    workspaceCredits.hidden = discoveryActive
+    workspaceMobileCredit.hidden = discoveryActive
+    discoveryVoiceEntry.hidden = !discoveryActive
     if (discoveryActive) {
-      discoveryVoiceEntry.hidden = false
-      if (discoveryVoiceEntry.parentElement !== workspaceMobileCredit) workspaceMobileCredit.append(discoveryVoiceEntry)
-      discoveryVoiceToggle.disabled = false
-      discoveryVoiceToggle.removeAttribute('aria-disabled')
-      document.querySelector('#discovery-voice-summary').textContent = plan.voiceProfile?.ready ? 'Voix prête · ' + plan.voiceProfile.name : 'Personnalise tes chansons'
-      if (plan.voiceProfile?.ready) discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
+      const voiceProfile = plan.voiceProfile
+      if (voiceProfile?.ready) {
+        const voiceName = voiceProfile.name || 'Ma voix'
+        discoveryVoiceSummary.textContent = 'Voix prête · ' + voiceName
+        discoveryVoiceProfileName.textContent = voiceName
+        discoveryVoiceProfileCard.hidden = false
+        discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
+      } else {
+        discoveryVoiceSummary.textContent = 'Personnalise tes chansons'
+        discoveryVoiceProfileCard.hidden = true
+      }
+    } else {
+      discoveryVoiceProfileCard.hidden = true
     }
   } catch (error) {
     console.warn('[Audinoo discovery plan]', error)
     workspace.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
-    workspaceMobileCredit.classList.remove('is-discovery-voice')
+    workspaceMobileCredit.hidden = false
     discoveryVoiceEntry.hidden = true
+    discoveryVoiceProfileCard.hidden = true
   }
 }
 discoveryVoiceToggle?.addEventListener('click', () => {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
-  discoveryVoicePanel.hidden = !discoveryVoicePanel.hidden
+  const opening = discoveryVoicePanel.hidden
+  discoveryVoicePanel.hidden = !opening
+  discoveryVoiceToggle.setAttribute('aria-expanded', String(opening))
 })
 let discoveryVoiceRecorder = null
 let discoveryVoiceStream = null
@@ -3329,10 +3328,15 @@ document.querySelector('#discovery-voice-create')?.addEventListener('click', asy
       if (result.status === 'fail') throw new Error(result.errorMessage || 'voice-creation-failed')
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
+    const createdVoiceName = result.voiceName || name
     discoveryVoiceStatus.textContent = 'Bravo ! Ta voix est prête. Elle sera utilisée automatiquement dans tes prochaines chansons.'
-    document.querySelector('#discovery-voice-summary').textContent = 'Voix prête · ' + (result.voiceName || 'Ma voix')
+    document.querySelector('#discovery-voice-summary').textContent = 'Voix prête · ' + createdVoiceName
+    discoveryVoiceProfileName.textContent = createdVoiceName
+    discoveryVoiceProfileCard.hidden = false
     discoveryVoiceVerification.hidden = true
     document.querySelector('#discovery-voice-source-form').reset()
+    discoveryVoicePanel.hidden = true
+    discoveryVoiceToggle.setAttribute('aria-expanded', 'false')
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
   } finally {
