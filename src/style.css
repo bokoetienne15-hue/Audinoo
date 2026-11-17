@@ -3437,10 +3437,10 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 }
 
 
-/* Ma voix reste exclusivement dans le Studio, dans un conteneur capsule inspiré de la navigation publique. */
+/* Ma voix reste exclusivement dans le Studio : seul le petit bouton blanc est visible. */
 #workspace .discovery-voice-entry{display:block!important;width:100%!important;max-width:100%!important;margin:0 0 22px!important}
-#workspace .discovery-voice-card-slot{display:flex;align-items:center;width:100%;min-height:92px;padding:9px;box-sizing:border-box;border:1px solid rgba(226,222,236,.82);border-radius:999px;background:#080808;box-shadow:0 8px 28px rgba(0,0,0,.24)}
-#workspace button.discovery-voice-card{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;flex:0 0 230px!important;width:230px!important;max-width:230px!important;min-height:70px!important;height:70px!important;margin:0!important;padding:10px 20px!important;border:1px solid #393640!important;border-radius:999px!important;background:#080808!important;color:#fff!important;text-align:left!important;box-shadow:none!important}
+#workspace .discovery-voice-card-slot{display:contents!important}
+#workspace button.discovery-voice-card{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;flex:0 0 230px!important;width:230px!important;max-width:230px!important;min-height:64px!important;height:64px!important;margin:0!important;padding:10px 20px!important;border:1px solid #fff!important;border-radius:999px!important;background:#fff!important;color:#111!important;text-align:left!important;box-shadow:none!important}
 #workspace .discovery-voice-card-plus{display:grid!important;place-items:center!important;flex:0 0 32px!important;width:32px!important;height:32px!important;border:0!important;background:transparent!important;color:#e6c5ff!important;font-size:29px!important;font-weight:300!important;line-height:1!important;order:0!important}
 #workspace .discovery-voice-card-title{display:flex!important;flex:1!important;flex-direction:column!important;justify-content:center!important;gap:4px!important;min-width:0!important;order:1!important}
 #workspace .discovery-voice-card-title strong{font-size:14px!important}
