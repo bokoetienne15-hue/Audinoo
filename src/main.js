@@ -3860,7 +3860,10 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
       if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 3000))
       result = await callAudinooApi('/api/voice/status?taskId=' + encodeURIComponent(discoveryVoiceTaskId))
       if (result.ready) break
-      if (result.status === 'fail') throw new Error(result.errorMessage || 'voice-creation-failed')
+      if (['fail', 'processing_validate_fail'].includes(String(result.status || '').toLowerCase())) {
+        const detail = [result.errorMessage, result.errorCode ? 'Code fournisseur : ' + result.errorCode : '', result.providerMessage].filter(Boolean).join(' · ')
+        throw new Error(detail || 'voice-creation-failed')
+      }
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
     const createdVoiceName = result.voiceName || discoveryVoiceName
@@ -3890,7 +3893,8 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
   } catch (error) {
     console.error('[Audinoo voice creation] Technical failure', { stage: 'creation', taskId: discoveryVoiceTaskId, message: error?.message, providerMessage: error?.providerMessage, error })
     discoveryVoiceStatus.classList.remove('is-loading')
-    discoveryVoiceStatus.textContent = 'La validation de ta voix a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
+    const technicalDetail = [error?.providerMessage, error?.providerCode ? 'Code fournisseur : ' + error.providerCode : '', error?.providerDetails, error?.message].filter(Boolean).join(' · ')
+    discoveryVoiceStatus.textContent = 'La création de ta voix a échoué. ' + (technicalDetail ? 'Motif exact : ' + technicalDetail : 'Aucun détail technique n’a été renvoyé.')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     document.querySelector('#discovery-voice-to-step3').disabled = !discoveryVoiceVerificationDurationValid
@@ -4829,6 +4833,8 @@ async function callAudinooApi(path, options = {}) {
   if (!response.ok) {
     const error = new Error(body.error || 'generation-failed')
     error.providerMessage = typeof body.providerMessage === 'string' ? body.providerMessage.slice(0, 240) : ''
+    error.providerCode = body.providerCode == null ? '' : String(body.providerCode)
+    error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : ''
     throw error
   }
   return body
