@@ -1223,7 +1223,9 @@ async function publicAudio(request, env, db) {
 }
 async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 })
+  // Interroger directement la sous-collection du compte évite une requête collection-group
+  // globale, qui peut échouer sur les index ou la configuration Firestore et bloquer toute la bibliothèque.
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations' }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 }, 'users/' + user.uid)
   const cutoff = Date.now() - RETENTION_MS
   const owned = (rows || []).filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/'))
   // Older library entries may have been saved before cover extraction was fixed.
@@ -1448,6 +1450,9 @@ export default {
       if (url.pathname.startsWith('/api/voice/')) {
         const voiceError = status === 401 ? 'invalid-session' : String(e?.message || 'voice-operation-failed').slice(0, 160)
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
+      }
+      if (url.pathname === '/api/my-library') {
+        return response(status, { error: 'library-load-failed', details: String(e?.message || 'firestore-library-query-failed').slice(0, 180) })
       }
       const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','acquisition-data-limit-reached','acquisition-reset-confirmation-mismatch'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
