@@ -332,7 +332,7 @@ async function accountPlan(request, db, user) {
     discoveryCredits: currentActive ? Math.max(0, Number(profile.data?.discoveryCredits || 0)) : 0,
     voiceProfile: currentActive && profile.data?.voiceProfile?.voiceId ? { name: profile.data.voiceProfile.name || 'Ma voix', ready: true } : null,
     voiceProfiles: currentActive ? (Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])).map(item => ({ voiceId: String(item.voiceId || ''), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null })).filter(item => item.voiceId) : [],
-    selectedVoiceId: currentActive ? String(profile.data?.selectedVoiceId || profile.data?.voiceProfile?.voiceId || '') : ''
+    selectedVoiceId: currentActive ? (Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')) : ''
   })
 }
 async function createDiscoveryPayment(request, env, db, user) {
@@ -540,8 +540,8 @@ async function selectVoiceProfile(request, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const body = await request.json().catch(() => ({}))
-  const voiceId = String(body.voiceId || '').trim()
-  if (!voiceId || voiceId.length > 200) return response(400, { error: 'invalid-voice-id' })
+  const voiceId = body.voiceId == null ? '' : String(body.voiceId).trim()
+  if (voiceId.length > 200) return response(400, { error: 'invalid-voice-id' })
   const profileRef = db.doc('users/' + user.uid)
   let selected = null
   await db.runTransaction(async tx => {
@@ -549,11 +549,15 @@ async function selectVoiceProfile(request, db, user) {
     if (!profile.exists) throw new Error('profile-not-found')
     const data = profile.data()
     const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
-    selected = voices.find(item => String(item.voiceId || '') === voiceId) || null
-    if (!selected) throw new Error('voice-profile-not-found')
-    tx.update(profileRef, { selectedVoiceId: voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
+    if (voiceId) {
+      selected = voices.find(item => String(item.voiceId || '') === voiceId) || null
+      if (!selected) throw new Error('voice-profile-not-found')
+      tx.update(profileRef, { selectedVoiceId: voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
+    } else {
+      tx.update(profileRef, { selectedVoiceId: '', voiceProfile: null, updatedAt: SERVER_TIMESTAMP })
+    }
   })
-  return response(200, { selectedVoiceId: voiceId, name: selected.name || 'Ma voix' })
+  return response(200, { selectedVoiceId: voiceId, name: selected?.name || null })
 }
 async function voiceStatus(request, env, db, user, url) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
@@ -677,7 +681,7 @@ async function generate(request, env, db, user) {
       if (!creditType) throw new Error('no-free-credit')
       if (discoveryIsActive) {
         const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : []
-        const selectedVoiceId = String(data.selectedVoiceId || data.voiceProfile?.voiceId || '')
+        const selectedVoiceId = Object.prototype.hasOwnProperty.call(data, 'selectedVoiceId') ? String(data.selectedVoiceId || '') : String(data.voiceProfile?.voiceId || '')
         voiceId = String(voices.find(item => String(item.voiceId || '') === selectedVoiceId)?.voiceId || data.voiceProfile?.voiceId || '')
       }
       if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
