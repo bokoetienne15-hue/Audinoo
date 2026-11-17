@@ -182,9 +182,8 @@ app.innerHTML = `
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
   <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Ouvrir Ma voix">
-    <span class="discovery-voice-card-symbol" aria-hidden="true">♫</span>
-    <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Appuie pour gérer tes voix</small></span>
-    <span class="discovery-voice-card-arrow" aria-hidden="true">→</span>
+    <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Gérer mes voix</small></span>
+    <span class="discovery-voice-card-plus" aria-hidden="true">+</span>
   </button>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
@@ -192,8 +191,8 @@ app.innerHTML = `
       <div class="discovery-voice-creation" id="discovery-voice-creation" hidden>
       <p class="discovery-voice-copy">Choisis une méthode pour fournir un extrait de ta voix. Rien n’est envoyé avant que tu appuies sur « Suivant ».</p>
       <div class="discovery-voice-source-choices" id="discovery-voice-source-choices">
-        <button class="discovery-voice-source-choice" id="discovery-voice-import-choice" type="button"><span aria-hidden="true">↥</span><strong>Importer un audio</strong><small>Choisir un fichier existant</small></button>
-        <button class="discovery-voice-source-choice" id="discovery-voice-record-choice" type="button"><span aria-hidden="true">●</span><strong>Enregistrer ma voix</strong><small>Parler directement ici</small></button>
+        <button class="discovery-voice-source-choice" id="discovery-voice-import-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5M4 15.5v3A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Importer un audio</strong><small>Choisir un fichier existant</small></button>
+        <button class="discovery-voice-source-choice" id="discovery-voice-record-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><strong>Enregistrer ma voix</strong><small>Parler directement ici</small></button>
       </div>
       <form id="discovery-voice-source-form" class="discovery-voice-form" hidden>
         <label for="discovery-voice-name">Nom de ta voix</label>
@@ -219,8 +218,8 @@ app.innerHTML = `
         <p>Lis cette phrase à voix haute en la chantant, puis enregistre-la ou importe ton audio.</p>
         <blockquote id="discovery-voice-phrase"></blockquote>
         <div class="discovery-voice-source-choices">
-          <button class="discovery-voice-source-choice" id="discovery-voice-verification-import-choice" type="button"><span aria-hidden="true">↥</span><strong>Importer la phrase</strong><small>Choisir un fichier audio</small></button>
-          <button class="discovery-voice-source-choice" id="discovery-voice-verification-record-choice" type="button"><span aria-hidden="true">●</span><strong>Enregistrer la phrase</strong><small>La lire au microphone</small></button>
+          <button class="discovery-voice-source-choice" id="discovery-voice-verification-import-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5M4 15.5v3A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Importer la phrase</strong><small>Choisir un fichier audio</small></button>
+          <button class="discovery-voice-source-choice" id="discovery-voice-verification-record-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><strong>Enregistrer la phrase</strong><small>La lire au microphone</small></button>
         </div>
         <section class="discovery-voice-step-panel" id="discovery-voice-verification-import-step" hidden><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"></section>
         <section class="discovery-voice-step-panel" id="discovery-voice-verification-record-step" hidden>
@@ -3274,11 +3273,13 @@ function renderDiscoveryVoiceLibrary() {
   discoveryVoiceList.replaceChildren(...discoveryVoiceProfiles.map(profile => {
     const card = document.createElement('article')
     card.className = 'discovery-voice-item' + (profile.voiceId === discoverySelectedVoiceId ? ' is-selected' : '')
-    const icon = document.createElement('span'); icon.className = 'discovery-voice-item-icon'; icon.textContent = '♫'
+    card.tabIndex = 0
+    card.setAttribute('role', 'button')
+    const icon = document.createElement('span'); icon.className = 'discovery-voice-item-icon'; icon.textContent = (profile.name || 'M').trim().charAt(0).toUpperCase()
     const info = document.createElement('div'); info.className = 'discovery-voice-item-info'
     const name = document.createElement('strong'); name.textContent = profile.name || 'Ma voix'
     const isSelected = profile.voiceId === discoverySelectedVoiceId
-    const status = document.createElement('small'); status.textContent = isSelected ? 'Sélectionnée pour tes prochaines chansons' : 'Voix prête à utiliser'
+    const status = document.createElement('small'); status.textContent = isSelected ? 'Sélectionnée pour tes prochaines chansons' : 'Appuie pour utiliser cette voix'
     info.append(name, status)
     const choice = document.createElement('label'); choice.className = 'discovery-voice-choice'
     const select = document.createElement('input'); select.type = 'checkbox'; select.name = 'discovery-selected-voice'; select.value = profile.voiceId; select.checked = isSelected; select.setAttribute('aria-label', isSelected ? 'Désélectionner ' + (profile.name || 'Ma voix') : 'Sélectionner ' + (profile.name || 'Ma voix'))
@@ -3299,6 +3300,16 @@ function renderDiscoveryVoiceLibrary() {
     })
     choice.append(select)
     card.append(icon, info, choice)
+    card.addEventListener('click', event => {
+      if (event.target === select || event.target.closest('.discovery-voice-choice')) return
+      if (!select.disabled) select.click()
+    })
+    card.addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && event.target === card) {
+        event.preventDefault()
+        if (!select.disabled) select.click()
+      }
+    })
     return card
   }))
 }
