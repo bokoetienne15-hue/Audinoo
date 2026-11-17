@@ -3603,7 +3603,7 @@ function attachVoiceRecorder(options) {
       stopVisuals()
       stopActiveVoiceRecording = null
       startButton.disabled = false
-      statusMessage.textContent = 'Impossible d’accéder au microphone. Autorise le micro ou importe un fichier audio.'
+      statusMessage.textContent = 'Impossible d’accéder au microphone. Vérifie que l’autorisation du micro est activée.'
     }
   })
   stopButton.addEventListener('click', () => {
@@ -3781,6 +3781,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
     const createdVoiceName = result.voiceName || discoveryVoiceName
+    discoveryVoiceStatus.classList.remove('is-loading')
     discoveryVoiceStatus.textContent = 'Bravo ! Ta voix est prête. Elle sera utilisée automatiquement dans tes prochaines chansons.'
     discoveryVoiceProfiles = [...discoveryVoiceProfiles.filter(item => item.voiceId !== result.voiceId), { voiceId: result.voiceId, name: createdVoiceName }]
     discoverySelectedVoiceId = result.voiceId
