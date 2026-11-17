@@ -188,8 +188,10 @@ app.innerHTML = `
     </div>
     <div class="discovery-voice-profile-card" id="discovery-voice-profile-card" hidden><span class="discovery-voice-profile-icon" aria-hidden="true">♫</span><div><strong id="discovery-voice-profile-name">Ma voix</strong><small>Prête pour tes prochaines chansons</small></div><span class="discovery-voice-profile-status">PRÊTE</span></div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
-      <div class="discovery-voice-heading"><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Configure ta voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
-      <p class="discovery-voice-copy">Choisis une seule méthode pour fournir un extrait de ta voix. Rien n’est envoyé avant que tu appuies sur « Suivant ».</p>
+      <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
+      <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
+      <div class="discovery-voice-creation" id="discovery-voice-creation" hidden>
+      <p class="discovery-voice-copy">Choisis une méthode pour fournir un extrait de ta voix. Rien n’est envoyé avant que tu appuies sur « Suivant ».</p>
       <div class="discovery-voice-source-choices" id="discovery-voice-source-choices">
         <button class="discovery-voice-source-choice" id="discovery-voice-import-choice" type="button"><span aria-hidden="true">↥</span><strong>Importer un audio</strong><small>Choisir un fichier existant</small></button>
         <button class="discovery-voice-source-choice" id="discovery-voice-record-choice" type="button"><span aria-hidden="true">●</span><strong>Enregistrer ma voix</strong><small>Parler directement ici</small></button>
@@ -232,6 +234,7 @@ app.innerHTML = `
         <button type="button" class="discovery-voice-action" id="discovery-voice-create" disabled>Valider ma voix</button>
       </div>
       <p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p>
+      </div>
     </section>
   </section>
 </div><div class="creation-mode" id="creation-mode" role="group" aria-label="Mode de création"><button class="is-active" type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="advanced" aria-pressed="false">Avancé</button></div><form class="studio-form" id="studio-form"><textarea id="studio-prompt" rows="4" maxlength="400" placeholder="Décris ta chanson… ex : un afrobeat joyeux pour un anniversaire"></textarea><div class="studio-form-footer"><span>✦ Décris ton idée en 400 caractères max. Les paroles seront composées automatiquement.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><form class="advanced-form" id="advanced-form" hidden><label for="advanced-prompt">Prompt / paroles de la chanson</label><textarea id="advanced-prompt" rows="5" maxlength="5000" placeholder="Écris ici les paroles complètes, l’histoire ou les instructions de ta chanson…"></textarea><label for="advanced-style">Style, instruments et direction musicale</label><textarea id="advanced-style" rows="3" maxlength="1000" placeholder="Ex. Afrobeat doux, voix féminine, piano et guitare, tempo lent, ambiance chaleureuse…"></textarea><div class="style-suggestions" id="style-suggestions"><button type="button">Voix masculine</button><button type="button">Voix féminine</button><button type="button">Amapiano</button><button type="button">Afrobeat</button><button type="button">Coupé-décalé</button><button type="button">R&B</button><button type="button">Gospel</button><button type="button">Rap francophone</button><button type="button">Piano</button><button type="button">Guitare</button><button type="button">Batterie</button><button type="button">Balafon</button><button type="button">Triste</button><button type="button">Chaud</button><button type="button">Énergique</button></div><label for="advanced-title">Titre de la chanson <small>facultatif</small></label><input id="advanced-title" type="text" maxlength="80" placeholder="Donne un titre à ta création" /><div class="advanced-form-footer"><span>✦ Les paroles et la direction musicale guident ta création.</span><button type="submit">Créer ma musique <b>→</b></button></div></form><div class="studio-suggestions" id="simple-suggestions"><p>Commencer avec une idée</p><div><button type="button">Afrobeat joyeux pour un anniversaire</button><button type="button">Ballade française mélancolique</button><button type="button">Ambiance lo-fi pour travailler</button></div></div><section class="workspace-empty" hidden aria-hidden="true"></section></section>
@@ -3258,6 +3261,48 @@ const discoveryVoiceSummary = document.querySelector('#discovery-voice-summary')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
 const discoveryVoiceProfileCard = document.querySelector('#discovery-voice-profile-card')
 const discoveryVoiceProfileName = document.querySelector('#discovery-voice-profile-name')
+const discoveryVoiceBack = document.querySelector('#discovery-voice-back')
+const discoveryVoiceLibrary = document.querySelector('#discovery-voice-library')
+const discoveryVoiceList = document.querySelector('#discovery-voice-list')
+const discoveryVoiceCount = document.querySelector('#discovery-voice-count')
+const discoveryVoiceAdd = document.querySelector('#discovery-voice-add')
+const discoveryVoiceCreation = document.querySelector('#discovery-voice-creation')
+let discoveryVoiceProfiles = []
+let discoverySelectedVoiceId = ''
+function renderDiscoveryVoiceLibrary() {
+  if (!discoveryVoiceList) return
+  discoveryVoiceCount.textContent = discoveryVoiceProfiles.length + (discoveryVoiceProfiles.length > 1 ? ' voix' : ' voix')
+  if (!discoveryVoiceProfiles.length) {
+    discoveryVoiceList.innerHTML = '<p class="discovery-voice-empty">Aucune voix enregistrée pour le moment. Crée ta première voix pour la retrouver ici.</p>'
+    return
+  }
+  discoveryVoiceList.replaceChildren(...discoveryVoiceProfiles.map(profile => {
+    const card = document.createElement('article')
+    card.className = 'discovery-voice-item' + (profile.voiceId === discoverySelectedVoiceId ? ' is-selected' : '')
+    const icon = document.createElement('span'); icon.className = 'discovery-voice-item-icon'; icon.textContent = '♫'
+    const info = document.createElement('div'); info.className = 'discovery-voice-item-info'
+    const name = document.createElement('strong'); name.textContent = profile.name || 'Ma voix'
+    const status = document.createElement('small'); status.textContent = profile.voiceId === discoverySelectedVoiceId ? 'Sélectionnée pour tes prochaines chansons' : 'Voix prête à utiliser'
+    info.append(name, status)
+    const select = document.createElement('button'); select.type = 'button'; select.className = 'discovery-voice-select'; select.textContent = profile.voiceId === discoverySelectedVoiceId ? 'Sélectionnée ✓' : 'Choisir'
+    select.disabled = profile.voiceId === discoverySelectedVoiceId
+    select.addEventListener('click', async () => {
+      select.disabled = true
+      try {
+        await callAudinooApi('/api/voice/select', { method: 'POST', body: JSON.stringify({ voiceId: profile.voiceId }) })
+        discoverySelectedVoiceId = profile.voiceId
+        discoveryVoiceProfileName.textContent = profile.name || 'Ma voix'
+        discoveryVoiceStatus.textContent = 'Voix sélectionnée. Elle sera utilisée pour tes prochaines chansons.'
+        renderDiscoveryVoiceLibrary()
+      } catch (error) {
+        discoveryVoiceStatus.textContent = 'Impossible de sélectionner cette voix : ' + generationErrorMessage(error.message)
+        select.disabled = false
+      }
+    })
+    card.append(icon, info, select)
+    return card
+  }))
+}
 const discoveryVoiceSourceChoices = document.querySelector('#discovery-voice-source-choices')
 const discoveryVoiceSourceForm = document.querySelector('#discovery-voice-source-form')
 const discoveryVoiceSource = document.querySelector('#discovery-voice-source')
@@ -3325,6 +3370,9 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspaceCredits.hidden = discoveryActive
     workspaceMobileCredit.hidden = discoveryActive
     discoveryVoiceEntry.hidden = !discoveryActive
+    discoveryVoiceProfiles = Array.isArray(plan.voiceProfiles) ? plan.voiceProfiles : (plan.voiceProfile?.ready ? [{ voiceId: plan.selectedVoiceId || '', name: plan.voiceProfile.name || 'Ma voix' }] : [])
+    discoverySelectedVoiceId = plan.selectedVoiceId || discoveryVoiceProfiles[0]?.voiceId || ''
+    renderDiscoveryVoiceLibrary()
     renderAdminDiscoveryPanel(plan)
     if (discoveryActive) {
       const voiceProfile = plan.voiceProfile
@@ -3365,6 +3413,22 @@ function setDiscoveryVoiceStep(step) {
   })
   discoveryVoiceProgress.querySelectorAll(':scope > i').forEach((line, index) => line.classList.toggle('is-complete', index + 1 < step))
 }
+discoveryVoiceAdd?.addEventListener('click', () => {
+  discoveryVoiceLibrary.hidden = true
+  discoveryVoiceCreation.hidden = false
+  discoveryVoiceSourceChoices.hidden = false
+  discoveryVoiceSourceForm.hidden = true
+  discoveryVoiceVerification.hidden = true
+  discoveryVoiceStatus.textContent = ''
+  setDiscoveryVoiceStep(1)
+})
+discoveryVoiceBack?.addEventListener('click', () => {
+  stopActiveVoiceRecording?.()
+  discoveryVoicePanel.hidden = true
+  discoveryVoicePanelHome?.append(discoveryVoicePanel)
+  discoveryVoiceToggle?.setAttribute('aria-expanded', 'false')
+  document.body.classList.remove('discovery-voice-screen-open')
+})
 discoveryVoiceToggle?.addEventListener('click', () => {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   const opening = discoveryVoicePanel.hidden
@@ -3372,10 +3436,13 @@ discoveryVoiceToggle?.addEventListener('click', () => {
   if (opening) {
     document.body.append(discoveryVoicePanel)
     discoveryVoicePanel.hidden = false
+    discoveryVoiceLibrary.hidden = false
+    discoveryVoiceCreation.hidden = true
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
     setDiscoveryVoiceStep(1)
+    renderDiscoveryVoiceLibrary()
     document.body.classList.add('discovery-voice-screen-open')
   } else {
     stopActiveVoiceRecording?.()
@@ -3709,6 +3776,8 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceProfileName.textContent = createdVoiceName
     discoveryVoiceProfileCard.hidden = false
     discoveryVoiceVerification.hidden = true
+    discoveryVoiceCreation.hidden = true
+    discoveryVoiceLibrary.hidden = false
     discoveryVoiceSourceForm.reset()
     discoveryVoiceSourceDurationValid = false
     discoveryVoiceVerificationFile.value = ''
@@ -3717,8 +3786,10 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceVerificationPreview.removeAttribute('src')
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceSourceChoices.hidden = false
-    discoveryVoicePanel.hidden = true
-    discoveryVoiceToggle.setAttribute('aria-expanded', 'false')
+    discoveryVoicePanel.hidden = false
+    discoveryVoiceToggle.setAttribute('aria-expanded', 'true')
+    discoveryVoiceLibrary.hidden = false
+    discoveryVoiceCreation.hidden = true
     await refreshDiscoveryPlan(auth.currentUser?.uid)
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
