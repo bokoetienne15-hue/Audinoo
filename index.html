@@ -297,10 +297,21 @@
           if (!intendedButton) return
           latestAction = (intendedButton.getAttribute('aria-label') || intendedButton.innerText || intendedButton.textContent || intendedButton.id || 'connexion').trim().slice(0, 100)
           latestActionAt = Date.now()
-          const actualControl = findControl(document.elementFromPoint(touch.clientX, touch.clientY))
+          const hitTarget = document.elementFromPoint(touch.clientX, touch.clientY)
+          const actualControl = findControl(hitTarget)
           if (actualControl !== intendedButton && !intendedButton.contains(actualControl)) {
-            const cover = actualControl ? `<${String(actualControl.tagName).toLowerCase()}${actualControl.className && typeof actualControl.className === 'string' ? `.${actualControl.className.trim().replace(/\s+/g, '.')}` : ''}>` : 'un élément transparent'
-            reportClientError(new Error(`Le toucher vise « ${latestAction} », mais ${cover} recouvre la zone du bouton.`), 'diagnostic tactile mobile')
+            const describe = (element) => {
+              if (!element) return 'aucun élément détecté'
+              const tag = String(element.tagName || 'élément').toLowerCase()
+              const id = element.id ? `#${element.id}` : ''
+              const classes = typeof element.className === 'string' && element.className.trim()
+                ? `.${element.className.trim().replace(/\s+/g, '.')}`
+                : ''
+              const style = window.getComputedStyle(element)
+              return `<${tag}${id}${classes}> (position: ${style.position}; z-index: ${style.zIndex}; pointer-events: ${style.pointerEvents})`
+            }
+            const cover = describe(hitTarget)
+            reportClientError(new Error(`Le toucher vise « ${latestAction} », mais ${cover} intercepte le toucher au-dessus du bouton.`), 'diagnostic tactile mobile')
             return
           }
           const checkOpen = () => {
