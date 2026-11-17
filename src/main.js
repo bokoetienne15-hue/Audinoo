@@ -490,24 +490,13 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   const isDiscoveryPlan = card?.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte'
   if (isDiscoveryPlan) {
-    const currentUser = auth.currentUser
-    const isVerifiedAdmin = Boolean(currentUser && verifiedAdminUid === currentUser.uid)
-    button.textContent = isVerifiedAdmin ? 'Activer le plan · 1 000 FCFA' : 'Bientôt disponible'
+    button.textContent = 'Bientôt disponible'
     button.dataset.xofLabel = button.textContent
-    if (!isVerifiedAdmin) {
-      button.addEventListener('click', event => {
-        event.preventDefault()
-        toast.textContent = 'Le plan Découverte sera bientôt disponible.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 3600)
-      })
-      return
-    }
     button.addEventListener('click', async event => {
       event.preventDefault()
       const user = auth.currentUser
       if (!user || verifiedAdminUid !== user.uid) {
-        toast.textContent = 'Activation réservée au compte administrateur.'
+        toast.textContent = 'Le plan Découverte sera bientôt disponible.'
         toast.classList.add('show')
         window.setTimeout(() => toast.classList.remove('show'), 3600)
         return
@@ -3179,6 +3168,12 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     const plan = await callAudinooApi('/api/plan')
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     const discoveryActive = plan?.active === true && plan?.plan === 'discovery'
+    const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
+    const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
+    if (discoveryPriceButton) {
+      discoveryPriceButton.textContent = isAdmin ? (discoveryActive ? 'Plan activé · 1 000 FCFA' : 'Activer le plan · 1 000 FCFA') : 'Bientôt disponible'
+      discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
+    }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
     workspaceCredits.hidden = discoveryActive
     workspaceMobileCredit.classList.toggle('is-discovery-voice', discoveryActive)
