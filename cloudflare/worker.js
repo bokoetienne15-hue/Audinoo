@@ -7,6 +7,8 @@ const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
 const SUNO_CREDIT_URL = 'https://api.sunoapi.org/api/v1/generate/credit'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+const LIBRARY_CACHE_TTL_MS = 12000
+const libraryResponseCache = new Map()
 const FREE_GENERATION_LIMIT = 50
 async function ensureFreeGenerationCounter(db) {
   const settingsPath = 'settings/credits'
@@ -1223,22 +1225,26 @@ async function publicAudio(request, env, db) {
 }
 async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  // Lecture limitée à la sous-collection de l'utilisateur, sans orderBy serveur :
-  // le tri est fait en mémoire pour éviter toute dépendance à un index Firestore.
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations' }], limit: 1000 }, 'users/' + user.uid)
-  const cutoff = Date.now() - RETENTION_MS
+  const now = Date.now()
+  const cached = libraryResponseCache.get(user.uid)
+  if (cached && cached.expiresAt > now) return response(200, { generations: cached.generations })
+  // Ne lire que les créations conservées (30 jours) et limiter le volume par appel.
+  // Le filtre et le tri utilisent le champ créé automatiquement par Firestore.
+  const cutoff = now - RETENTION_MS
+  const rows = await db.runQuery({
+    from: [{ collectionId: 'generations' }],
+    where: { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: new Date(cutoff).toISOString() } } },
+    orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+    limit: 100
+  }, 'users/' + user.uid)
   const owned = (rows || [])
     .filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/'))
-    .sort((a, b) => {
-      const date = row => fromFields(row.document?.fields || {}).createdAt
-      return (date(b)?.getTime?.() || 0) - (date(a)?.getTime?.() || 0)
-    })
   // Older library entries may have been saved before cover extraction was fixed.
   // Refresh a small batch from the official Suno record-info endpoint when cover URLs are missing.
   if (env.SUNOAPI_KEY) {
     let refreshed = 0
     for (const row of owned) {
-      if (refreshed >= 8) break
+      if (refreshed >= 2) break
       const current = fromFields(row.document.fields || {})
       if (!current.taskId || !Array.isArray(current.tracks) || !current.tracks.length || current.tracks.every(track => /^https?:\/\//i.test(track.imageUrl || '') || track.coverKey)) continue
       refreshed++
@@ -1261,6 +1267,11 @@ async function library(request, env, db, user) {
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
     return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
+  libraryResponseCache.set(user.uid, { generations, expiresAt: Date.now() + LIBRARY_CACHE_TTL_MS })
+  if (libraryResponseCache.size > 500) {
+    for (const [key, value] of libraryResponseCache) if (value.expiresAt <= Date.now()) libraryResponseCache.delete(key)
+    if (libraryResponseCache.size > 500) libraryResponseCache.delete(libraryResponseCache.keys().next().value)
+  }
   return response(200, { generations })
 }
 async function profilePhoto(request, env, user, url) {
@@ -1436,7 +1447,7 @@ export default {
       if (url.pathname === '/api/admin/delete-generation-track') return await deleteGenerationTrack(request,env,db,user)
       return response(404,{error:'not-found'})
     } catch (e) {
-      const status = e.message === 'firebase-admin-not-configured' || e.message === 'fedapay-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : 500
+      const status = e.message === 'firebase-admin-not-configured' || e.message === 'fedapay-not-configured' ? 503 : e.message === 'invalid-token' ? 401 : e.status === 429 ? 429 : 500
       if (status >= 500) console.error('[Audinoo Cloudflare]',e)
       if (url.pathname.startsWith('/api/credits/')) {
         const allowedPaymentErrors = new Set(['fedapay-not-configured','fedapay-request-failed','fedapay-invalid-transaction','fedapay-checkout-unavailable','payment-order-not-found','payment-amount-mismatch','payment-account-not-found','invalid-transaction-id'])
@@ -1457,7 +1468,11 @@ export default {
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       if (url.pathname === '/api/my-library') {
-        return response(status, { error: 'library-load-failed', details: String(e?.message || 'firestore-library-query-failed').slice(0, 180) })
+        return response(status, {
+          error: 'library-load-failed',
+          details: String(e?.message || 'firestore-library-query-failed').slice(0, 180),
+          ...(status === 429 ? { retryable: true, retryAfterSeconds: 3 } : {})
+        }, status === 429 ? { 'retry-after': '3' } : {})
       }
       const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','acquisition-data-limit-reached','acquisition-reset-confirmation-mismatch'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
