@@ -1223,11 +1223,16 @@ async function publicAudio(request, env, db) {
 }
 async function library(request, env, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  // Interroger directement la sous-collection du compte évite une requête collection-group
-  // globale, qui peut échouer sur les index ou la configuration Firestore et bloquer toute la bibliothèque.
-  const rows = await db.runQuery({ from: [{ collectionId: 'generations' }], orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 1000 }, 'users/' + user.uid)
+  // Lecture limitée à la sous-collection de l'utilisateur, sans orderBy serveur :
+  // le tri est fait en mémoire pour éviter toute dépendance à un index Firestore.
+  const rows = await db.runQuery({ from: [{ collectionId: 'generations' }], limit: 1000 }, 'users/' + user.uid)
   const cutoff = Date.now() - RETENTION_MS
-  const owned = (rows || []).filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/'))
+  const owned = (rows || [])
+    .filter(row => row.document?.name?.includes('/users/' + user.uid + '/generations/'))
+    .sort((a, b) => {
+      const date = row => fromFields(row.document?.fields || {}).createdAt
+      return (date(b)?.getTime?.() || 0) - (date(a)?.getTime?.() || 0)
+    })
   // Older library entries may have been saved before cover extraction was fixed.
   // Refresh a small batch from the official Suno record-info endpoint when cover URLs are missing.
   if (env.SUNOAPI_KEY) {
