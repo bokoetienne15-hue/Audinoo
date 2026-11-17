@@ -325,15 +325,27 @@ async function accountPlan(request, db, user) {
   const currentPlan = profile.data?.discoverySubscription || {}
   const currentActive = isDiscoverySubscriptionActive(currentPlan)
   const expires = currentPlan.expiresAt instanceof Date ? currentPlan.expiresAt : new Date(currentPlan.expiresAt || 0)
+  const storedVoices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
+  const voiceProfiles = currentActive ? storedVoices.filter(item => {
+    if (!item?.voiceId) return false
+    if (!item.expiresAt) return true
+    const voiceExpiry = new Date(item.expiresAt).getTime()
+    return Number.isFinite(voiceExpiry) && voiceExpiry > Date.now()
+  }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null })) : []
+  const requestedVoiceId = Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')
+  const selectedVoice = voiceProfiles.find(item => item.voiceId === requestedVoiceId) || null
+  if (currentActive && voiceProfiles.length !== storedVoices.length) {
+    await db.set('users/' + user.uid, { voiceProfiles, selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
+  }
   return response(200, {
     plan: currentActive ? 'discovery' : 'unit',
     active: currentActive,
     expiresAt: currentActive ? expires.toISOString() : null,
     discoveryCredits: currentActive ? Math.max(0, Number(profile.data?.discoveryCredits || 0)) : 0,
     paidCredits: Math.max(0, Number(profile.data?.paidCredits || 0)),
-    voiceProfile: currentActive && profile.data?.voiceProfile?.voiceId ? { name: profile.data.voiceProfile.name || 'Ma voix', ready: true } : null,
-    voiceProfiles: currentActive ? (Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])).map(item => ({ voiceId: String(item.voiceId || ''), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null })).filter(item => item.voiceId) : [],
-    selectedVoiceId: currentActive ? (Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')) : ''
+    voiceProfile: selectedVoice ? { name: selectedVoice.name || 'Ma voix', ready: true } : null,
+    voiceProfiles,
+    selectedVoiceId: selectedVoice?.voiceId || ''
   })
 }
 async function createDiscoveryPayment(request, env, db, user) {
@@ -584,8 +596,9 @@ async function voiceStatus(request, env, db, user, url) {
         const voices = Array.isArray(current.voiceProfiles) ? current.voiceProfiles : (current.voiceProfile?.voiceId ? [current.voiceProfile] : [])
         const nextVoices = voices.filter(item => String(item.voiceId || '') !== voiceId)
         const createdAt = new Date().toISOString()
-        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, taskId })
-        tx.set(profileRef, { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, taskId } }, true)
+        const expiresAt = new Date(Date.now() + RETENTION_MS).toISOString()
+        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId })
+        tx.set(profileRef, { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId } }, true)
       })
       await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
     }
