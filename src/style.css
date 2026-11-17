@@ -3215,3 +3215,16 @@ button.is-generating:disabled {
 
 .discovery-voice-record-controls{display:flex;gap:10px;flex-wrap:wrap}
 #discovery-voice-record-preview{width:100%;margin:4px 0 10px}
+
+/* Discovery: admin-only voice entry replaces the mobile credit tile while the plan is active. */
+.workspace-mobile-credit.is-discovery-voice { display:flex !important; align-items:flex-start; margin:0 0 26px; padding:0; border:0; border-radius:0; background:transparent; }
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-entry { width:max-content; max-width:100%; margin:0; }
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-toggle { width:auto; min-width:148px; min-height:44px; justify-content:center; gap:0; padding:11px 20px; border:1px solid #747481; border-radius:24px; background:#050505; color:#fff; box-shadow:none; }
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-plus,
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-toggle small { display:none; }
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-toggle>span:nth-child(2) { font-size:13px; font-weight:600; }
+.workspace-mobile-credit.is-discovery-voice .discovery-voice-panel { width:min(640px, calc(100vw - 48px)); margin-top:12px; }
+.workspace.is-discovery-active .workspace-side-note { display:none !important; }
+@media (min-width:761px) {
+  .workspace-mobile-credit.is-discovery-voice { display:flex !important; }
+}

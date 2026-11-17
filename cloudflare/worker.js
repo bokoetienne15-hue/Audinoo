@@ -1182,7 +1182,7 @@ export default {
       if (url.pathname === '/api/profile-photo') return await profilePhoto(request, env, user, url)
       if (url.pathname === '/api/credits/purchase') return await createCreditPayment(request,env,db,user)
       if (url.pathname === '/api/plan') return await accountPlan(request,db,user)
-      if (url.pathname === '/api/discovery/purchase') return await createDiscoveryPayment(request,env,db,user)
+      if (url.pathname === '/api/discovery/purchase') return response(403,{error:'discovery-not-available'})
       if (url.pathname === '/api/discovery/confirm') { if (request.method !== 'GET') return response(405,{error:'method-not-allowed'}); return response(200, await confirmDiscoveryPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid)) }
       if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
       if (url.pathname === '/api/voice/upload') return await voiceUpload(request,env,db,user)
