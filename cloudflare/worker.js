@@ -484,7 +484,6 @@ function voiceApiHeaders(env) {
 }
 async function voiceUpload(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   if (!env.AUDIO_BUCKET) return response(503, { error: 'voice-storage-not-configured' })
   const form = await request.formData()
   const audio = form.get('audio')
@@ -508,7 +507,6 @@ async function publicVoiceFile(request, env, db, token) {
 }
 async function voiceValidate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const body = await request.json().catch(() => ({}))
   const token = String(body.token || '')
   const voiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40)
@@ -525,7 +523,6 @@ async function voiceValidate(request, env, db, user) {
 }
 async function voiceValidateInfo(request, env, db, user, url) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const taskId = url.searchParams.get('taskId') || ''
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   if (!task.exists) return response(404, { error: 'voice-task-not-found' })
@@ -537,7 +534,6 @@ async function voiceValidateInfo(request, env, db, user, url) {
 }
 async function voiceCreate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const body = await request.json().catch(() => ({}))
   const taskId = String(body.taskId || ''), token = String(body.token || '')
   const requestedVoiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40) || 'Ma voix'
@@ -553,7 +549,6 @@ async function voiceCreate(request, env, db, user) {
 }
 async function selectVoiceProfile(request, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const body = await request.json().catch(() => ({}))
   const voiceId = body.voiceId == null ? '' : String(body.voiceId).trim()
   if (voiceId.length > 200) return response(400, { error: 'invalid-voice-id' })
@@ -576,7 +571,6 @@ async function selectVoiceProfile(request, db, user) {
 }
 async function voiceStatus(request, env, db, user, url) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const taskId = url.searchParams.get('taskId') || ''
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   if (!task.exists || !task.data.creationTaskId) return response(404, { error: 'voice-task-not-found' })
