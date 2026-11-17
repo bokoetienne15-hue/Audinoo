@@ -498,9 +498,9 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
       const original = button.textContent; button.textContent = 'Préparation du paiement…'; button.setAttribute('aria-busy','true'); button.style.pointerEvents = 'none'
       try {
         const checkout = await callAudinooApi('/api/discovery/purchase', { method: 'POST', body: JSON.stringify({}) })
-        if (!checkout.checkoutUrl || !/^https:\\/\\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
         sessionStorage.setItem('audinooPendingDiscoveryTransaction', String(checkout.transactionId || ''))
-        window.location.assign(checkout.checkoutUrl)
+        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
       } catch (error) { toast.textContent = generationErrorMessage(error.message); toast.classList.add('show'); window.setTimeout(() => toast.classList.remove('show'), 5500); button.textContent = original; button.removeAttribute('aria-busy'); button.style.pointerEvents = '' }
     })
     return
