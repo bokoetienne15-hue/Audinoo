@@ -490,19 +490,51 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
   const isDiscoveryPlan = card?.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte'
   if (isDiscoveryPlan) {
-    button.textContent = 'S’abonner · 1 000 FCFA'
+    const currentUser = auth.currentUser
+    const isVerifiedAdmin = Boolean(currentUser && verifiedAdminUid === currentUser.uid)
+    button.textContent = isVerifiedAdmin ? 'Activer le plan · 1 000 FCFA' : 'Bientôt disponible'
     button.dataset.xofLabel = button.textContent
+    if (!isVerifiedAdmin) {
+      button.addEventListener('click', event => {
+        event.preventDefault()
+        toast.textContent = 'Le plan Découverte sera bientôt disponible.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3600)
+      })
+      return
+    }
     button.addEventListener('click', async event => {
       event.preventDefault()
-      if (workspacePricingPage.querySelector('.currency-toggle').classList.contains('is-eur')) { toast.textContent = 'Les paiements en euros seront bientôt disponibles.'; toast.classList.add('show'); window.setTimeout(() => toast.classList.remove('show'), 3600); return }
-      if (!auth.currentUser) { toast.textContent = 'Connecte-toi pour choisir le plan Découverte.'; toast.classList.add('show'); window.setTimeout(() => toast.classList.remove('show'), 4000); return }
-      const original = button.textContent; button.textContent = 'Préparation du paiement…'; button.setAttribute('aria-busy','true'); button.style.pointerEvents = 'none'
+      const user = auth.currentUser
+      if (!user || verifiedAdminUid !== user.uid) {
+        toast.textContent = 'Activation réservée au compte administrateur.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3600)
+        return
+      }
+      const original = button.textContent
+      button.textContent = 'Vérification administrateur…'
+      button.disabled = true
+      button.setAttribute('aria-busy', 'true')
       try {
-        const checkout = await callAudinooApi('/api/discovery/purchase', { method: 'POST', body: JSON.stringify({}) })
-        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
-        sessionStorage.setItem('audinooPendingDiscoveryTransaction', String(checkout.transactionId || ''))
-        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
-      } catch (error) { toast.textContent = generationErrorMessage(error.message); toast.classList.add('show'); window.setTimeout(() => toast.classList.remove('show'), 5500); button.textContent = original; button.removeAttribute('aria-busy'); button.style.pointerEvents = '' }
+        await callAudinooApi('/api/admin/discovery/activate-test', { method: 'POST', body: JSON.stringify({}) })
+        if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) throw new Error('admin-required')
+        await refreshDiscoveryPlan(user.uid)
+        if (!workspace.classList.contains('is-discovery-active')) throw new Error('discovery-activation-failed')
+        toast.textContent = 'Plan Découverte activé. Bienvenue dans ton espace vocal.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3600)
+        workspacePricingPage.hidden = true
+        workspaceSidebar.querySelector('.workspace-nav[href="#studio"]')?.click()
+      } catch (error) {
+        toast.textContent = generationErrorMessage(error.message)
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 5000)
+        button.textContent = original
+      } finally {
+        button.disabled = false
+        button.removeAttribute('aria-busy')
+      }
     })
     return
   }
@@ -3129,26 +3161,41 @@ let discoveryVoiceTaskId = ''
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   if (!uid || auth.currentUser?.uid !== uid) {
     if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+    workspace?.classList.remove('is-discovery-active')
+    workspaceCredits.hidden = false
+    workspaceMobileCredit.classList.remove('is-discovery-voice')
     return
   }
   const isAdmin = verifiedAdminUid === uid
-  discoveryVoiceEntry.hidden = false
-  discoveryVoiceToggle.disabled = !isAdmin
-  discoveryVoiceToggle.setAttribute('aria-disabled', String(!isAdmin))
-  document.querySelector('#discovery-voice-summary').textContent = isAdmin ? 'Configure ta voix' : 'Bientôt disponible'
+  discoveryVoiceEntry.hidden = true
+  discoveryVoicePanel.hidden = true
   if (!isAdmin) {
-    discoveryVoicePanel.hidden = true
+    workspace.classList.remove('is-discovery-active')
+    workspaceCredits.hidden = false
+    workspaceMobileCredit.classList.remove('is-discovery-voice')
     return
   }
   try {
     const plan = await callAudinooApi('/api/plan')
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
-    if (plan.voiceProfile?.ready) {
-      document.querySelector('#discovery-voice-summary').textContent = 'Voix prête · ' + plan.voiceProfile.name
-      discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
+    const discoveryActive = plan?.active === true && plan?.plan === 'discovery'
+    workspace.classList.toggle('is-discovery-active', discoveryActive)
+    workspaceCredits.hidden = discoveryActive
+    workspaceMobileCredit.classList.toggle('is-discovery-voice', discoveryActive)
+    if (discoveryActive) {
+      discoveryVoiceEntry.hidden = false
+      if (discoveryVoiceEntry.parentElement !== workspaceMobileCredit) workspaceMobileCredit.append(discoveryVoiceEntry)
+      discoveryVoiceToggle.disabled = false
+      discoveryVoiceToggle.removeAttribute('aria-disabled')
+      document.querySelector('#discovery-voice-summary').textContent = plan.voiceProfile?.ready ? 'Voix prête · ' + plan.voiceProfile.name : 'Personnalise tes chansons'
+      if (plan.voiceProfile?.ready) discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
     }
   } catch (error) {
     console.warn('[Audinoo discovery plan]', error)
+    workspace.classList.remove('is-discovery-active')
+    workspaceCredits.hidden = false
+    workspaceMobileCredit.classList.remove('is-discovery-voice')
+    discoveryVoiceEntry.hidden = true
   }
 }
 discoveryVoiceToggle?.addEventListener('click', () => {
