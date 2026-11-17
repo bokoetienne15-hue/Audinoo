@@ -3413,7 +3413,7 @@ const discoveryVoiceCopy = discoveryVoiceCreation.querySelector('.discovery-voic
 const discoveryVoiceProgress = document.createElement('div')
 discoveryVoiceProgress.className = 'discovery-voice-progress'
 discoveryVoiceProgress.setAttribute('aria-label', 'Progression de configuration')
-discoveryVoiceProgress.innerHTML = '<div class="discovery-voice-progress-step is-current"><span>1</span><small>Choix</small></div><i></i><div class="discovery-voice-progress-step"><span>2</span><small>Extrait</small></div><i></i><div class="discovery-voice-progress-step"><span>3</span><small>Vérification</small></div><i></i><div class="discovery-voice-progress-step"><span>4</span><small>Validation</small></div>'
+discoveryVoiceProgress.innerHTML = '<div class="discovery-voice-progress-step is-current"><span>1</span><small>Ajouter</small></div><i></i><div class="discovery-voice-progress-step"><span>2</span><small>Vérifier</small></div><i></i><div class="discovery-voice-progress-step"><span>3</span><small>Enregistrer</small></div>'
 discoveryVoicePanel.prepend(discoveryVoiceProgress)
 function setDiscoveryVoiceStep(step) {
   discoveryVoiceProgress.querySelectorAll('.discovery-voice-progress-step').forEach((item, index) => {
@@ -3546,7 +3546,7 @@ function setVoiceFile(input, file, preview, readyButton) {
   preview.replaceChildren(audio, play, body)
   preview.hidden = false
   if (input === discoveryVoiceSource) discoveryVoiceValidate.disabled = !(file && discoveryVoiceConsent.checked && discoveryVoiceSourceDurationValid)
-  else if (input === discoveryVoiceVerificationFile) discoveryVoiceCreate.disabled = !(file && discoveryVoiceVerificationDurationValid)
+  else if (input === discoveryVoiceVerificationFile) document.querySelector('#discovery-voice-to-step3').disabled = !(file && discoveryVoiceVerificationDurationValid)
   else if (readyButton) readyButton.disabled = false
 }
 function attachVoiceRecorder(options) {
