@@ -1003,7 +1003,7 @@ const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><div class="library-view-switch" id="library-view-switch" role="tablist" aria-label="Type de bibliothèque"><button class="library-view-tab is-active" id="library-music-tab" type="button" role="tab" aria-selected="true" aria-controls="library-music-view"><span aria-hidden="true">♫</span> Musique</button><button class="library-view-tab" id="library-video-tab" type="button" role="tab" aria-selected="false" aria-controls="library-video-view"><span aria-hidden="true">▣</span> Clip vidéo</button></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -3948,6 +3948,35 @@ libraryLoading.setAttribute('role', 'status')
 libraryLoading.setAttribute('aria-live', 'polite')
 libraryLoading.innerHTML = '<span class="library-loading-spinner" aria-hidden="true"></span><span>Chargement de ta bibliothèque…</span>'
 libraryGenerationList.before(libraryLoading)
+libraryGenerationList.id = 'library-music-view'
+libraryGenerationList.setAttribute('role', 'tabpanel')
+libraryGenerationList.setAttribute('aria-labelledby', 'library-music-tab')
+const libraryVideoEmpty = document.createElement('section')
+libraryVideoEmpty.className = 'library-video-empty'
+libraryVideoEmpty.innerHTML = '<span class="workspace-empty-icon" aria-hidden="true">▣</span><h2>Aucun clip vidéo pour le moment.</h2><p>Toutes tes chansons apparaîtront ici. Tu pourras bientôt obtenir leur clip vidéo.</p>'
+libraryVideoEmpty.hidden = true
+const libraryVideoList = document.createElement('div')
+libraryVideoList.className = 'library-video-list'
+libraryVideoList.id = 'library-video-view'
+libraryVideoList.setAttribute('role', 'tabpanel')
+libraryVideoList.setAttribute('aria-labelledby', 'library-video-tab')
+libraryVideoList.hidden = true
+libraryGenerationList.after(libraryVideoEmpty, libraryVideoList)
+const libraryMusicTab = libraryWorkspacePage.querySelector('#library-music-tab')
+const libraryVideoTab = libraryWorkspacePage.querySelector('#library-video-tab')
+function setLibraryView(view) {
+  const showVideo = view === 'video'
+  libraryMusicTab.classList.toggle('is-active', !showVideo)
+  libraryVideoTab.classList.toggle('is-active', showVideo)
+  libraryMusicTab.setAttribute('aria-selected', String(!showVideo))
+  libraryVideoTab.setAttribute('aria-selected', String(showVideo))
+  libraryGenerationList.hidden = showVideo || libraryLoading.hidden === false
+  libraryVideoList.hidden = !showVideo || libraryVideoEmpty.hidden === false
+  libraryVideoEmpty.hidden = !showVideo || libraryVideoList.childElementCount > 0
+  libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = showVideo || libraryGenerationList.childElementCount > 0 || libraryLoading.hidden === false
+}
+libraryMusicTab.addEventListener('click', () => setLibraryView('music'))
+libraryVideoTab.addEventListener('click', () => setLibraryView('video'))
 libraryLoading.hidden = true
 const libraryMiniPlayer = document.createElement('section')
 libraryMiniPlayer.className = 'library-mini-player'
@@ -4658,6 +4687,73 @@ function renderLibraryGeneration(generation) {
   }
   group.append(entry)
 
+  // La vue vidéo reprend chaque chanson de la bibliothèque, sans lancer de génération.
+  const previousVideoEntry = [...libraryVideoList.querySelectorAll('.library-video-generation-entry')]
+    .find(node => node.dataset.libraryTask === taskId)
+  previousVideoEntry?.remove()
+  const videoTracks = tracks.filter(track => track?.audioUrl)
+  if (videoTracks.length) {
+    let videoGroup = [...libraryVideoList.querySelectorAll('.library-video-generation-group')]
+      .find(node => node.dataset.libraryDate === dateKey)
+    if (!videoGroup) {
+      videoGroup = document.createElement('section')
+      videoGroup.className = 'library-video-generation-group'
+      videoGroup.dataset.libraryDate = dateKey
+      const label = document.createElement('div')
+      label.className = 'library-generation-date'
+      label.textContent = libraryGenerationDateLabel(createdAt)
+      videoGroup.append(label)
+      libraryVideoList.append(videoGroup)
+    }
+    const videoEntry = document.createElement('div')
+    videoEntry.className = 'library-video-generation-entry'
+    videoEntry.dataset.libraryTask = taskId
+    videoTracks.forEach((track, index) => {
+      const card = document.createElement('article')
+      card.className = 'library-video-song-card'
+      const cover = document.createElement('div')
+      cover.className = 'library-video-song-cover'
+      const coverUrl = track.coverImageUrl || track.imageUrl || track.coverUrl || track.cover_url || track.image_url || ''
+      if (coverUrl) {
+        const image = document.createElement('img')
+        image.src = coverUrl
+        image.alt = ''
+        image.loading = 'lazy'
+        cover.append(image)
+      } else {
+        cover.textContent = '♫'
+      }
+      const info = document.createElement('div')
+      info.className = 'library-video-song-info'
+      const title = document.createElement('strong')
+      title.textContent = generation.title || track.title || 'Sans titre'
+      const variant = document.createElement('small')
+      variant.textContent = 'Version ' + (index + 1)
+      info.append(title, variant)
+      const action = document.createElement('button')
+      action.type = 'button'
+      action.className = 'library-video-get-button'
+      action.textContent = 'Obtenir la vidéo'
+      action.addEventListener('click', () => {
+        toast.textContent = 'La création des clips vidéo sera bientôt disponible.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 3200)
+      })
+      card.append(cover, info, action)
+      videoEntry.append(card)
+    })
+    videoGroup.append(videoEntry)
+    const videoGroups = [...libraryVideoList.querySelectorAll('.library-video-generation-group')]
+    videoGroups.sort((a, b) => {
+      const first = a.dataset.libraryDate === 'unknown' ? 0 : Date.parse(a.dataset.libraryDate + 'T00:00:00')
+      const second = b.dataset.libraryDate === 'unknown' ? 0 : Date.parse(b.dataset.libraryDate + 'T00:00:00')
+      return second - first
+    })
+    videoGroups.forEach(item => libraryVideoList.append(item))
+  }
+  libraryVideoEmpty.hidden = libraryVideoList.childElementCount > 0
+  if (!libraryVideoList.childElementCount && libraryVideoTab.classList.contains('is-active')) libraryVideoEmpty.hidden = false
+
   const groups = [...libraryGenerationList.querySelectorAll('.library-generation-group')]
   groups.sort((a, b) => {
     const first = a.dataset.libraryDate === 'unknown' ? 0 : Date.parse(a.dataset.libraryDate + 'T00:00:00')
@@ -5198,6 +5294,8 @@ async function loadUserLibrary() {
     parkActiveLibraryEntry()
     const result = await callAudinooApi('/api/my-library')
     replaceNodeChildren(libraryGenerationList)
+    replaceNodeChildren(libraryVideoList)
+    libraryVideoEmpty.hidden = true
     result.generations.forEach((generation) => {
       renderLibraryGeneration(generation)
       if (generation.status === 'PENDING' || generation.status === 'TEXT_SUCCESS' || generation.status === 'FIRST_SUCCESS') {
@@ -5207,7 +5305,9 @@ async function loadUserLibrary() {
     })
     restoreActiveLibraryEntry()
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
-    libraryGenerationList.hidden = false
+    libraryGenerationList.hidden = libraryVideoTab.classList.contains('is-active')
+    libraryVideoEmpty.hidden = libraryVideoList.childElementCount > 0
+    libraryVideoList.hidden = !libraryVideoTab.classList.contains('is-active') || libraryVideoList.childElementCount === 0
     libraryLoading.hidden = true
   } catch (error) {
     libraryGenerationList.hidden = false
