@@ -434,6 +434,7 @@ async function voiceStatus(request, env, db, user, url) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   if (!(await discoveryActive(db, user.uid)) && !(await adminAllowed(db, user.uid))) return response(403, { error: 'discovery-plan-required' })
   const taskId = url.searchParams.get('taskId') || ''
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId)) return response(400, { error: 'voice-task-not-found' })
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   if (!task.exists || !task.data.creationTaskId) return response(404, { error: 'voice-task-not-found' })
   const result = await fetch(SUNO_VOICE_RECORD_URL + '?taskId=' + encodeURIComponent(task.data.creationTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
