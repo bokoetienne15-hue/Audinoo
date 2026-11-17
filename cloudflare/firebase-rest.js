@@ -134,6 +134,8 @@ export class FirestoreRest {
     if (!response.ok) {
       const error = new Error(body.error?.message || 'firebase-auth-admin-failed')
       error.status = response.status
+      error.code = body.error?.code || response.status
+      error.firestoreStatus = body.error?.status || ''
       throw error
     }
     return body
