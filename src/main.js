@@ -18,8 +18,9 @@ function replaceNodeChildren(node, ...children) {
 function exactErrorDetails(error) {
   if (!error) return 'Erreur inconnue'
   const message = typeof error.message === 'string' ? error.message : String(error)
+  const details = typeof error.providerDetails === 'string' && error.providerDetails ? error.providerDetails : ''
   const code = typeof error.code === 'string' ? `Code : ${error.code}` : ''
-  return [message, code].filter(Boolean).join(' · ')
+  return [message, details, code].filter(Boolean).join(' · ')
 }
 
 function readBrowserStorage(storage, key) {
