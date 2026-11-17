@@ -192,7 +192,10 @@ app.innerHTML = `
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
       <div class="discovery-voice-creation" id="discovery-voice-creation" hidden>
       <p class="discovery-voice-copy">Enregistre directement ta voix avec ton microphone. Aucun fichier audio ne peut être importé.</p>
-      <div class="discovery-voice-source-choices" id="discovery-voice-source-choices" hidden></div>
+      <div class="discovery-voice-source-choices" id="discovery-voice-source-choices" hidden>
+        <button type="button" class="discovery-voice-source-choice" id="discovery-voice-record-choice"><span aria-hidden="true">🎙</span><strong>Enregistrer ma voix</strong><small>Utiliser le microphone de ton appareil</small></button>
+        <button type="button" class="discovery-voice-source-choice" id="discovery-voice-import-choice"><span aria-hidden="true">↑</span><strong>Importer un audio</strong><small>Choisir un fichier audio existant</small></button>
+      </div>
       <form id="discovery-voice-source-form" class="discovery-voice-form" hidden>
         <label for="discovery-voice-name">Nom de ta voix</label>
         <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
@@ -3418,10 +3421,10 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceCreation.hidden = false
   discoveryVoiceProgress.hidden = false
   discoveryVoiceCopy.hidden = false
-  discoveryVoiceSourceChoices.hidden = true
-  discoveryVoiceSourceForm.hidden = false
+  discoveryVoiceSourceChoices.hidden = false
+  discoveryVoiceSourceForm.hidden = true
   discoveryVoiceImportStep.hidden = true
-  discoveryVoiceRecordStep.hidden = false
+  discoveryVoiceRecordStep.hidden = true
   discoveryVoiceVerification.hidden = true
   discoveryVoiceStatus.classList.remove('is-loading')
   discoveryVoiceStatus.textContent = 'Enregistre directement ta voix avec le microphone (5 secondes minimum).'
@@ -3673,7 +3676,14 @@ function updateDiscoveryVoiceNext() {
 const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-import-choice')
 const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
 const discoveryVoiceSourceBack = document.querySelector('#discovery-voice-source-back')
-discoveryVoiceImportChoice?.addEventListener('click', event => event.preventDefault())
+discoveryVoiceImportChoice?.addEventListener('click', () => {
+  setDiscoveryVoiceStep(2)
+  discoveryVoiceSourceChoices.hidden = true
+  discoveryVoiceSourceForm.hidden = false
+  discoveryVoiceImportStep.hidden = false
+  discoveryVoiceRecordStep.hidden = true
+  discoveryVoiceStatus.textContent = 'Importe un fichier audio d’au moins 5 secondes.'
+})
 discoveryVoiceRecordChoice?.addEventListener('click', () => {
   setDiscoveryVoiceStep(2)
   discoveryVoiceSourceChoices.hidden = true
