@@ -1003,7 +1003,7 @@ const libraryWorkspacePage = document.createElement('section')
 libraryWorkspacePage.className = 'workspace-content workspace-library-page'
 libraryWorkspacePage.id = 'library-page'
 libraryWorkspacePage.hidden = true
-libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><div class="library-view-switch" id="library-view-switch" role="tablist" aria-label="Type de bibliothèque"><button class="library-view-tab is-active" id="library-music-tab" type="button" role="tab" aria-selected="true" aria-controls="library-music-view"><span aria-hidden="true">♫</span> Musique</button><button class="library-view-tab" id="library-video-tab" type="button" role="tab" aria-selected="false" aria-controls="library-video-view"><span aria-hidden="true">▣</span> Clip vidéo</button></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
+libraryWorkspacePage.innerHTML = '<div class="library-page-heading"><h1>Ma bibliothèque</h1><p class="workspace-intro">Toutes tes créations musicales, réunies au même endroit.</p></div><div class="library-view-switch" id="library-view-switch" role="tablist" aria-label="Type de bibliothèque"><button class="library-view-tab is-active" id="library-music-tab" type="button" role="tab" aria-selected="true" aria-controls="library-music-view"><span class="library-view-tab-icon" aria-hidden="true">♫</span><span class="library-view-tab-label">Musique</span><span class="library-view-new">Nouveau</span></button><button class="library-view-tab" id="library-video-tab" type="button" role="tab" aria-selected="false" aria-controls="library-video-view"><span class="library-view-tab-icon" aria-hidden="true">▣</span><span class="library-view-tab-label">Clip vidéo</span><span class="library-view-new">Nouveau</span></button></div><section class="workspace-library-empty"><span class="workspace-empty-icon" aria-hidden="true">♫</span><h2>Ta bibliothèque est encore vide.</h2><p>Les chansons que tu crées apparaîtront ici.</p><a class="workspace-library-create" href="#studio">Créer une chanson <span aria-hidden="true">→</span></a></section>'
 workspaceLayout.append(libraryWorkspacePage)
 const modelWorkspacePage = document.createElement('section')
 modelWorkspacePage.className = 'workspace-content workspace-model-page'
@@ -3860,7 +3860,10 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
       if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 3000))
       result = await callAudinooApi('/api/voice/status?taskId=' + encodeURIComponent(discoveryVoiceTaskId))
       if (result.ready) break
-      if (result.status === 'fail') throw new Error(result.errorMessage || 'voice-creation-failed')
+      if (['fail', 'processing_validate_fail'].includes(String(result.status || '').toLowerCase())) {
+        const detail = [result.errorMessage, result.errorCode ? 'Code fournisseur : ' + result.errorCode : '', result.providerMessage].filter(Boolean).join(' · ')
+        throw new Error(detail || 'voice-creation-failed')
+      }
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
     const createdVoiceName = result.voiceName || discoveryVoiceName
@@ -3890,7 +3893,8 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
   } catch (error) {
     console.error('[Audinoo voice creation] Technical failure', { stage: 'creation', taskId: discoveryVoiceTaskId, message: error?.message, providerMessage: error?.providerMessage, error })
     discoveryVoiceStatus.classList.remove('is-loading')
-    discoveryVoiceStatus.textContent = 'La validation de ta voix a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
+    const technicalDetail = [error?.providerMessage, error?.providerCode ? 'Code fournisseur : ' + error.providerCode : '', error?.providerDetails, error?.message].filter(Boolean).join(' · ')
+    discoveryVoiceStatus.textContent = 'La création de ta voix a échoué. ' + (technicalDetail ? 'Motif exact : ' + technicalDetail : 'Aucun détail technique n’a été renvoyé.')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     document.querySelector('#discovery-voice-to-step3').disabled = !discoveryVoiceVerificationDurationValid
@@ -4829,6 +4833,8 @@ async function callAudinooApi(path, options = {}) {
   if (!response.ok) {
     const error = new Error(body.error || 'generation-failed')
     error.providerMessage = typeof body.providerMessage === 'string' ? body.providerMessage.slice(0, 240) : ''
+    error.providerCode = body.providerCode == null ? '' : String(body.providerCode)
+    error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : ''
     throw error
   }
   return body

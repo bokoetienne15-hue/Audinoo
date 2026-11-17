@@ -3559,3 +3559,18 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
  .library-video-song-cover{width:46px;height:46px}
  .library-video-get-button{grid-column:2;justify-self:start;min-height:30px;padding:0 11px}
 }
+
+/* Onglets de bibliothèque légèrement agrandis pour accueillir le badge Nouveau. */
+.library-view-switch{gap:4px;padding:4px}
+.library-view-tab{min-height:40px;padding:0 17px;gap:8px;font-size:13px}
+.library-view-tab-icon{font-size:16px!important}
+.library-view-tab-label{font-size:13px;font-weight:650}
+.library-view-new{display:inline-flex;align-items:center;justify-content:center;min-height:18px;padding:0 7px;border:1px solid rgba(193,155,255,.25);border-radius:999px;background:rgba(158,104,235,.18);color:#d9baff;font-size:8px;font-weight:800;letter-spacing:.02em;line-height:1;text-transform:uppercase}
+@media(max-width:520px){
+ .library-view-tab{min-height:38px;padding:0 13px;gap:6px}
+ .library-view-tab-label{font-size:12px}
+ .library-view-new{min-height:17px;padding:0 6px;font-size:7px}
+}
+
+.library-view-tab .library-view-tab-label{font-size:13px}
+@media(max-width:520px){.library-view-tab .library-view-tab-label{font-size:12px}}
