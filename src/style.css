@@ -3359,3 +3359,39 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 .discovery-voice-choice input[type=radio]:checked{border-color:#d7a9ff;box-shadow:0 0 0 3px rgba(215,169,255,.13)}
 .discovery-voice-choice input[type=radio]:checked::after{transform:scale(1)}
 .discovery-voice-choice input[type=radio]:focus-visible{outline:2px solid #d7a9ff;outline-offset:3px}
+
+
+/* Évite le grand espace vide au-dessus du studio pendant la vérification du forfait. */
+.workspace.is-plan-checking .workspace-side-note,
+.workspace.is-plan-checking .workspace-mobile-credit {
+  display: none !important;
+}
+/* Une voix peut être cochée ou décochée ; la sélection reste unique côté application. */
+.discovery-voice-choice input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  margin: 0;
+  border: 1.5px solid #777;
+  border-radius: 50%;
+  background: #101010;
+  cursor: pointer;
+}
+.discovery-voice-choice input[type=checkbox]::after {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #d7a9ff;
+  transform: scale(0);
+  transition: transform .14s ease;
+}
+.discovery-voice-choice input[type=checkbox]:checked {
+  border-color: #d7a9ff;
+  box-shadow: 0 0 0 3px rgba(215,169,255,.13);
+}
+.discovery-voice-choice input[type=checkbox]:checked::after { transform: scale(1); }
+.discovery-voice-choice input[type=checkbox]:focus-visible { outline: 2px solid #d7a9ff; outline-offset: 3px; }
