@@ -197,8 +197,6 @@ app.innerHTML = `
         <button type="button" class="discovery-voice-source-choice" id="discovery-voice-import-choice"><span aria-hidden="true">↑</span><strong>Importer un audio</strong><small>Choisir un fichier audio existant</small></button>
       </div>
       <form id="discovery-voice-source-form" class="discovery-voice-form" hidden>
-        <label for="discovery-voice-name">Nom de ta voix</label>
-        <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
         <section class="discovery-voice-step-panel" id="discovery-voice-import-step" hidden>
           <label for="discovery-voice-source">Choisis ton fichier audio (5 secondes minimum)</label>
           <input id="discovery-voice-source" name="audio" type="file" accept="audio/*">
@@ -228,8 +226,16 @@ app.innerHTML = `
           <div class="discovery-voice-record-controls"><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-start">Démarrer l’enregistrement</button><button type="button" class="discovery-voice-action" id="discovery-voice-verification-record-stop" hidden>Terminer l’enregistrement</button></div>
         </section>
         <div id="discovery-voice-verification-preview" class="discovery-voice-audio-player" hidden></div>
-        <button type="button" class="discovery-voice-action" id="discovery-voice-create" disabled>Valider ma voix</button>
+        <button type="button" class="discovery-voice-action" id="discovery-voice-to-step3" disabled>Continuer</button>
       </div>
+      <section class="discovery-voice-final-step" id="discovery-voice-final-step" hidden>
+        <p class="discovery-voice-step">ÉTAPE 3 · ENREGISTREMENT</p>
+        <h3>Donne un nom à ta voix</h3>
+        <p>Ta voix est vérifiée. Choisis le nom que tu retrouveras dans ta bibliothèque.</p>
+        <label for="discovery-voice-name">Nom de ta voix</label>
+        <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
+        <button type="button" class="discovery-voice-action" id="discovery-voice-create">Enregistrer ma voix</button>
+      </section>
       </div>
       <p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p>
     </section>
@@ -3428,7 +3434,7 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceVerification.hidden = true
   discoveryVoiceStatus.classList.remove('is-loading')
   discoveryVoiceStatus.textContent = 'Choisis comment ajouter ta voix.'
-  setDiscoveryVoiceStep(2)
+  setDiscoveryVoiceStep(1)
 })
 discoveryVoiceBack?.addEventListener('click', () => {
   stopActiveVoiceRecording?.()
@@ -3677,7 +3683,7 @@ const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-impo
 const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
 const discoveryVoiceSourceBack = document.querySelector('#discovery-voice-source-back')
 discoveryVoiceImportChoice?.addEventListener('click', () => {
-  setDiscoveryVoiceStep(2)
+  setDiscoveryVoiceStep(1)
   discoveryVoiceSourceChoices.hidden = true
   discoveryVoiceSourceForm.hidden = false
   discoveryVoiceImportStep.hidden = false
@@ -3734,7 +3740,7 @@ attachVoiceRecorder({
 document.querySelector('#discovery-voice-source-form')?.addEventListener('submit', async event => {
   event.preventDefault()
   const file = discoveryVoiceSource.files?.[0]
-  discoveryVoiceName = document.querySelector('#discovery-voice-name').value.trim() || 'Ma voix'
+  discoveryVoiceName = 'Ma voix'
   const start = 0
   const end = Number(document.querySelector('#discovery-voice-end').value || 15)
   if (!file || !file.type.startsWith('audio/') || end < 5 || !discoveryVoiceConsent.checked) {
@@ -3751,7 +3757,7 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     form.append('audio', file)
     form.append('kind', 'sample')
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
-    const started = await callAudinooApi('/api/voice/validate', { method: 'POST', body: JSON.stringify({ token: uploaded.token, voiceName: discoveryVoiceName, vocalStartS: start, vocalEndS: end }) })
+    const started = await callAudinooApi('/api/voice/validate', { method: 'POST', body: JSON.stringify({ token: uploaded.token, voiceName: 'Ma voix', vocalStartS: start, vocalEndS: end }) })
     discoveryVoiceTaskId = started.taskId
     discoveryVoiceStatus.textContent = 'Vérification…'
     let validation = null
@@ -3763,10 +3769,11 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     }
     if (!validation?.validateInfo) throw new Error('voice-validation-timeout')
     document.querySelector('#discovery-voice-phrase').textContent = validation.validateInfo
-    setDiscoveryVoiceStep(3)
+    setDiscoveryVoiceStep(2)
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceSourceChoices.hidden = true
     discoveryVoiceVerification.hidden = false
+    document.querySelector('#discovery-voice-final-step').hidden = true
     discoveryVoiceCopy.hidden = true
     verificationChoices.hidden = true
     verificationImportStep.hidden = true
@@ -3809,7 +3816,7 @@ discoveryVoiceVerificationFile.addEventListener('change', async () => {
     return
   }
   discoveryVoiceVerificationDurationValid = true
-  discoveryVoiceCreate.disabled = false
+  document.querySelector('#discovery-voice-to-step3').disabled = false
   discoveryVoiceStatus.textContent = 'Enregistrement de vérification prêt.'
 })
 attachVoiceRecorder({
@@ -3821,10 +3828,18 @@ attachVoiceRecorder({
   timer: document.querySelector('#discovery-voice-verification-record-timer'),
   waveform: document.querySelector('#discovery-voice-verification-waveform'),
   filename: 'verification-voix',
-  readyButton: discoveryVoiceCreate,
+  readyButton: document.querySelector('#discovery-voice-to-step3'),
   statusMessage: discoveryVoiceStatus
 })
+document.querySelector('#discovery-voice-to-step3')?.addEventListener('click', () => {
+  if (!discoveryVoiceVerificationDurationValid) return
+  discoveryVoiceVerification.hidden = true
+  document.querySelector('#discovery-voice-final-step').hidden = false
+  setDiscoveryVoiceStep(3)
+  discoveryVoiceStatus.textContent = 'Étape 3 · Donne un nom à ta voix pour l’enregistrer dans ta bibliothèque.'
+})
 discoveryVoiceCreate?.addEventListener('click', async () => {
+  discoveryVoiceName = document.querySelector('#discovery-voice-name').value.trim() || 'Ma voix'
   const file = discoveryVoiceVerificationFile.files?.[0]
   if (!file || !file.type.startsWith('audio/') || !discoveryVoiceTaskId) {
     discoveryVoiceStatus.textContent = 'Ajoute ton enregistrement de vérification.'
@@ -3855,6 +3870,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoverySelectedVoiceId = result.voiceId
     renderDiscoveryVoiceLibrary()
     discoveryVoiceVerification.hidden = true
+    document.querySelector('#discovery-voice-final-step').hidden = true
     discoveryVoiceCreation.hidden = true
     discoveryVoiceLibrary.hidden = false
     discoveryVoiceSourceForm.reset()
@@ -3877,7 +3893,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceStatus.textContent = 'La vérification ou la création a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
-    discoveryVoiceCreate.disabled = !discoveryVoiceVerificationDurationValid
+    document.querySelector('#discovery-voice-to-step3').disabled = !discoveryVoiceVerificationDurationValid
   }
 })
 
