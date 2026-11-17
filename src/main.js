@@ -3350,17 +3350,36 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspace.classList.remove('is-plan-checking')
   }
 }
+const discoveryVoicePanelHome = discoveryVoicePanel.parentElement
+const discoveryVoiceProgress = document.createElement('div')
+discoveryVoiceProgress.className = 'discovery-voice-progress'
+discoveryVoiceProgress.setAttribute('aria-label', 'Progression de configuration')
+discoveryVoiceProgress.innerHTML = '<div class="discovery-voice-progress-step is-current"><span>1</span><small>Choix</small></div><i></i><div class="discovery-voice-progress-step"><span>2</span><small>Extrait</small></div><i></i><div class="discovery-voice-progress-step"><span>3</span><small>Vérification</small></div><i></i><div class="discovery-voice-progress-step"><span>4</span><small>Validation</small></div>'
+discoveryVoicePanel.prepend(discoveryVoiceProgress)
+function setDiscoveryVoiceStep(step) {
+  discoveryVoiceProgress.querySelectorAll('.discovery-voice-progress-step').forEach((item, index) => {
+    item.classList.toggle('is-current', index + 1 === step)
+    item.classList.toggle('is-complete', index + 1 < step)
+  })
+  discoveryVoiceProgress.querySelectorAll(':scope > i').forEach((line, index) => line.classList.toggle('is-complete', index + 1 < step))
+}
 discoveryVoiceToggle?.addEventListener('click', () => {
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   const opening = discoveryVoicePanel.hidden
-  discoveryVoicePanel.hidden = !opening
   discoveryVoiceToggle.setAttribute('aria-expanded', String(opening))
   if (opening) {
+    document.body.append(discoveryVoicePanel)
+    discoveryVoicePanel.hidden = false
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
+    setDiscoveryVoiceStep(1)
+    document.body.classList.add('discovery-voice-screen-open')
   } else {
     stopActiveVoiceRecording?.()
+    discoveryVoicePanel.hidden = true
+    discoveryVoicePanelHome?.append(discoveryVoicePanel)
+    document.body.classList.remove('discovery-voice-screen-open')
   }
 })
 function voiceFileDuration(file) {
@@ -3522,6 +3541,7 @@ const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-impo
 const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
 const discoveryVoiceSourceBack = document.querySelector('#discovery-voice-source-back')
 discoveryVoiceImportChoice.addEventListener('click', () => {
+  setDiscoveryVoiceStep(2)
   discoveryVoiceSourceChoices.hidden = true
   discoveryVoiceSourceForm.hidden = false
   discoveryVoiceImportStep.hidden = false
@@ -3530,6 +3550,7 @@ discoveryVoiceImportChoice.addEventListener('click', () => {
   discoveryVoiceSource.click()
 })
 discoveryVoiceRecordChoice.addEventListener('click', () => {
+  setDiscoveryVoiceStep(2)
   discoveryVoiceSourceChoices.hidden = true
   discoveryVoiceSourceForm.hidden = false
   discoveryVoiceImportStep.hidden = true
@@ -3604,6 +3625,7 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     }
     if (!validation?.validateInfo) throw new Error('voice-validation-timeout')
     document.querySelector('#discovery-voice-phrase').textContent = validation.validateInfo
+    setDiscoveryVoiceStep(3)
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = false
     discoveryVoiceStatus.textContent = 'Étape 2/2 · Répète la phrase à voix haute, puis enregistre-la ou importe-la.'
