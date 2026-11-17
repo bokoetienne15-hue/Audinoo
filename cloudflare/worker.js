@@ -285,19 +285,23 @@ async function splitLegacyDiscoveryCredits(db, uid, profileData) {
   const orders = (orderRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid && item.credited === true)
   const grants = (grantRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid)
   const generations = (generationRows || []).filter(row => row.document?.name?.includes('/documents/users/' + uid + '/generations/')).map(row => fromFields(row.document.fields || {}))
-  const paidOrderCredits = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download').reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
-  const discoveryOrderCredits = orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
-  const grantsCredits = grants.reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const discoveryBefore = orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
   const issuedBefore = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
     + grants.filter(item => timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
-  const discoveryBefore = discoveryOrderCredits
   const usedBefore = generations.filter(item => item.paidCreditUsed === true && timestamp(item.createdAt) < startedAt).length
   const paidBalanceBefore = Math.max(0, issuedBefore - discoveryBefore - usedBefore)
   const issuedAfter = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download' && timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
     + grants.filter(item => timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
-  const paidBalancePreserved = Math.min(Math.max(0, Number(profileData.paidCredits || 0)), paidBalanceBefore + issuedAfter)
-  const discoveryBalance = Math.min(DISCOVERY_CREDITS, Math.max(0, Number(profileData.paidCredits || 0) - paidBalancePreserved))
-  return { paidCredits: paidBalancePreserved, discoveryCredits: discoveryBalance, ledgerEntries: orders.length + grants.length + generations.length, paidOrderCredits, grantsCredits }
+  const discoveryIssuedAfter = plan.source === 'admin-test'
+    ? DISCOVERY_CREDITS
+    : orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
+  const usedAfter = generations.filter(item => item.paidCreditUsed === true && timestamp(item.createdAt) >= startedAt).length
+  const currentBalance = Math.max(0, Number(profileData.paidCredits || 0))
+  const expectedLegacyBalance = Math.max(0, paidBalanceBefore + issuedAfter + discoveryIssuedAfter - usedAfter)
+  if (expectedLegacyBalance !== currentBalance) return null
+  const paidBalancePreserved = Math.min(currentBalance, paidBalanceBefore + issuedAfter)
+  const discoveryBalance = Math.min(discoveryIssuedAfter, Math.max(0, currentBalance - paidBalancePreserved))
+  return { paidCredits: paidBalancePreserved, discoveryCredits: discoveryBalance, ledgerEntries: orders.length + grants.length + generations.length }
 }
 async function accountPlan(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
@@ -314,12 +318,6 @@ async function accountPlan(request, db, user) {
         const currentPlan = current.data().discoverySubscription || {}
         if (!isDiscoverySubscriptionActive(currentPlan)) return
         tx.update(profileRef, { paidCredits: split.paidCredits, discoveryCredits: split.discoveryCredits, discoveryCreditLedgerMigratedAt: SERVER_TIMESTAMP, updatedAt: SERVER_TIMESTAMP })
-      })
-    } else {
-      await db.runTransaction(async tx => {
-        const current = await tx.get(profileRef)
-        if (!current.exists || Object.hasOwn(current.data(), 'discoveryCredits')) return
-        tx.update(profileRef, { discoveryCredits: 0, discoveryCreditLedgerMigrationSkipped: true, updatedAt: SERVER_TIMESTAMP })
       })
     }
     profile = await db.get(profileRef.path)
@@ -431,34 +429,35 @@ async function adminCancelDiscovery(request, db, user) {
   const profileRef = db.doc('users/' + user.uid)
   const lockRef = db.doc('generationLocks/' + user.uid)
   let cancelled = false
-  await db.runTransaction(async tx => {
-    const [profile, lock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)])
-    if (!profile.exists) throw new Error('profile-not-found')
-    if (lock.exists) throw new Error('generation-in-progress')
-    const data = profile.data()
-    const current = data.discoverySubscription || {}
-    if (!isDiscoverySubscriptionActive(current)) {
-      if (Number(data.discoveryCredits || 0) !== 0) tx.update(profileRef, { discoveryCredits: 0, updatedAt: SERVER_TIMESTAMP })
-      return
-    }
-    let paidCredits = Math.max(0, Number(data.paidCredits || 0))
-    let discoveryCredits = Math.max(0, Number(data.discoveryCredits || 0))
-    if (!Object.hasOwn(data, 'discoveryCredits')) {
-      const split = await splitLegacyDiscoveryCredits(db, user.uid, data)
-      if (split) {
-        paidCredits = split.paidCredits
-        discoveryCredits = split.discoveryCredits
+  try {
+    await db.runTransaction(async tx => {
+      const [profile, lock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)])
+      if (!profile.exists) throw new Error('profile-not-found')
+      if (lock.exists) throw new Error('generation-in-progress')
+      const data = profile.data()
+      const current = data.discoverySubscription || {}
+      if (!isDiscoverySubscriptionActive(current)) {
+        if (Number(data.discoveryCredits || 0) !== 0) tx.update(profileRef, { discoveryCredits: 0, updatedAt: SERVER_TIMESTAMP })
+        return
       }
-    }
-    tx.update(profileRef, {
-      paidCredits,
-      discoveryCredits: 0,
-      discoverySubscription: { ...current, status: 'cancelled', cancelledAt: new Date(), updatedAt: SERVER_TIMESTAMP },
-      updatedAt: SERVER_TIMESTAMP,
-      ...(!Object.hasOwn(data, 'discoveryCredits') ? { discoveryCreditLedgerMigratedAt: SERVER_TIMESTAMP, ...(!discoveryCredits ? { discoveryCreditLedgerMigrationSkipped: true } : {}) } : {})
+      let paidCredits = Math.max(0, Number(data.paidCredits || 0))
+      if (!Object.hasOwn(data, 'discoveryCredits')) {
+        const split = await splitLegacyDiscoveryCredits(db, user.uid, data)
+        if (split) paidCredits = split.paidCredits
+      }
+      tx.update(profileRef, {
+        paidCredits,
+        discoveryCredits: 0,
+        discoverySubscription: { ...current, status: 'cancelled', cancelledAt: new Date(), updatedAt: SERVER_TIMESTAMP },
+        updatedAt: SERVER_TIMESTAMP,
+        ...(!Object.hasOwn(data, 'discoveryCredits') ? { discoveryCreditLedgerMigratedAt: SERVER_TIMESTAMP } : {})
+      })
+      cancelled = true
     })
-    cancelled = true
-  })
+  } catch (error) {
+    if (error.message === 'generation-in-progress') return response(409, { error: 'generation-in-progress' })
+    throw error
+  }
   const updated = await db.get(profileRef.path)
   return response(200, {
     cancelled,
