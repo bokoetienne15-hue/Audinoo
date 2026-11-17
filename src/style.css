@@ -3212,3 +3212,6 @@ button.is-generating:disabled {
 .discovery-admin-test-panel{margin-top:20px}
 .discovery-admin-test-panel>p{color:var(--muted,#888);font-size:13px;line-height:1.6}
 @media(max-width:600px){.discovery-voice-panel{padding:15px}.discovery-voice-toggle small{font-size:10px}.discovery-voice-heading h2{font-size:17px}.discovery-voice-segment{gap:8px}}
+
+.discovery-voice-record-controls{display:flex;gap:10px;flex-wrap:wrap}
+#discovery-voice-record-preview{width:100%;margin:4px 0 10px}
