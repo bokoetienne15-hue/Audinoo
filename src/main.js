@@ -3812,7 +3812,7 @@ discoveryVoiceVerificationFile.addEventListener('change', async () => {
   const duration = await voiceFileDuration(file)
   if (duration && duration < 5) {
     discoveryVoiceStatus.textContent = 'La phrase de vérification doit durer au moins 5 secondes.'
-    discoveryVoiceCreate.disabled = true
+    document.querySelector('#discovery-voice-to-step3').disabled = true
     return
   }
   discoveryVoiceVerificationDurationValid = true
@@ -3853,7 +3853,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     form.append('audio', file)
     form.append('kind', 'verification')
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
-    await callAudinooApi('/api/voice/create', { method: 'POST', body: JSON.stringify({ taskId: discoveryVoiceTaskId, token: uploaded.token }) })
+    await callAudinooApi('/api/voice/create', { method: 'POST', body: JSON.stringify({ taskId: discoveryVoiceTaskId, token: uploaded.token, voiceName: discoveryVoiceName }) })
     discoveryVoiceStatus.textContent = 'Vérification…'
     let result = null
     for (let attempt = 0; attempt < 60; attempt++) {
