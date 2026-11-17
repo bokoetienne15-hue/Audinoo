@@ -285,7 +285,7 @@ async function splitLegacyDiscoveryCredits(db, uid, profileData) {
   const orders = (orderRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid && item.credited === true)
   const grants = (grantRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid)
   const generations = (generationRows || []).filter(row => row.document?.name?.includes('/documents/users/' + uid + '/generations/')).map(row => fromFields(row.document.fields || {}))
-  const discoveryBefore = orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
+  const discoveryBefore = orders.filter(item => item.kind === 'discovery_subscription' && item.transactionId !== plan.lastTransactionId && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
   const issuedBefore = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
     + grants.filter(item => timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
   const usedBefore = generations.filter(item => item.paidCreditUsed === true && timestamp(item.createdAt) < startedAt).length
@@ -294,7 +294,7 @@ async function splitLegacyDiscoveryCredits(db, uid, profileData) {
     + grants.filter(item => timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
   const discoveryIssuedAfter = plan.source === 'admin-test'
     ? DISCOVERY_CREDITS
-    : orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
+    : orders.filter(item => item.kind === 'discovery_subscription' && (item.transactionId === plan.lastTransactionId || timestamp(item.createdAt) >= startedAt)).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
   const usedAfter = generations.filter(item => item.paidCreditUsed === true && timestamp(item.createdAt) >= startedAt).length
   const currentBalance = Math.max(0, Number(profileData.paidCredits || 0))
   const expectedLegacyBalance = Math.max(0, paidBalanceBefore + issuedAfter + discoveryIssuedAfter - usedAfter)
@@ -410,10 +410,7 @@ async function adminActivateDiscovery(request, db, user) {
     const profile = await tx.get(profileRef)
     if (!profile.exists) throw new Error('profile-not-found')
     const current = profile.data().discoverySubscription || {}
-    if (isDiscoverySubscriptionActive(current, now)) {
-      if (!Object.hasOwn(profile.data(), 'discoveryCredits')) tx.update(profileRef, { discoveryCredits: 0, discoveryCreditLedgerMigrationSkipped: true, updatedAt: SERVER_TIMESTAMP })
-      return
-    }
+    if (isDiscoverySubscriptionActive(current, now)) return
     tx.update(profileRef, {
       discoveryCredits: DISCOVERY_CREDITS,
       discoverySubscription: { status: 'active', startedAt: new Date(now), expiresAt: new Date(now + DISCOVERY_DURATION_MS), source: 'admin-test', updatedAt: SERVER_TIMESTAMP },
