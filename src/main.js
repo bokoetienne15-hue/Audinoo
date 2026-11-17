@@ -4762,6 +4762,7 @@ function renderLibraryGeneration(generation) {
   })
   groups.forEach(item => libraryGenerationList.append(item))
   if (!group.querySelector('.library-generation-entry')) group.remove()
+  setLibraryView(libraryVideoTab.classList.contains('is-active') ? 'video' : 'music')
 }
 function upsertGenerationCard(container, generation) {
   let card = [...container.querySelectorAll('.generation-card')].find((item) => item.dataset.taskId === generation.taskId)
@@ -5304,7 +5305,7 @@ async function loadUserLibrary() {
       }
     })
     restoreActiveLibraryEntry()
-    libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0
+    libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = result.generations.length > 0 || libraryVideoTab.classList.contains('is-active')
     libraryGenerationList.hidden = libraryVideoTab.classList.contains('is-active')
     libraryVideoEmpty.hidden = libraryVideoList.childElementCount > 0
     libraryVideoList.hidden = !libraryVideoTab.classList.contains('is-active') || libraryVideoList.childElementCount === 0
