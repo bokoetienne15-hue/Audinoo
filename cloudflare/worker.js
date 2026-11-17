@@ -578,8 +578,9 @@ async function voiceStatus(request, env, db, user, url) {
         const current = profile.exists ? profile.data() : {}
         const voices = Array.isArray(current.voiceProfiles) ? current.voiceProfiles : (current.voiceProfile?.voiceId ? [current.voiceProfile] : [])
         const nextVoices = voices.filter(item => String(item.voiceId || '') !== voiceId)
-        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt: SERVER_TIMESTAMP, taskId })
-        tx.set(profileRef, { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt: SERVER_TIMESTAMP, taskId } }, true)
+        const createdAt = new Date().toISOString()
+        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, taskId })
+        tx.set(profileRef, { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, taskId } }, true)
       })
       await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
     }
