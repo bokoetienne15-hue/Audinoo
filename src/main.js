@@ -20,7 +20,8 @@ function exactErrorDetails(error) {
   const message = typeof error.message === 'string' ? error.message : String(error)
   const details = typeof error.providerDetails === 'string' && error.providerDetails ? error.providerDetails : ''
   const code = typeof error.code === 'string' ? `Code : ${error.code}` : ''
-  return [message, details, code].filter(Boolean).join(' · ')
+  const status = Number.isFinite(error.status) ? `HTTP ${error.status}` : ''
+  return [message, details, code, status].filter(Boolean).join(' · ')
 }
 
 function readBrowserStorage(storage, key) {
