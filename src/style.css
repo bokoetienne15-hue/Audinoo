@@ -3340,3 +3340,5 @@ body.discovery-voice-screen-open{overflow:hidden!important}
 .discovery-voice-add span{font-size:20px}
 .discovery-voice-creation[hidden],.discovery-voice-library[hidden]{display:none!important}
 @media(max-width:600px){.discovery-voice-heading{gap:10px!important}.discovery-voice-back{min-height:38px;padding:0 10px}.discovery-voice-back span:last-child{display:none}.discovery-voice-item{gap:9px;padding:10px}.discovery-voice-item-icon{flex-basis:36px;width:36px;height:36px}.discovery-voice-select{padding:0 9px}}
+
+.discovery-voice-progress[hidden]{display:none!important}
