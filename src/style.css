@@ -3571,3 +3571,6 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
  .library-view-tab-label{font-size:12px}
  .library-view-new{min-height:17px;padding:0 6px;font-size:7px}
 }
+
+.library-view-tab .library-view-tab-label{font-size:13px}
+@media(max-width:520px){.library-view-tab .library-view-tab-label{font-size:12px}}
