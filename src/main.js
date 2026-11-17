@@ -187,11 +187,6 @@ app.innerHTML = `
       <span class="discovery-voice-card-title"><strong>Ma voix <em class="discovery-feature-badge is-new">Nouveau</em></strong><small>Configurer ma voix</small></span>
     </button>
   </div>
-  <div class="discovery-discourse-card" aria-disabled="true">
-    <span class="discovery-discourse-icon" aria-hidden="true">◌</span>
-    <span class="discovery-discourse-title"><strong>Discours</strong><small>Création vocale</small></span>
-    <span class="discovery-feature-badge is-soon">Bientôt disponible</span>
-  </div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
