@@ -191,11 +191,8 @@ app.innerHTML = `
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
       <div class="discovery-voice-creation" id="discovery-voice-creation" hidden>
-      <p class="discovery-voice-copy">Choisis une méthode pour fournir un extrait de ta voix. Rien n’est envoyé avant que tu appuies sur « Suivant ».</p>
-      <div class="discovery-voice-source-choices" id="discovery-voice-source-choices">
-        <button class="discovery-voice-source-choice" id="discovery-voice-import-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5M4 15.5v3A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Importer un audio</strong><small>Choisir un fichier existant</small></button>
-        <button class="discovery-voice-source-choice" id="discovery-voice-record-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><strong>Enregistrer ma voix</strong><small>Parler directement ici</small></button>
-      </div>
+      <p class="discovery-voice-copy">Enregistre directement ta voix avec ton microphone. Aucun fichier audio ne peut être importé.</p>
+      <div class="discovery-voice-source-choices" id="discovery-voice-source-choices" hidden></div>
       <form id="discovery-voice-source-form" class="discovery-voice-form" hidden>
         <label for="discovery-voice-name">Nom de ta voix</label>
         <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
@@ -217,12 +214,9 @@ app.innerHTML = `
       </form>
       <div class="discovery-voice-verification" id="discovery-voice-verification" hidden>
         <p class="discovery-voice-step">ÉTAPE 2 · VÉRIFICATION</p>
-        <p>Lis cette phrase à voix haute en la chantant, puis enregistre-la ou importe ton audio.</p>
+        <p>Lis cette phrase à voix haute en la chantant, puis enregistre-la directement avec ton microphone.</p>
         <blockquote id="discovery-voice-phrase"></blockquote>
-        <div class="discovery-voice-source-choices">
-          <button class="discovery-voice-source-choice" id="discovery-voice-verification-import-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5M4 15.5v3A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Importer la phrase</strong><small>Choisir un fichier audio</small></button>
-          <button class="discovery-voice-source-choice" id="discovery-voice-verification-record-choice" type="button"><span class="discovery-voice-source-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><strong>Enregistrer la phrase</strong><small>La lire au microphone</small></button>
-        </div>
+        <div class="discovery-voice-source-choices" hidden></div>
         <section class="discovery-voice-step-panel" id="discovery-voice-verification-import-step" hidden><label for="discovery-voice-verification-file">Enregistrement de vérification</label><input id="discovery-voice-verification-file" type="file" accept="audio/*"></section>
         <section class="discovery-voice-step-panel" id="discovery-voice-verification-record-step" hidden>
           <p class="discovery-voice-countdown" id="discovery-voice-verification-countdown">Prêt à enregistrer</p>
@@ -3424,11 +3418,14 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceCreation.hidden = false
   discoveryVoiceProgress.hidden = false
   discoveryVoiceCopy.hidden = false
-  discoveryVoiceSourceChoices.hidden = false
-  discoveryVoiceSourceForm.hidden = true
+  discoveryVoiceSourceChoices.hidden = true
+  discoveryVoiceSourceForm.hidden = false
+  discoveryVoiceImportStep.hidden = true
+  discoveryVoiceRecordStep.hidden = false
   discoveryVoiceVerification.hidden = true
-  discoveryVoiceStatus.textContent = ''
-  setDiscoveryVoiceStep(1)
+  discoveryVoiceStatus.classList.remove('is-loading')
+  discoveryVoiceStatus.textContent = 'Enregistre directement ta voix avec le microphone (5 secondes minimum).'
+  setDiscoveryVoiceStep(2)
 })
 discoveryVoiceBack?.addEventListener('click', () => {
   stopActiveVoiceRecording?.()
@@ -3606,7 +3603,7 @@ function attachVoiceRecorder(options) {
       stopVisuals()
       stopActiveVoiceRecording = null
       startButton.disabled = false
-      statusMessage.textContent = 'Impossible d’accéder au microphone. Autorise le micro ou importe un fichier audio.'
+      statusMessage.textContent = 'Impossible d’accéder au microphone. Vérifie que l’autorisation du micro est activée.'
     }
   })
   stopButton.addEventListener('click', () => {
@@ -3619,16 +3616,8 @@ function updateDiscoveryVoiceNext() {
 const discoveryVoiceImportChoice = document.querySelector('#discovery-voice-import-choice')
 const discoveryVoiceRecordChoice = document.querySelector('#discovery-voice-record-choice')
 const discoveryVoiceSourceBack = document.querySelector('#discovery-voice-source-back')
-discoveryVoiceImportChoice.addEventListener('click', () => {
-  setDiscoveryVoiceStep(2)
-  discoveryVoiceSourceChoices.hidden = true
-  discoveryVoiceSourceForm.hidden = false
-  discoveryVoiceImportStep.hidden = false
-  discoveryVoiceRecordStep.hidden = true
-  discoveryVoiceStatus.textContent = 'Sélectionne un fichier audio. Il ne sera envoyé qu’après avoir appuyé sur Suivant.'
-  discoveryVoiceSource.click()
-})
-discoveryVoiceRecordChoice.addEventListener('click', () => {
+discoveryVoiceImportChoice?.addEventListener('click', event => event.preventDefault())
+discoveryVoiceRecordChoice?.addEventListener('click', () => {
   setDiscoveryVoiceStep(2)
   discoveryVoiceSourceChoices.hidden = true
   discoveryVoiceSourceForm.hidden = false
@@ -3686,7 +3675,10 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     return
   }
   discoveryVoiceValidate.disabled = true
-  discoveryVoiceStatus.textContent = 'Étape 1/2 · Envoi et analyse de ton extrait audio…'
+  discoveryVoiceSourceForm.hidden = true
+  discoveryVoiceCopy.hidden = true
+  discoveryVoiceStatus.classList.add('is-loading')
+  discoveryVoiceStatus.textContent = 'Vérification de ton enregistrement auprès du serveur…'
   try {
     const form = new FormData()
     form.append('audio', file)
@@ -3706,10 +3698,18 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
     document.querySelector('#discovery-voice-phrase').textContent = validation.validateInfo
     setDiscoveryVoiceStep(3)
     discoveryVoiceSourceForm.hidden = true
+    discoveryVoiceSourceChoices.hidden = true
     discoveryVoiceVerification.hidden = false
     discoveryVoiceCopy.hidden = true
-    discoveryVoiceStatus.textContent = 'Étape 2/2 · Répète la phrase à voix haute, puis enregistre-la ou importe-la.'
+    verificationChoices.hidden = true
+    verificationImportStep.hidden = true
+    verificationRecordStep.hidden = false
+    discoveryVoiceStatus.classList.remove('is-loading')
+    discoveryVoiceStatus.textContent = 'Étape 2 · Lis la phrase et enregistre-la avec ton microphone.'
   } catch (error) {
+    discoveryVoiceSourceForm.hidden = false
+    discoveryVoiceCopy.hidden = false
+    discoveryVoiceStatus.classList.remove('is-loading')
     discoveryVoiceStatus.textContent = 'Impossible de préparer ta voix : ' + (error.providerMessage || generationErrorMessage(error.message))
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
@@ -3721,13 +3721,7 @@ const verificationImportChoice = document.querySelector('#discovery-voice-verifi
 const verificationRecordChoice = document.querySelector('#discovery-voice-verification-record-choice')
 const verificationImportStep = document.querySelector('#discovery-voice-verification-import-step')
 const verificationRecordStep = document.querySelector('#discovery-voice-verification-record-step')
-verificationImportChoice.addEventListener('click', () => {
-  verificationChoices.hidden = true
-  discoveryVoiceCopy.hidden = true
-  verificationImportStep.hidden = false
-  verificationRecordStep.hidden = true
-  discoveryVoiceVerificationFile.click()
-})
+verificationImportChoice?.addEventListener('click', event => event.preventDefault())
 verificationRecordChoice.addEventListener('click', () => {
   verificationChoices.hidden = true
   discoveryVoiceCopy.hidden = true
@@ -3769,7 +3763,8 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     return
   }
   discoveryVoiceCreate.disabled = true
-  discoveryVoiceStatus.textContent = 'Étape 2/2 · Envoi de la vérification et création de ta voix…'
+  discoveryVoiceStatus.classList.add('is-loading')
+  discoveryVoiceStatus.textContent = 'Envoi de la vérification et création de ta voix…'
   try {
     const form = new FormData()
     form.append('audio', file)
@@ -3786,6 +3781,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     }
     if (!result?.ready) throw new Error('voice-creation-timeout')
     const createdVoiceName = result.voiceName || discoveryVoiceName
+    discoveryVoiceStatus.classList.remove('is-loading')
     discoveryVoiceStatus.textContent = 'Bravo ! Ta voix est prête. Elle sera utilisée automatiquement dans tes prochaines chansons.'
     discoveryVoiceProfiles = [...discoveryVoiceProfiles.filter(item => item.voiceId !== result.voiceId), { voiceId: result.voiceId, name: createdVoiceName }]
     discoverySelectedVoiceId = result.voiceId
