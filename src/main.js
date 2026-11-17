@@ -4820,6 +4820,8 @@ function generationErrorMessage(errorCode) {
     'songwriter-not-configured': 'La composition intelligente du mode Simple n’est pas encore activée sur Cloudflare. Active Workers AI pour ce Worker puis réessaie.',
     'songwriting-failed': 'Audinoo n’a pas réussi à composer les paroles et le style. Aucun crédit n’a été consommé. Réessaie dans quelques instants.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
+    'firestore-quota-exceeded': 'La limite de requêtes Firestore est atteinte. Tes créations ne sont pas supprimées : leur lecture est temporairement bloquée par Google.',
+    'firebase-quota-exceeded': 'Une limite de quota Firebase est atteinte. Tes données ne sont pas supprimées ; consulte le service et le détail technique ci-dessous.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
     'advanced-fields-required': 'Ajoute un titre et une direction musicale en mode avancé.',
@@ -4843,7 +4845,11 @@ async function callAudinooApi(path, options = {}) {
     const error = new Error(body.error || 'generation-failed')
     error.providerMessage = typeof body.providerMessage === 'string' ? body.providerMessage.slice(0, 240) : ''
     error.providerCode = body.providerCode == null ? '' : String(body.providerCode)
-    error.providerDetails = typeof body.providerDetails === 'string' ? body.providerDetails.slice(0, 240) : typeof body.details === 'string' ? body.details.slice(0, 240) : ''
+    error.providerDetails = [
+      typeof body.service === 'string' ? 'Service : ' + body.service : '',
+      typeof body.upstreamStatusText === 'string' && body.upstreamStatusText ? body.upstreamStatusText : '',
+      typeof body.details === 'string' ? body.details : typeof body.providerDetails === 'string' ? body.providerDetails : ''
+    ].filter(Boolean).join(' · ').slice(0, 240)
     error.status = response.status
     error.code = body.upstreamCode == null ? '' : String(body.upstreamCode)
     error.service = typeof body.service === 'string' ? body.service : ''
