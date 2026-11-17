@@ -701,7 +701,6 @@ function windowPricingOpen() {
 
 const workspaceUpgradeButton = document.querySelector('#workspace-upgrade-button')
 workspaceUpgradeButton.addEventListener('click', windowPricingOpen)
-workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')?.addEventListener('click', windowPricingOpen)
 workspacePricingPage.querySelector('.workspace-pricing-return').addEventListener('click', () => {
   const destination = pricingPreviousDestination === '#workspace-pricing' ? '#studio' : pricingPreviousDestination
   workspaceSidebar.querySelector(`.workspace-nav[href="${destination}"]`)?.click()
@@ -1481,6 +1480,7 @@ syncCommunityNoticePlacement()
 window.addEventListener('resize', syncCommunityNoticePlacement)
 const workspaceMobileCreditCount = workspaceMobileCredit.querySelector('#workspace-mobile-credit-count')
 const workspaceMobileCreditCaption = workspaceMobileCredit.querySelector('#workspace-mobile-credit-caption')
+workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')?.addEventListener('click', windowPricingOpen)
 const workspaceCreditPanel = document.createElement('section')
 workspaceCreditPanel.className = 'admin-panel admin-credit-control'
 workspaceCreditPanel.innerHTML = '<div class="admin-panel-heading"><div><p>OFFRE DE BIENVENUE</p><h2>Crédit gratuit</h2></div><span class="admin-credit-state" id="admin-credit-state">Chargement…</span></div><p class="admin-panel-status">Un nouveau compte peut recevoir un crédit gratuit. L’offre se désactive automatiquement après 50 générations gratuites et tous les crédits gratuits restants deviennent alors inutilisables. Les crédits payants ne sont jamais modifiés.</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-credit-toggle" type="button" disabled>Chargement du réglage…</button><small id="admin-credit-note">Le réglage s’applique à tous les comptes.</small></div></section>'
