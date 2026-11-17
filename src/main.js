@@ -229,12 +229,12 @@ app.innerHTML = `
         <button type="button" class="discovery-voice-action" id="discovery-voice-to-step3" disabled>Continuer</button>
       </div>
       <section class="discovery-voice-final-step" id="discovery-voice-final-step" hidden>
-        <p class="discovery-voice-step">ÉTAPE 3 · ENREGISTREMENT</p>
+        <p class="discovery-voice-step">ÉTAPE 3 · VALIDATION</p>
         <h3>Donne un nom à ta voix</h3>
         <p>Ta voix est vérifiée. Choisis le nom que tu retrouveras dans ta bibliothèque.</p>
         <label for="discovery-voice-name">Nom de ta voix</label>
         <input id="discovery-voice-name" name="voiceName" type="text" maxlength="40" value="Ma voix" required>
-        <button type="button" class="discovery-voice-action" id="discovery-voice-create">Enregistrer ma voix</button>
+        <button type="button" class="discovery-voice-action" id="discovery-voice-create">Valider ma voix</button>
       </section>
       </div>
       <p class="discovery-voice-status" id="discovery-voice-status" role="status" aria-live="polite"></p>
@@ -3854,7 +3854,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     form.append('kind', 'verification')
     const uploaded = await callAudinooApi('/api/voice/upload', { method: 'POST', body: form })
     await callAudinooApi('/api/voice/create', { method: 'POST', body: JSON.stringify({ taskId: discoveryVoiceTaskId, token: uploaded.token, voiceName: discoveryVoiceName }) })
-    discoveryVoiceStatus.textContent = 'Vérification…'
+    discoveryVoiceStatus.textContent = 'Validation de ta voix…'
     let result = null
     for (let attempt = 0; attempt < 60; attempt++) {
       if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 3000))
@@ -3890,7 +3890,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
   } catch (error) {
     console.error('[Audinoo voice creation] Technical failure', { stage: 'creation', taskId: discoveryVoiceTaskId, message: error?.message, providerMessage: error?.providerMessage, error })
     discoveryVoiceStatus.classList.remove('is-loading')
-    discoveryVoiceStatus.textContent = 'La vérification ou la création a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
+    discoveryVoiceStatus.textContent = 'La validation de ta voix a échoué. Réessaie. Détail technique : ' + String(error?.providerMessage || error?.message || 'voice-creation-unknown')
     discoveryVoiceStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } finally {
     document.querySelector('#discovery-voice-to-step3').disabled = !discoveryVoiceVerificationDurationValid
