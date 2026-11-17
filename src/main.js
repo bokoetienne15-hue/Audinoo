@@ -3186,8 +3186,8 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
       if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Voir les avantages'
     } else {
       if (sidebarPlanLabel) sidebarPlanLabel.textContent = 'Crédit gratuit disponible'
-      if (sidebarPlanCount) sidebarPlanCount.textContent = workspaceFreeCreditCount?.textContent || '0'
-      if (sidebarPlanCaption) sidebarPlanCaption.textContent = workspaceFreeCreditCaption?.textContent || 'Offre de bienvenue'
+      if (sidebarPlanCount) sidebarPlanCount.textContent = document.querySelector('#workspace-free-credit-count')?.textContent || '0'
+      if (sidebarPlanCaption) sidebarPlanCaption.textContent = document.querySelector('#workspace-free-credit-caption')?.textContent || 'Offre de bienvenue'
       if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = 'Mettre à niveau →'
     }
     const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
@@ -3197,7 +3197,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
       discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
     }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
-    workspaceCredits.hidden = discoveryActive
+    workspaceCredits.hidden = false
     workspaceMobileCredit.classList.toggle('is-discovery-voice', discoveryActive)
     if (discoveryActive) {
       discoveryVoiceEntry.hidden = false
