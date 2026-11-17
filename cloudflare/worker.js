@@ -45,10 +45,23 @@ async function ensureFreeGenerationCounter(db) {
 async function releaseGenerationReservation(db, lockPath, requestId) {
   await db.runTransaction(async tx => {
     const policyRef = db.doc('settings/credits')
-    const [lock, policy] = await Promise.all([tx.get(db.doc(lockPath)), tx.get(policyRef)])
+    const lock = await tx.get(db.doc(lockPath))
     if (!lock.exists || lock.data().requestId !== requestId) return
+    const profileRef = lock.data().creditType === 'discovery' ? db.doc('users/' + lock.data().uid) : null
+    const [policy, profile] = await Promise.all([
+      tx.get(policyRef),
+      profileRef ? tx.get(profileRef) : Promise.resolve(null)
+    ])
     if (lock.data().creditType === 'free' && policy.exists && policy.data().freeGenerationCampaignId === lock.data().campaignId) {
       tx.update(policyRef, { freeGenerationReservations: Math.max(0, Number(policy.data().freeGenerationReservations || 0) - 1) })
+    }
+    if (lock.data().creditType === 'discovery' && profile?.exists) {
+      const data = profile.data()
+      const plan = data.discoverySubscription || {}
+      const expiry = plan.expiresAt instanceof Date ? plan.expiresAt.getTime() : new Date(plan.expiresAt || 0).getTime()
+      if (plan.status === 'active' && Number.isFinite(expiry) && expiry > Date.now()) {
+        tx.update(profileRef, { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+      }
     }
     tx.delete(db.doc(lockPath))
   })
@@ -254,19 +267,73 @@ const SUNO_VOICE_VALIDATE_INFO_URL = 'https://api.sunoapi.org/api/v1/voice/valid
 const SUNO_VOICE_GENERATE_URL = 'https://api.sunoapi.org/api/v1/voice/generate'
 const SUNO_VOICE_RECORD_URL = 'https://api.sunoapi.org/api/v1/voice/record-info'
 const SUNO_VOICE_CHECK_URL = 'https://api.sunoapi.org/api/v1/voice/check-voice'
-async function discoveryActive(db, uid) {
-  const profile = await db.get('users/' + uid)
-  const plan = profile.data?.discoverySubscription || {}
-  const expires = plan.expiresAt instanceof Date ? plan.expiresAt.getTime() : new Date(plan.expiresAt || 0).getTime()
-  return profile.exists && plan.status === 'active' && Number.isFinite(expires) && expires > Date.now()
+function isDiscoverySubscriptionActive(plan, now = Date.now()) {
+  const expires = plan?.expiresAt instanceof Date ? plan.expiresAt.getTime() : new Date(plan?.expiresAt || 0).getTime()
+  return plan?.status === 'active' && Number.isFinite(expires) && expires > now
+}
+async function splitLegacyDiscoveryCredits(db, uid, profileData) {
+  const plan = profileData.discoverySubscription || {}
+  const startedAt = plan.startedAt instanceof Date ? plan.startedAt.getTime() : new Date(plan.startedAt || 0).getTime()
+  if (!Number.isFinite(startedAt) || startedAt <= 0) return null
+  const [orderRows, grantRows, generationRows] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'fedapayOrders' }], limit: 1000 }),
+    db.runQuery({ from: [{ collectionId: 'adminCreditGrants' }], limit: 1000 }),
+    db.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], limit: 1000 })
+  ])
+  if ([orderRows, grantRows, generationRows].some(rows => (rows || []).length >= 1000)) return null
+  const timestamp = value => value instanceof Date ? value.getTime() : new Date(value || 0).getTime()
+  const orders = (orderRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid && item.credited === true)
+  const grants = (grantRows || []).filter(row => row.document).map(row => fromFields(row.document.fields || {})).filter(item => item.uid === uid)
+  const generations = (generationRows || []).filter(row => row.document?.name?.includes('/documents/users/' + uid + '/generations/')).map(row => fromFields(row.document.fields || {}))
+  const paidOrderCredits = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download').reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const discoveryOrderCredits = orders.filter(item => item.kind === 'discovery_subscription' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || DISCOVERY_CREDITS)), 0)
+  const grantsCredits = grants.reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const issuedBefore = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download' && timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+    + grants.filter(item => timestamp(item.createdAt) < startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const discoveryBefore = discoveryOrderCredits
+  const usedBefore = generations.filter(item => item.paidCreditUsed === true && timestamp(item.createdAt) < startedAt).length
+  const paidBalanceBefore = Math.max(0, issuedBefore - discoveryBefore - usedBefore)
+  const issuedAfter = orders.filter(item => item.kind !== 'discovery_subscription' && item.kind !== 'track_download' && timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+    + grants.filter(item => timestamp(item.createdAt) >= startedAt).reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const paidBalancePreserved = Math.min(Math.max(0, Number(profileData.paidCredits || 0)), paidBalanceBefore + issuedAfter)
+  const discoveryBalance = Math.min(DISCOVERY_CREDITS, Math.max(0, Number(profileData.paidCredits || 0) - paidBalancePreserved))
+  return { paidCredits: paidBalancePreserved, discoveryCredits: discoveryBalance, ledgerEntries: orders.length + grants.length + generations.length, paidOrderCredits, grantsCredits }
 }
 async function accountPlan(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  const profile = await db.get('users/' + user.uid)
+  let profile = await db.get('users/' + user.uid)
   const plan = profile.data?.discoverySubscription || {}
-  const expires = plan.expiresAt instanceof Date ? plan.expiresAt : new Date(plan.expiresAt || 0)
-  const active = plan.status === 'active' && Number.isFinite(expires.getTime()) && expires.getTime() > Date.now()
-  return response(200, { plan: active ? 'discovery' : 'unit', active, expiresAt: active ? expires.toISOString() : null, voiceProfile: active && profile.data?.voiceProfile?.voiceId ? { name: profile.data.voiceProfile.name || 'Ma voix', ready: true } : null })
+  const active = isDiscoverySubscriptionActive(plan)
+  if (profile.exists && active && !Object.hasOwn(profile.data, 'discoveryCredits')) {
+    const split = await splitLegacyDiscoveryCredits(db, user.uid, profile.data)
+    const profileRef = db.doc('users/' + user.uid)
+    if (split) {
+      await db.runTransaction(async tx => {
+        const current = await tx.get(profileRef)
+        if (!current.exists || Object.hasOwn(current.data(), 'discoveryCredits')) return
+        const currentPlan = current.data().discoverySubscription || {}
+        if (!isDiscoverySubscriptionActive(currentPlan)) return
+        tx.update(profileRef, { paidCredits: split.paidCredits, discoveryCredits: split.discoveryCredits, discoveryCreditLedgerMigratedAt: SERVER_TIMESTAMP, updatedAt: SERVER_TIMESTAMP })
+      })
+    } else {
+      await db.runTransaction(async tx => {
+        const current = await tx.get(profileRef)
+        if (!current.exists || Object.hasOwn(current.data(), 'discoveryCredits')) return
+        tx.update(profileRef, { discoveryCredits: 0, discoveryCreditLedgerMigrationSkipped: true, updatedAt: SERVER_TIMESTAMP })
+      })
+    }
+    profile = await db.get(profileRef.path)
+  }
+  const currentPlan = profile.data?.discoverySubscription || {}
+  const currentActive = isDiscoverySubscriptionActive(currentPlan)
+  const expires = currentPlan.expiresAt instanceof Date ? currentPlan.expiresAt : new Date(currentPlan.expiresAt || 0)
+  return response(200, {
+    plan: currentActive ? 'discovery' : 'unit',
+    active: currentActive,
+    expiresAt: currentActive ? expires.toISOString() : null,
+    discoveryCredits: currentActive ? Math.max(0, Number(profile.data?.discoveryCredits || 0)) : 0,
+    voiceProfile: currentActive && profile.data?.voiceProfile?.voiceId ? { name: profile.data.voiceProfile.name || 'Ma voix', ready: true } : null
+  })
 }
 async function createDiscoveryPayment(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
@@ -325,8 +392,9 @@ async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '')
     const oldExpiry = existing.expiresAt instanceof Date ? existing.expiresAt.getTime() : new Date(existing.expiresAt || 0).getTime()
     const start = Number.isFinite(oldExpiry) && oldExpiry > now ? oldExpiry : now
     const expiresAt = new Date(start + DISCOVERY_DURATION_MS)
+    const currentPlanActive = isDiscoverySubscriptionActive(existing, now)
     tx.update(profileRef, {
-      paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + DISCOVERY_CREDITS,
+      discoveryCredits: (currentPlanActive ? Math.max(0, Number(profile.data().discoveryCredits || 0)) : 0) + DISCOVERY_CREDITS,
       discoverySubscription: { status: 'active', startedAt: new Date(now), expiresAt, updatedAt: SERVER_TIMESTAMP, source: 'fedapay', lastTransactionId: transactionId },
       updatedAt: SERVER_TIMESTAMP
     })
@@ -344,16 +412,60 @@ async function adminActivateDiscovery(request, db, user) {
     const profile = await tx.get(profileRef)
     if (!profile.exists) throw new Error('profile-not-found')
     const current = profile.data().discoverySubscription || {}
-    const expiry = current.expiresAt instanceof Date ? current.expiresAt.getTime() : new Date(current.expiresAt || 0).getTime()
-    if (current.source === 'admin-test' && current.status === 'active' && expiry > now) return
+    if (isDiscoverySubscriptionActive(current, now)) {
+      if (!Object.hasOwn(profile.data(), 'discoveryCredits')) tx.update(profileRef, { discoveryCredits: 0, discoveryCreditLedgerMigrationSkipped: true, updatedAt: SERVER_TIMESTAMP })
+      return
+    }
     tx.update(profileRef, {
-      paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + DISCOVERY_CREDITS,
+      discoveryCredits: DISCOVERY_CREDITS,
       discoverySubscription: { status: 'active', startedAt: new Date(now), expiresAt: new Date(now + DISCOVERY_DURATION_MS), source: 'admin-test', updatedAt: SERVER_TIMESTAMP },
       updatedAt: SERVER_TIMESTAMP
     })
   })
   const updated = await db.get(profileRef.path)
-  return response(200, { active: true, expiresAt: updated.data.discoverySubscription.expiresAt })
+  return response(200, { active: true, expiresAt: updated.data.discoverySubscription.expiresAt, discoveryCredits: Math.max(0, Number(updated.data.discoveryCredits || 0)) })
+}
+async function adminCancelDiscovery(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  const profileRef = db.doc('users/' + user.uid)
+  const lockRef = db.doc('generationLocks/' + user.uid)
+  let cancelled = false
+  await db.runTransaction(async tx => {
+    const [profile, lock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)])
+    if (!profile.exists) throw new Error('profile-not-found')
+    if (lock.exists) throw new Error('generation-in-progress')
+    const data = profile.data()
+    const current = data.discoverySubscription || {}
+    if (!isDiscoverySubscriptionActive(current)) {
+      if (Number(data.discoveryCredits || 0) !== 0) tx.update(profileRef, { discoveryCredits: 0, updatedAt: SERVER_TIMESTAMP })
+      return
+    }
+    let paidCredits = Math.max(0, Number(data.paidCredits || 0))
+    let discoveryCredits = Math.max(0, Number(data.discoveryCredits || 0))
+    if (!Object.hasOwn(data, 'discoveryCredits')) {
+      const split = await splitLegacyDiscoveryCredits(db, user.uid, data)
+      if (split) {
+        paidCredits = split.paidCredits
+        discoveryCredits = split.discoveryCredits
+      }
+    }
+    tx.update(profileRef, {
+      paidCredits,
+      discoveryCredits: 0,
+      discoverySubscription: { ...current, status: 'cancelled', cancelledAt: new Date(), updatedAt: SERVER_TIMESTAMP },
+      updatedAt: SERVER_TIMESTAMP,
+      ...(!Object.hasOwn(data, 'discoveryCredits') ? { discoveryCreditLedgerMigratedAt: SERVER_TIMESTAMP, ...(!discoveryCredits ? { discoveryCreditLedgerMigrationSkipped: true } : {}) } : {})
+    })
+    cancelled = true
+  })
+  const updated = await db.get(profileRef.path)
+  return response(200, {
+    cancelled,
+    active: false,
+    discoveryCredits: 0,
+    paidCredits: Math.max(0, Number(updated.data?.paidCredits || 0))
+  })
 }
 function voiceApiHeaders(env) {
   if (!env.SUNOAPI_KEY) throw new Error('music-provider-not-configured')
@@ -510,9 +622,7 @@ async function generate(request, env, db, user) {
   const customMode = body.customMode === true
   const style = typeof body.style === 'string' ? body.style.trim() : ''
   const title = typeof body.title === 'string' ? body.title.trim() : ''
-  const profileForVoice = await db.get('users/' + user.uid)
-  const activeDiscovery = await discoveryActive(db, user.uid)
-  const voiceId = activeDiscovery ? String(profileForVoice.data?.voiceProfile?.voiceId || '') : ''
+  let voiceId = ''
   if (prompt.length < 10) return response(400, { error: 'prompt-too-short' })
   if (customMode && (prompt.length > 5000 || style.length > 1000 || title.length > 80)) return response(400, { error: 'prompt-too-long' })
   if (customMode && !style) return response(400, { error: 'advanced-fields-required' })
@@ -533,10 +643,16 @@ async function generate(request, env, db, user) {
       const reservations = counterMatchesCampaign ? Math.max(0, Number(rules.freeGenerationReservations || 0)) : 0
       const hasFreeSlot = freeCount + reservations < FREE_GENERATION_LIMIT
       const hasFreeCredit = Boolean(rules.enabled && hasFreeSlot && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const discoveryPlan = data.discoverySubscription || {}
+      const discoveryIsActive = isDiscoverySubscriptionActive(discoveryPlan)
+      const hasDiscoveryCredit = discoveryIsActive && Number(data.discoveryCredits || 0) > 0
       const hasPaidCredit = Number(data.paidCredits || 0) > 0
-      if (!hasFreeCredit && !hasPaidCredit) throw new Error('no-free-credit')
-      if (hasFreeCredit) tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
-      tx.create(db.doc(lock), { requestId, uid: user.uid, creditType: hasFreeCredit ? 'free' : 'paid', campaignId: hasFreeCredit ? campaign : null, createdAt: SERVER_TIMESTAMP })
+      const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : hasPaidCredit ? 'paid' : ''
+      if (!creditType) throw new Error('no-free-credit')
+      if (discoveryIsActive) voiceId = String(data.voiceProfile?.voiceId || '')
+      if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
+      if (creditType === 'discovery') tx.update(db.doc(profile), { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
+      tx.create(db.doc(lock), { requestId, uid: user.uid, creditType, campaignId: creditType === 'free' ? campaign : null, createdAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
     const mapped = { 'profile-not-found': [404, 'profile-not-found'], 'generation-already-running': [409, 'generation-already-running'], 'no-free-credit': [402, 'no-free-credit'] }[error.message]
@@ -576,7 +692,7 @@ async function generate(request, env, db, user) {
       const remaining = Number(p.data().paidCredits || 0)
       if (remaining < 1) throw new Error('no-free-credit')
       tx.update(db.doc(profile), { paidCredits: remaining - 1, updatedAt: SERVER_TIMESTAMP })
-    } else {
+    } else if (l.data().creditType === 'free') {
       tx.update(db.doc(profile), { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP })
       if (policy.exists && policy.data().freeGenerationCampaignId === l.data().campaignId) {
         const freeGenerationCount = Math.min(FREE_GENERATION_LIMIT, Math.max(0, Number(policy.data().freeGenerationCount || 0)) + 1)
@@ -590,7 +706,8 @@ async function generate(request, env, db, user) {
     }
     tx.delete(db.doc(lock))
     const paidCreditUsed = l.data().creditType === 'paid'
-    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: generationTitle.slice(0,80) || 'Sans titre', prompt: generationPrompt.slice(0,5000), ...(generationStyle ? { style: generationStyle.slice(0,1000) } : {}), ...(!customMode ? { originalIdea: prompt.slice(0,400) } : {}), state: 'PENDING', paidCreditUsed, downloadIncluded: paidCreditUsed, createdAt: SERVER_TIMESTAMP, expiresAt })
+    const downloadIncluded = paidCreditUsed || l.data().creditType === 'discovery'
+    tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: generationTitle.slice(0,80) || 'Sans titre', prompt: generationPrompt.slice(0,5000), ...(generationStyle ? { style: generationStyle.slice(0,1000) } : {}), ...(!customMode ? { originalIdea: prompt.slice(0,400) } : {}), state: 'PENDING', paidCreditUsed, downloadIncluded, createdAt: SERVER_TIMESTAMP, expiresAt })
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true,  })
 }
@@ -1185,6 +1302,7 @@ export default {
       if (url.pathname === '/api/discovery/purchase') return response(403,{error:'discovery-not-available'})
       if (url.pathname === '/api/discovery/confirm') { if (request.method !== 'GET') return response(405,{error:'method-not-allowed'}); return response(200, await confirmDiscoveryPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid)) }
       if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
+      if (url.pathname === '/api/admin/discovery/cancel') return await adminCancelDiscovery(request,db,user)
       if (url.pathname === '/api/voice/upload') return await voiceUpload(request,env,db,user)
       if (url.pathname === '/api/voice/validate') return await voiceValidate(request,env,db,user)
       if (url.pathname === '/api/voice/validate-info') return await voiceValidateInfo(request,env,db,user,url)
