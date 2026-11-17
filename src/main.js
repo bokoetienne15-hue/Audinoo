@@ -517,8 +517,8 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
         await refreshDiscoveryPlan(user.uid)
         if (!workspace.classList.contains('is-discovery-active')) throw new Error('discovery-activation-failed')
         toast.textContent = 'Plan Découverte activé : 3 crédits et 3 chansons disponibles pendant 30 jours.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 4200)
+        toast.classList.add('is-success', 'show')
+        window.setTimeout(() => toast.classList.remove('show', 'is-success'), 3000)
         workspacePricingPage.hidden = true
         workspaceSidebar.querySelector('.workspace-nav[href="#studio"]')?.click()
         window.scrollTo({ top: 0, behavior: 'instant' })
