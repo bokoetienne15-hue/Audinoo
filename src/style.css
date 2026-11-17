@@ -162,11 +162,13 @@ h1 span { background: linear-gradient(90deg, #8c3fff, #e52bc9 48%, #ff9827); -we
 .workspace-pricing-page .pricing-grid { width: 100%; margin-top: 26px; }
 .workspace-pricing-return { margin-top: 26px; }
 @media (max-width: 760px) {
-  .workspace-mobile-credit { display: flex; align-items: center; gap: 12px; margin: -22px 0 28px; padding: 13px 15px; border: 1px solid rgba(185, 106, 232, .3); border-radius: 14px; background: linear-gradient(110deg, rgba(87, 32, 119, .42), rgba(21, 16, 36, .72)); }
-  .workspace-mobile-credit-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 11px; color: #f5d5ff; background: rgba(185, 77, 224, .2); font-size: 20px; }
-  .workspace-mobile-credit strong, .workspace-mobile-credit small { display: block; }
-  .workspace-mobile-credit strong { color: #f3dcff; font-size: 13px; }
-  .workspace-mobile-credit small { margin-top: 3px; color: #aaa0b8; font-size: 10px; }
+  .workspace-mobile-credit { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 28px; padding:13px 15px; border:1px solid rgba(185,106,232,.3); border-radius:14px; background:linear-gradient(110deg,rgba(87,32,119,.42),rgba(21,16,36,.72)); }
+  .workspace-mobile-credit-info { min-width:0; flex:1 1 145px; }
+  .workspace-mobile-credit-info > span { display:block; color:#b9a9cc; font-size:10px; font-weight:700; }
+  .workspace-mobile-credit strong, .workspace-mobile-credit small { display:block; }
+  .workspace-mobile-credit strong { margin-top:3px; color:#f3dcff; font-size:13px; }
+  .workspace-mobile-credit small { margin-top:3px; color:#aaa0b8; font-size:10px; line-height:1.4; }
+  .workspace-mobile-credit .workspace-upgrade-button { width:auto; flex:0 0 auto; margin:0 0 0 auto; padding:9px 11px; }
   .workspace-sidebar .workspace-side-note { display: block; }
   .workspace-pricing-page .pricing-grid { grid-template-columns: 1fr; }
 }
@@ -3238,7 +3240,7 @@ button.is-generating:disabled {
 .admin-discovery-plan-panel{margin-bottom:18px}
 .admin-discovery-plan-panel .admin-credit-actions{align-items:center}
 .workspace.is-plan-checking .workspace-side-note,.workspace.is-plan-checking .workspace-mobile-credit{visibility:hidden!important}
-.workspace.is-discovery-active .workspace-side-note,.workspace.is-discovery-active .workspace-mobile-credit{display:none!important}
+
 @media(max-width:600px){
   .discovery-voice-card{width:180px;height:48px;min-height:48px;padding:6px 9px}
   .discovery-voice-toggle{flex-basis:30px;width:30px;height:30px;min-height:30px}
@@ -3277,8 +3279,8 @@ body:has(#workspace:not([hidden])) { overflow-y:auto; }
 .discovery-voice-profile-status { margin-left:auto; color:#9fe2b0; font-size:9px; font-weight:800; letter-spacing:.1em; }
 .discovery-voice-card .discovery-voice-panel { width:100%; margin-top:16px; }
 #workspace .workspace-mobile-credit[hidden] { display:none !important; }
-.workspace.is-discovery-active .workspace-mobile-credit { display:none !important; }
-.workspace.is-discovery-active .workspace-sidebar-footer .workspace-side-note { display:none !important; }
+
+
 @media(max-width:600px) {
   .discovery-voice-card { padding:15px; }
   .discovery-voice-toggle { flex-basis:44px; width:44px; height:44px; min-height:44px; }
