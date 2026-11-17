@@ -540,10 +540,12 @@ async function voiceCreate(request, env, db, user) {
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const body = await request.json().catch(() => ({}))
   const taskId = String(body.taskId || ''), token = String(body.token || '')
+  const requestedVoiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40) || 'Ma voix'
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   const verify = await db.get('voiceFileTokens/' + token)
   if (!task.exists || !verify.exists || verify.data.uid !== user.uid || task.data.stage !== 'wait_validating') return response(400, { error: 'voice-verification-not-ready' })
-  const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: task.data.voiceName || 'Ma voix', description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
+  await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { voiceName: requestedVoiceName }, true)
+  const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
   const payload = await result.json().catch(() => ({}))
   if (!result.ok || payload.code !== 200 || !payload.data?.taskId) return response(502, { error: 'voice-creation-rejected', providerMessage: String(payload.msg || '') })
   await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
