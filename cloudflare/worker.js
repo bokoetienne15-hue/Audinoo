@@ -1003,11 +1003,14 @@ async function adminRevenue(request, db, user) {
 }
 async function adminAuthUsers(request, db, user) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
-  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
   const uids = []
   let nextPageToken = ''
   let pages = 0
   try {
+    // Firestore authorizes the administrator before Authentication is queried.
+    // Keep this check inside the diagnostic boundary so Firestore quota failures
+    // are never mislabeled as generic Firebase Authentication failures.
+    if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
     do {
       const query = new URLSearchParams({ maxResults: '1000', ...(nextPageToken ? { nextPageToken } : {}) })
       const result = await db.identityRequest('projects/audinoo/accounts:batchGet?' + query.toString())
@@ -1020,10 +1023,17 @@ async function adminAuthUsers(request, db, user) {
     } while (nextPageToken)
     return response(200, { uids, count: uids.length })
   } catch (error) {
-    console.error('[Audinoo admin auth list]', error.status || '', error.message)
-    if (error.status === 403) return response(503, { error: 'firebase-auth-list-permission-required' })
-    if (error.message === 'firebase-admin-not-configured') return response(503, { error: 'backend-not-configured' })
-    return response(502, { error: 'firebase-auth-list-failed' })
+    const details = String(error?.message || 'unknown-firebase-error').slice(0, 240)
+    const status = Number(error?.status || 0)
+    const isQuota = status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(details)
+    console.error('[Audinoo admin auth list]', status, details)
+    if (error.message === 'firebase-admin-not-configured') return response(503, { error: 'backend-not-configured', service: 'firebase-config', details })
+    if (isQuota) {
+      const service = error.firestoreStatus ? 'firestore' : 'firebase-auth'
+      return response(429, { error: 'firebase-quota-exceeded', service, details, upstreamStatus: status || 429, upstreamCode: error.code || 429, upstreamStatusText: error.firestoreStatus || '' }, { 'retry-after': '60' })
+    }
+    if (status === 403) return response(503, { error: error.firestoreStatus ? 'firestore-permission-required' : 'firebase-auth-list-permission-required', service: error.firestoreStatus ? 'firestore' : 'firebase-auth', details })
+    return response(status >= 500 ? status : 502, { error: error.firestoreStatus ? 'firestore-admin-check-failed' : 'firebase-auth-list-failed', service: error.firestoreStatus ? 'firestore' : 'firebase-auth', details, upstreamStatus: status })
   }
 }
 async function adminDeleteUser(request, env, db, user) {
@@ -1468,11 +1478,14 @@ export default {
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       if (url.pathname === '/api/my-library') {
-        return response(status, {
-          error: 'library-load-failed',
-          details: String(e?.message || 'firestore-library-query-failed').slice(0, 180),
-          ...(status === 429 ? { retryable: true, retryAfterSeconds: 3 } : {})
-        }, status === 429 ? { 'retry-after': '3' } : {})
+        const details = String(e?.message || 'firestore-library-query-failed').slice(0, 240)
+        const isQuota = status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(details)
+        return response(isQuota ? 429 : status, {
+          error: isQuota ? 'firestore-quota-exceeded' : 'library-load-failed',
+          service: 'firestore',
+          details,
+          ...(isQuota ? { retryable: true, retryAfterSeconds: 60 } : {})
+        }, isQuota ? { 'retry-after': '60' } : {})
       }
       const adminErrors = new Set(['firebase-auth-delete-permission-required','firebase-auth-delete-failed','user-media-storage-not-configured','user-data-limit-reached','user-not-found','admin-account-protected','invalid-delete-target','delete-confirmation-mismatch','reset-confirmation-mismatch','acquisition-data-limit-reached','acquisition-reset-confirmation-mismatch'])
       const err = adminErrors.has(e.message) ? e.message : status === 503 ? 'backend-not-configured' : status === 401 ? 'invalid-session' : url.pathname === '/api/my-library' ? 'library-load-failed' : 'generation-failed'
