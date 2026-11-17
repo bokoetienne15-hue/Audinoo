@@ -184,8 +184,13 @@ app.innerHTML = `
   <div class="discovery-voice-card-slot">
     <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix">
       <span class="discovery-voice-card-plus" aria-hidden="true">+</span>
-      <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Configurer ma voix</small></span>
+      <span class="discovery-voice-card-title"><strong>Ma voix <em class="discovery-feature-badge is-new">Nouveau</em></strong><small>Configurer ma voix</small></span>
     </button>
+  </div>
+  <div class="discovery-discourse-card" aria-disabled="true">
+    <span class="discovery-discourse-icon" aria-hidden="true">◌</span>
+    <span class="discovery-discourse-title"><strong>Discours</strong><small>Création vocale</small></span>
+    <span class="discovery-feature-badge is-soon">Bientôt disponible</span>
   </div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
