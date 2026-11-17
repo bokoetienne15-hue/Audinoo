@@ -191,7 +191,7 @@ app.innerHTML = `
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
       <div class="discovery-voice-creation" id="discovery-voice-creation" hidden>
-      <p class="discovery-voice-copy">Enregistre directement ta voix avec ton microphone. Aucun fichier audio ne peut être importé.</p>
+      <p class="discovery-voice-copy">Enregistre ta voix avec ton microphone ou importe un fichier audio d’au moins 5 secondes.</p>
       <div class="discovery-voice-source-choices" id="discovery-voice-source-choices" hidden>
         <button type="button" class="discovery-voice-source-choice" id="discovery-voice-record-choice"><span aria-hidden="true">🎙</span><strong>Enregistrer ma voix</strong><small>Utiliser le microphone de ton appareil</small></button>
         <button type="button" class="discovery-voice-source-choice" id="discovery-voice-import-choice"><span aria-hidden="true">↑</span><strong>Importer un audio</strong><small>Choisir un fichier audio existant</small></button>
@@ -3427,7 +3427,7 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceRecordStep.hidden = true
   discoveryVoiceVerification.hidden = true
   discoveryVoiceStatus.classList.remove('is-loading')
-  discoveryVoiceStatus.textContent = 'Enregistre directement ta voix avec le microphone (5 secondes minimum).'
+  discoveryVoiceStatus.textContent = 'Choisis comment ajouter ta voix.'
   setDiscoveryVoiceStep(2)
 })
 discoveryVoiceBack?.addEventListener('click', () => {
