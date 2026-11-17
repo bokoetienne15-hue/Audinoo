@@ -1,6 +1,6 @@
 import { FirestoreRest, SERVER_TIMESTAMP, verifyFirebaseToken, fromFields } from './firebase-rest.js'
 
-const response = (status, data) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } })
+const response = (status, data, extraHeaders = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...extraHeaders } })
 const FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
 const SUNO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/generate'
 const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
