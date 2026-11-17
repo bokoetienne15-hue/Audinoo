@@ -3469,7 +3469,7 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   .workspace-account .workspace-avatar { display:none; }
   .workspace-account .workspace-side-note { gap:5px; padding:4px 6px; border-radius:8px; }
   .workspace-account .workspace-side-note strong { font-size:10px; }
-  .workspace-account .workspace-side-note small { display:none; }
+  .workspace-account .workspace-side-note small { display:block; max-width:92px; white-space:normal; line-height:1.15; font-size:8px; }
   .workspace-account .workspace-upgrade-button { padding:4px 5px; font-size:8px; }
   .workspace-account .workspace-logout { padding:7px 8px; font-size:9px; white-space:nowrap; }
 }
