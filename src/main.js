@@ -3060,6 +3060,9 @@ async function refreshAdminAccess(uid) {
   stopAdminStatsListeners = null
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
+  discoveryVoiceEntry.hidden = true
+  discoveryVoicePanel.hidden = true
+  workspace.classList.remove('is-discovery-active')
   workspace.classList.add('is-plan-checking')
   if (!uid || auth.currentUser?.uid !== uid) {
     workspace.classList.remove('is-plan-checking')
