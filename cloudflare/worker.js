@@ -270,6 +270,7 @@ async function accountPlan(request, db, user) {
 }
 async function createDiscoveryPayment(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (env.DISCOVERY_SUBSCRIPTION_ENABLED !== 'true') return response(503, { error: 'discovery-payments-disabled' })
   if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
   const profile = await db.get('users/' + user.uid)
   if (!profile.exists) return response(404, { error: 'profile-not-found' })
@@ -1125,6 +1126,15 @@ export default {
       if (!(data.createdAt instanceof Date) || data.createdAt.getTime() > cutoff) continue
       for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
+    }
+    const voiceTokens = await db.runQuery({ from: [{ collectionId: 'voiceFileTokens' }], limit: 1000 })
+    for (const row of voiceTokens || []) {
+      if (!row.document) continue
+      const data = fromFields(row.document.fields || {})
+      const expiry = data.expiresAt instanceof Date ? data.expiresAt.getTime() : new Date(data.expiresAt || 0).getTime()
+      if (!Number.isFinite(expiry) || expiry > Date.now()) continue
+      if (data.key) { try { await env.AUDIO_BUCKET.delete(data.key) } catch (error) { console.error('[Audinoo voice cleanup R2]', error) } }
+      try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo voice cleanup Firestore]', error) }
     }
   },
   async fetch(request, env) {
