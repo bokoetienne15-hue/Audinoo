@@ -3182,3 +3182,36 @@ button.is-generating:disabled {
 .admin-email-consent{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;color:#b8adca}
 .admin-email-consent.is-yes{background:rgba(54,190,142,.13);color:#73dfb7}
 @media(max-width:760px){.admin-email-kpis{grid-template-columns:1fr}.admin-email-filter{width:100%}.admin-email-export-actions>*{width:100%}}
+
+
+/* Plan Découverte — identité vocale */
+.discovery-voice-entry{margin:0 0 20px;max-width:100%}
+.discovery-voice-toggle{display:flex;align-items:center;gap:11px;width:100%;min-height:58px;padding:10px 16px;border:1px solid #292929;border-radius:15px;background:#080808;color:#fff;text-align:left;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.discovery-voice-plus{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#fff;color:#080808;font-size:25px;font-weight:400;line-height:1}
+.discovery-voice-toggle>span:nth-child(2){font-size:14px;font-weight:750}
+.discovery-voice-toggle small{margin-left:auto;color:#aaa;font-size:11px}
+.discovery-voice-panel{margin-top:12px;padding:20px;border:1px solid #292929;border-radius:18px;background:#080808;color:#f8f8f8;box-shadow:0 18px 50px rgba(0,0,0,.18)}
+.discovery-voice-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.discovery-voice-heading .workspace-kicker{margin:0 0 5px;color:#aaa;font-size:10px;letter-spacing:.13em}
+.discovery-voice-heading h2{margin:0;color:#fff;font-size:19px}
+.discovery-voice-badge{padding:6px 9px;border:1px solid #444;border-radius:999px;color:#ddd;font-size:9px;letter-spacing:.1em}
+.discovery-voice-copy{max-width:650px;margin:12px 0 18px;color:#bdbdbd;font-size:13px;line-height:1.65}
+.discovery-voice-form,.discovery-voice-verification{display:grid;gap:10px}
+.discovery-voice-form label,.discovery-voice-verification label{color:#eee;font-size:12px;font-weight:650}
+.discovery-voice-form input:not([type=checkbox]),.discovery-voice-verification input[type=file],.discovery-voice-segment input{width:100%;min-height:43px;padding:10px 12px;border:1px solid #373737;border-radius:10px;background:#151515;color:#fff}
+.discovery-voice-segment{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.discovery-voice-segment label{display:grid;gap:7px}
+.discovery-voice-consent{display:flex;align-items:flex-start;gap:9px;margin:4px 0;color:#c8c8c8!important;font-weight:450!important;line-height:1.5}
+.discovery-voice-consent input{margin-top:3px;accent-color:#fff}
+.discovery-voice-action{min-height:44px;padding:11px 16px;border:1px solid #fff;border-radius:10px;background:#fff;color:#080808;font-weight:750;cursor:pointer}
+.discovery-voice-action:disabled{opacity:.55;cursor:wait}
+.discovery-voice-verification{margin-top:18px;padding-top:18px;border-top:1px solid #333}
+.discovery-voice-step{margin:0;color:#aaa;font-size:10px;letter-spacing:.12em}
+.discovery-voice-verification blockquote{margin:0;padding:14px;border-left:3px solid #fff;border-radius:0 9px 9px 0;background:#151515;color:#fff;font-size:15px;line-height:1.6}
+.discovery-voice-status{min-height:20px;margin:12px 0 0;color:#d0d0d0;font-size:12px;line-height:1.5}
+.discovery-admin-test-panel{margin-top:20px}
+.discovery-admin-test-panel>p{color:var(--muted,#888);font-size:13px;line-height:1.6}
+@media(max-width:600px){.discovery-voice-panel{padding:15px}.discovery-voice-toggle small{font-size:10px}.discovery-voice-heading h2{font-size:17px}.discovery-voice-segment{gap:8px}}
+
+.discovery-voice-record-controls{display:flex;gap:10px;flex-wrap:wrap}
+#discovery-voice-record-preview{width:100%;margin:4px 0 10px}
