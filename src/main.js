@@ -181,12 +181,10 @@ app.innerHTML = `
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
       <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><div class="workspace-side-note"><span>Crédit gratuit disponible</span><strong id="workspace-free-credit-count">0</strong><small id="workspace-free-credit-caption">Offre de bienvenue</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button></div></aside>
       <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
-  <section class="discovery-voice-card" aria-label="Ma voix">
-    <div class="discovery-voice-card-header">
-      <button class="discovery-voice-toggle" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix"><span class="discovery-voice-plus" aria-hidden="true">+</span></button>
-      <div class="discovery-voice-card-title"><h2>Ma voix</h2><p id="discovery-voice-summary">Configurer ma voix</p></div>
-    </div>
-    <div class="discovery-voice-profile-card" id="discovery-voice-profile-card" hidden><span class="discovery-voice-profile-icon" aria-hidden="true">♫</span><div><strong id="discovery-voice-profile-name">Ma voix</strong><small>Prête pour tes prochaines chansons</small></div><span class="discovery-voice-profile-status">PRÊTE</span></div>
+  <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Ouvrir Ma voix">
+    <span class="discovery-voice-card-symbol" aria-hidden="true">♫</span>
+    <span class="discovery-voice-card-title"><strong>Ma voix</strong><small>Appuie pour gérer tes voix</small></span>
+    <span class="discovery-voice-card-arrow" aria-hidden="true">→</span>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">DÉCOUVERTE</span></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
@@ -3257,10 +3255,7 @@ const discoveryVoiceEntry = document.querySelector('#discovery-voice-entry')
 const discoveryVoiceToggle = document.querySelector('#discovery-voice-toggle')
 const discoveryVoicePanel = document.querySelector('#discovery-voice-panel')
 const discoveryVoiceStatus = document.querySelector('#discovery-voice-status')
-const discoveryVoiceSummary = document.querySelector('#discovery-voice-summary')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
-const discoveryVoiceProfileCard = document.querySelector('#discovery-voice-profile-card')
-const discoveryVoiceProfileName = document.querySelector('#discovery-voice-profile-name')
 const discoveryVoiceBack = document.querySelector('#discovery-voice-back')
 const discoveryVoiceLibrary = document.querySelector('#discovery-voice-library')
 const discoveryVoiceList = document.querySelector('#discovery-voice-list')
@@ -3284,22 +3279,24 @@ function renderDiscoveryVoiceLibrary() {
     const name = document.createElement('strong'); name.textContent = profile.name || 'Ma voix'
     const status = document.createElement('small'); status.textContent = profile.voiceId === discoverySelectedVoiceId ? 'Sélectionnée pour tes prochaines chansons' : 'Voix prête à utiliser'
     info.append(name, status)
-    const select = document.createElement('button'); select.type = 'button'; select.className = 'discovery-voice-select'; select.textContent = profile.voiceId === discoverySelectedVoiceId ? 'Sélectionnée ✓' : 'Choisir'
-    select.disabled = profile.voiceId === discoverySelectedVoiceId
-    select.addEventListener('click', async () => {
+    const choice = document.createElement('label'); choice.className = 'discovery-voice-choice'
+    const select = document.createElement('input'); select.type = 'radio'; select.name = 'discovery-selected-voice'; select.value = profile.voiceId; select.checked = profile.voiceId === discoverySelectedVoiceId; select.setAttribute('aria-label', 'Sélectionner ' + (profile.name || 'Ma voix'))
+    select.addEventListener('change', async () => {
+      if (!select.checked) return
       select.disabled = true
       try {
         await callAudinooApi('/api/voice/select', { method: 'POST', body: JSON.stringify({ voiceId: profile.voiceId }) })
         discoverySelectedVoiceId = profile.voiceId
-        discoveryVoiceProfileName.textContent = profile.name || 'Ma voix'
         discoveryVoiceStatus.textContent = 'Voix sélectionnée. Elle sera utilisée pour tes prochaines chansons.'
         renderDiscoveryVoiceLibrary()
       } catch (error) {
         discoveryVoiceStatus.textContent = 'Impossible de sélectionner cette voix : ' + generationErrorMessage(error.message)
         select.disabled = false
+        renderDiscoveryVoiceLibrary()
       }
     })
-    card.append(icon, info, select)
+    choice.append(select)
+    card.append(icon, info, choice)
     return card
   }))
 }
@@ -3324,7 +3321,6 @@ let discoveryVoiceChunks = []
 async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
   if (!uid || auth.currentUser?.uid !== uid) {
     if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
-    if (discoveryVoiceProfileCard) discoveryVoiceProfileCard.hidden = true
     workspace?.classList.remove('is-discovery-active', 'is-plan-checking')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
@@ -3338,7 +3334,6 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspace.classList.remove('is-discovery-active', 'is-plan-checking')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
-    discoveryVoiceProfileCard.hidden = true
     return
   }
   try {
@@ -3375,18 +3370,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     renderDiscoveryVoiceLibrary()
     renderAdminDiscoveryPanel(plan)
     if (discoveryActive) {
-      const voiceProfile = plan.voiceProfile
-      discoveryVoiceSummary.textContent = 'Configurer ma voix'
-      if (voiceProfile?.ready) {
-        const voiceName = voiceProfile.name || 'Ma voix'
-        discoveryVoiceProfileName.textContent = voiceName
-        discoveryVoiceProfileCard.hidden = false
-        discoveryVoiceStatus.textContent = 'Ta voix personnalisée est prête et sera utilisée pour tes prochaines créations.'
-      } else {
-        discoveryVoiceProfileCard.hidden = true
-      }
-    } else {
-      discoveryVoiceProfileCard.hidden = true
+      if (plan.voiceProfile?.ready) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
     }
   } catch (error) {
     console.warn('[Audinoo discovery plan]', error)
@@ -3394,7 +3378,6 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
     discoveryVoiceEntry.hidden = true
-    discoveryVoiceProfileCard.hidden = true
     renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
   } finally {
     workspace.classList.remove('is-plan-checking')
@@ -3775,8 +3758,9 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     if (!result?.ready) throw new Error('voice-creation-timeout')
     const createdVoiceName = result.voiceName || discoveryVoiceName
     discoveryVoiceStatus.textContent = 'Bravo ! Ta voix est prête. Elle sera utilisée automatiquement dans tes prochaines chansons.'
-    discoveryVoiceProfileName.textContent = createdVoiceName
-    discoveryVoiceProfileCard.hidden = false
+    discoveryVoiceProfiles = [...discoveryVoiceProfiles.filter(item => item.voiceId !== result.voiceId), { voiceId: result.voiceId, name: createdVoiceName }]
+    discoverySelectedVoiceId = result.voiceId
+    renderDiscoveryVoiceLibrary()
     discoveryVoiceVerification.hidden = true
     discoveryVoiceCreation.hidden = true
     discoveryVoiceLibrary.hidden = false
