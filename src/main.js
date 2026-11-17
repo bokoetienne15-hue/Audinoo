@@ -4841,7 +4841,7 @@ async function createEmailProfile(user, preferredDisplayName = '') {
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      return await reserveProfileWithRetry(user, generatedUsername({ ...user, displayName }), 'password', displayName, user.photoURL || '', false)
+      return await reserveProfileWithRetry(user, generatedUsername({ displayName, email: user.email }), 'password', displayName, user.photoURL || '', false)
     } catch (error) {
       if (error.message !== 'username-taken') throw error
     }
@@ -5402,7 +5402,7 @@ onAuthStateChanged(auth, async (user) => {
   if (hasAudinooProfile && profileUid === user.uid) return
 
   try {
-    const profile = await getDoc(doc(db, 'users', user.uid))
+    let profile = await getDoc(doc(db, 'users', user.uid))
     if (auth.currentUser?.uid !== user.uid || (hasAudinooProfile && profileUid === user.uid)) return
     if (!profile.exists() || !profile.data().username) {
       // Recover interrupted account setup after a browser restart or lost network.
