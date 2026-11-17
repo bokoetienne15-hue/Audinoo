@@ -3395,3 +3395,41 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 }
 .discovery-voice-choice input[type=checkbox]:checked::after { transform: scale(1); }
 .discovery-voice-choice input[type=checkbox]:focus-visible { outline: 2px solid #d7a9ff; outline-offset: 3px; }
+
+
+/* Ma voix : bouton compact, centré, sans pictogramme ni flèche. */
+.discovery-voice-entry{width:100%;display:flex;justify-content:center;margin:0 auto 18px}
+.discovery-voice-card{display:flex;align-items:center;justify-content:space-between;gap:14px;width:min(100%,320px);height:54px;min-height:54px;padding:0 16px;border:1px solid #38333f;border-radius:15px;background:#0c0b10;color:#fff;box-shadow:0 7px 22px rgba(0,0,0,.18);text-align:left}
+.discovery-voice-card-title{display:grid;gap:2px;min-width:0}
+.discovery-voice-card-title strong{font-size:14px;font-weight:750}
+.discovery-voice-card-title small{font-size:10px;color:#aaa}
+.discovery-voice-card-plus{display:grid;place-items:center;flex:0 0 auto;width:auto;height:auto;border:0;background:transparent;color:#e6c5ff;font-size:27px;font-weight:300;line-height:1}
+.discovery-voice-card-symbol,.discovery-voice-card-arrow{display:none!important}
+
+/* Cartes vocales : toute la surface sélectionne/désélectionne la voix. */
+.discovery-voice-item{cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.discovery-voice-item:focus-visible{outline:2px solid #d7a9ff;outline-offset:3px}
+.discovery-voice-item-icon{border-radius:50%;font-size:15px;font-weight:750}
+.discovery-voice-choice{pointer-events:none}
+.discovery-voice-choice input[type=checkbox]{appearance:none;-webkit-appearance:none;display:grid;place-items:center;width:22px;height:22px;margin:0;border:1.5px solid #777;border-radius:50%;background:#101010}
+.discovery-voice-choice input[type=checkbox]::after{content:"";width:10px;height:10px;border-radius:50%;background:#d7a9ff;transform:scale(0);transition:transform .14s ease}
+.discovery-voice-choice input[type=checkbox]:checked{border-color:#d7a9ff;box-shadow:0 0 0 3px rgba(215,169,255,.13)}
+.discovery-voice-choice input[type=checkbox]:checked::after{transform:scale(1)}
+
+/* Écran de création : contenu moins collé en haut et choix d'actions horizontaux. */
+.discovery-voice-panel{padding:24px 22px}
+.discovery-voice-creation{padding-top:12px}
+.discovery-voice-copy{margin-top:15px;margin-bottom:19px}
+.discovery-voice-source-choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0 20px}
+.discovery-voice-source-choice{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;min-height:112px;padding:15px 16px;border-radius:14px}
+.discovery-voice-source-choice .discovery-voice-source-icon{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:10px;background:rgba(222,190,255,.12);color:#e4c5ff}
+.discovery-voice-source-icon svg{display:block;width:21px;height:21px}
+.discovery-voice-source-choice strong{font-size:12px}
+.discovery-voice-source-choice small{font-size:10px}
+@media(max-width:600px){
+ .discovery-voice-card{width:min(100%,300px);height:52px;min-height:52px}
+ .discovery-voice-panel{padding:22px 16px}
+ .discovery-voice-creation{padding-top:14px}
+ .discovery-voice-source-choices{gap:9px}
+ .discovery-voice-source-choice{min-height:108px;padding:12px 11px}
+}
