@@ -3408,6 +3408,8 @@ function attachVoiceRecorder(options) {
     stream = null
   }
   startButton.addEventListener('click', async () => {
+    timer.textContent = '00:00'
+    countdown.textContent = 'Préparation du microphone…'
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       statusMessage.textContent = 'L’enregistrement direct n’est pas pris en charge sur cet appareil. Utilise l’import audio.'
       return
@@ -3592,7 +3594,7 @@ document.querySelector('#discovery-voice-source-form')?.addEventListener('submit
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Impossible de préparer ta voix : ' + (error.providerMessage || generationErrorMessage(error.message))
   } finally {
-    discoveryVoiceValidate.disabled = false
+    updateDiscoveryVoiceNext()
   }
 })
 const verificationChoices = document.querySelector('#discovery-voice-verification .discovery-voice-source-choices')
@@ -3668,6 +3670,11 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
     discoveryVoiceProfileCard.hidden = false
     discoveryVoiceVerification.hidden = true
     discoveryVoiceSourceForm.reset()
+    discoveryVoiceSourceDurationValid = false
+    discoveryVoiceVerificationFile.value = ''
+    discoveryVoiceVerificationDurationValid = false
+    discoveryVoiceVerificationPreview.hidden = true
+    discoveryVoiceVerificationPreview.removeAttribute('src')
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoicePanel.hidden = true
@@ -3676,7 +3683,7 @@ discoveryVoiceCreate?.addEventListener('click', async () => {
   } catch (error) {
     discoveryVoiceStatus.textContent = 'Création impossible : ' + (error.providerMessage || generationErrorMessage(error.message))
   } finally {
-    discoveryVoiceCreate.disabled = false
+    discoveryVoiceCreate.disabled = !discoveryVoiceVerificationDurationValid
   }
 })
 
