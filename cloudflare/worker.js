@@ -1175,7 +1175,8 @@ async function refundFailedVideo(db, uid, path, trackIndex, providerTaskId, mess
       tx.update(profileRef, { freeCreditUsed: false, freeCreditUsedAt: null, updatedAt: SERVER_TIMESTAMP })
       if (policy.exists && policy.data().freeGenerationCampaignId === track.videoCampaignId) {
         const count = Math.max(0, Number(policy.data().freeGenerationCount || 0) - 1)
-        tx.update(policyRef, { freeGenerationCount: count, enabled: count < FREE_GENERATION_LIMIT, activeCampaignId: count < FREE_GENERATION_LIMIT ? track.videoCampaignId : null, freeOfferExhausted: count >= FREE_GENERATION_LIMIT })
+        const restoreExhaustedOffer = policy.data().freeOfferExhausted === true && count < FREE_GENERATION_LIMIT
+        tx.update(policyRef, { freeGenerationCount: count, ...(restoreExhaustedOffer ? { enabled: true, activeCampaignId: track.videoCampaignId, freeOfferExhausted: false, freeOfferRestoredAt: SERVER_TIMESTAMP } : {}) })
       }
     }
     tracks[trackIndex] = { ...track, lastVideoTaskId: providerTaskId, videoTaskId: '', videoStatus: 'FAILED', videoError: String(message || 'La génération vidéo a échoué.'), videoCreditRefunded: true }
