@@ -4891,7 +4891,15 @@ async function pollGeneration(taskId, card) {
     }
   } catch (error) {
     const status = card.querySelector('.generation-status')
-    if (status) status.textContent = generationErrorMessage(error.message) + ' Détail exact : ' + exactErrorDetails(error)
+    const quotaLimited = error.message === 'firestore-quota-exceeded' || error.message === 'firebase-quota-exceeded' || error.status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(error.providerDetails || error.message || '')
+    if (quotaLimited) {
+      if (status) status.textContent = 'Service de données temporairement limité. Vérification automatique en attente…'
+      window.setTimeout(() => {
+        if (auth.currentUser && card.isConnected) void pollGeneration(taskId, card)
+      }, 60000)
+    } else if (status) {
+      status.textContent = generationErrorMessage(error.message)
+    }
   } finally {
     window.clearInterval(timer)
   }
@@ -5215,8 +5223,16 @@ async function pollLibraryGenerationPreview(preview, taskId) {
         window.setTimeout(() => toast.classList.remove('show'), 5000)
         return
       }
-      // Une erreur réseau temporaire ne termine pas la génération : on réessaie au prochain cycle.
-      console.warn('[Audinoo generation status]', error)
+      // Une limite Firebase ne termine pas la génération : ralentir les lectures jusqu'au rétablissement.
+      const quotaLimited = error.message === 'firestore-quota-exceeded' || error.message === 'firebase-quota-exceeded' || error.status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(error.providerDetails || error.message || '')
+      if (quotaLimited) {
+        toast.textContent = 'Le service de données est temporairement limité. Ta création reste suivie ; Audinoo reprendra automatiquement sa vérification.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 7000)
+        await new Promise((resolve) => window.setTimeout(resolve, 60000))
+      } else {
+        console.warn('[Audinoo generation status]', error)
+      }
     }
   }
 }
