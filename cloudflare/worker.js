@@ -1715,7 +1715,7 @@ async function claimWhatsNewDisplay(request, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   const body = await request.json().catch(() => ({}))
   const day = String(body.day || '')
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)) return response(400, { error: 'invalid-day' })
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return response(400, { error: 'invalid-day' })
   const path = 'users/' + user.uid
   const result = await db.runTransaction(async tx => {
     const profile = await tx.get(db.doc(path))
