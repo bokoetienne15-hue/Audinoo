@@ -4818,8 +4818,8 @@ function generationErrorMessage(errorCode) {
     'songwriter-not-configured': 'La composition intelligente du mode Simple n’est pas encore activée sur Cloudflare. Active Workers AI pour ce Worker puis réessaie.',
     'songwriting-failed': 'Audinoo n’a pas réussi à composer les paroles et le style. Aucun crédit n’a été consommé. Réessaie dans quelques instants.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
-    'firestore-quota-exceeded': 'La limite de requêtes Firestore est atteinte. Tes créations ne sont pas supprimées : leur lecture est temporairement bloquée par Google.',
-    'firebase-quota-exceeded': 'Une limite de quota Firebase est atteinte. Tes données ne sont pas supprimées ; consulte le service et le détail technique ci-dessous.',
+    'firestore-quota-exceeded': 'Le service de données a temporairement atteint sa limite. Tes chansons et tes informations restent conservées. Audinoo réessaie automatiquement de charger ta bibliothèque.',
+    'firebase-quota-exceeded': 'Un service Firebase est temporairement limité. Tes données restent conservées. Réessaie dans quelques instants ; Audinoo ne relancera pas automatiquement une création ou un paiement.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
     'advanced-fields-required': 'Ajoute un titre et une direction musicale en mode avancé.',
@@ -5318,8 +5318,16 @@ async function submitGeneration({ prompt, style = '', title = '', customMode = f
   }
 }
 
-async function loadUserLibrary() {
+let libraryQuotaRetryAttempt = 0
+let libraryQuotaRetryTimer = null
+
+async function loadUserLibrary(isAutomaticRetry = false) {
   if (!auth.currentUser) return
+  if (!isAutomaticRetry) {
+    if (libraryQuotaRetryTimer) window.clearTimeout(libraryQuotaRetryTimer)
+    libraryQuotaRetryTimer = null
+    libraryQuotaRetryAttempt = 0
+  }
   libraryLoading.hidden = false
   libraryGenerationList.hidden = true
   libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
@@ -5327,6 +5335,9 @@ async function loadUserLibrary() {
     // Keep the currently playing DOM entry connected while the library list is refreshed.
     parkActiveLibraryEntry()
     const result = await callAudinooApi('/api/my-library')
+    libraryQuotaRetryAttempt = 0
+    if (libraryQuotaRetryTimer) window.clearTimeout(libraryQuotaRetryTimer)
+    libraryQuotaRetryTimer = null
     replaceNodeChildren(libraryGenerationList)
     replaceNodeChildren(libraryVideoList)
     libraryVideoEmpty.hidden = true
@@ -5347,9 +5358,24 @@ async function loadUserLibrary() {
     libraryGenerationList.hidden = false
     libraryLoading.hidden = true
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
-    toast.textContent = `${generationErrorMessage(error.message)} Détail exact : ${exactErrorDetails(error)}`
+    const quotaLimited = error.message === 'firestore-quota-exceeded' || error.message === 'firebase-quota-exceeded' || error.status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(error.providerDetails || error.message || '')
+    if (quotaLimited) {
+      const delays = [5000, 15000, 30000]
+      if (libraryQuotaRetryAttempt < delays.length && auth.currentUser) {
+        const delay = delays[libraryQuotaRetryAttempt++]
+        toast.textContent = `Le service de données est temporairement saturé. Tes chansons sont conservées. Nouvelle tentative automatique dans ${Math.round(delay / 1000)} secondes…`
+        libraryQuotaRetryTimer = window.setTimeout(() => {
+          libraryQuotaRetryTimer = null
+          void loadUserLibrary(true)
+        }, delay)
+      } else {
+        toast.textContent = 'Le service de données est toujours temporairement indisponible. Tes chansons restent conservées. Réessaie un peu plus tard.'
+      }
+    } else {
+      toast.textContent = generationErrorMessage(error.message) + (error.message === 'library-load-failed' ? '' : ` Détail : ${exactErrorDetails(error)}`)
+    }
     toast.classList.add('show')
-    window.setTimeout(() => toast.classList.remove('show'), 3500)
+    window.setTimeout(() => toast.classList.remove('show'), quotaLimited ? 7000 : 4500)
   }
 }
 
