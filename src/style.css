@@ -3641,3 +3641,12 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
     font-size:7px!important;
   }
 }
+
+/* La tuile Ma voix doit respecter l'attribut hidden pour les visiteurs déconnectés. */
+#workspace .discovery-voice-entry[hidden]{display:none!important}
+.discovery-voice-access{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0;padding:13px;border:1px solid #34313d;border-radius:12px;background:#111;color:#ddd}
+.discovery-voice-access p{margin:0;font-size:12px;line-height:1.5}
+.discovery-voice-purchase{flex:0 0 auto;min-height:40px;padding:0 13px;border:1px solid #8a69a8;border-radius:10px;background:#f4eaff;color:#17101d;font-size:11px;font-weight:800;cursor:pointer}
+.discovery-voice-purchase:disabled{opacity:.65;cursor:wait}
+.discovery-voice-add:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:600px){.discovery-voice-access{align-items:stretch;flex-direction:column}.discovery-voice-purchase{width:100%;min-height:44px}}
