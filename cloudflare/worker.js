@@ -1606,10 +1606,12 @@ async function publishTrack(request, env, db, user) {
   const paletteSeed = track.id || track.audioUrl || id
   const coverPalette = existing.data?.coverPalette || palettes[(index + (String(paletteSeed).length % palettes.length)) % palettes.length]
   const imageUrl = track.imageUrl || track.image_url || track.sourceImageUrl || track.coverUrl || track.cover_url || existing.data?.imageUrl || ''
+  const creatorProfile = await db.get('users/' + uid)
+  const creatorName = String(creatorProfile.data?.displayName || '').trim().slice(0, 60) || 'Créateur Audinoo'
   await db.set('publishedTracks/' + id, {
     id, uid, taskId, trackIndex: index,
     title: track.title || snap.data.title || 'Création Audinoo',
-    imageUrl, coverPalette, genre,
+    creatorName, imageUrl, coverPalette, genre,
     duration: track.duration || track.durationSeconds || null,
     r2Key: publicKey, published: true,
     publishedAt: existing.data?.publishedAt || new Date(),
@@ -1659,12 +1661,15 @@ async function publicTracks(request, db, user = null) {
   ])
   const displayMode = settings.data?.displayMode === 'custom' ? 'custom' : 'real'
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true)
+  const legacyUids = [...new Set(tracks.filter(track => !String(track.creatorName || '').trim() && track.uid).map(track => String(track.uid)))]
+  const legacyProfiles = await Promise.all(legacyUids.map(uid => db.get('users/' + uid)))
+  const creatorNames = new Map(legacyUids.map((uid, index) => [uid, String(legacyProfiles[index].data?.displayName || '').trim().slice(0, 60) || 'Créateur Audinoo']))
   const liked = user ? await Promise.all(tracks.map(track => db.get('publishedTracks/' + track.id + '/likes/' + user.uid))) : []
   const enriched = tracks.map((track, index) => {
     const realLikes = Math.max(0, Number(track.likesCount || 0))
     const realPlays = Math.max(0, Number(track.playCount || 0))
     return {
-      id: track.id, title: track.title, imageUrl: track.imageUrl || '',
+      id: track.id, title: track.title, creatorName: String(track.creatorName || creatorNames.get(String(track.uid || '')) || 'Créateur Audinoo'), imageUrl: track.imageUrl || '',
       coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
       likesCount: displayMode === 'custom' ? Math.max(0, Number(track.customLikesCount ?? realLikes)) : realLikes,
       playCount: displayMode === 'custom' ? Math.max(0, Number(track.customPlayCount ?? realPlays)) : realPlays,
