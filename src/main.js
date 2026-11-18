@@ -2845,7 +2845,6 @@ function startAdminStatsListeners(uid) {
   let latestVisitors = null
   let latestGenerations = null
   let authUsersReady = false
-  let authUsersSyncTimer = null
   let authUsersSyncRunning = false
   const failedSources = new Set()
   const sourceLabels = { users: 'utilisateurs', visitors: 'visites', generations: 'générations' }
@@ -2855,7 +2854,7 @@ function startAdminStatsListeners(uid) {
     if (ready) {
       renderAdminStats(latestUsers, latestVisitors, latestGenerations)
       refreshAdminGrantCreditOptions()
-      adminStatsStatus.textContent = 'Données synchronisées en temps réel avec Firebase.'
+      adminStatsStatus.textContent = 'Données chargées depuis Firebase. Actualise la page pour les actualiser.'
       adminStatsStatus.dataset.state = 'ready'
     }
   }
@@ -2885,7 +2884,6 @@ function startAdminStatsListeners(uid) {
     }
   }
   void refreshAuthUsers()
-  authUsersSyncTimer = window.setInterval(refreshAuthUsers, 60000)
   const onError = (source) => (error) => {
     console.error(`[Audinoo admin] Could not load ${source} live data`, error)
     failedSources.add(source)
@@ -2895,65 +2893,65 @@ function startAdminStatsListeners(uid) {
     adminStatsStatus.textContent = `Accès refusé pour : ${[...failedSources].map((item) => sourceLabels[item]).join(', ')}. ${reason} Publie les règles Firestore de la branche test puis recharge l’administration.`
     adminStatsStatus.dataset.state = 'error'
   }
-  const stopUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+  void getDocs(collection(db, 'users')).then((snapshot) => {
     latestUsers = snapshot; failedSources.delete('users'); renderWhenReady()
-  }, onError('users'))
-  const stopVisitors = onSnapshot(collection(db, 'visitorSessions'), (snapshot) => {
+  }).catch(onError('users'))
+  void getDocs(collection(db, 'visitorSessions')).then((snapshot) => {
     latestVisitors = snapshot; failedSources.delete('visitors'); renderWhenReady()
-  }, onError('visitors'))
-  const stopGenerations = onSnapshot(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000)), (snapshot) => {
+  }).catch(onError('visitors'))
+  void getDocs(query(collectionGroup(db, 'generations'), orderBy('createdAt', 'desc'), limit(1000))).then((snapshot) => {
     latestGenerations = snapshot; failedSources.delete('generations'); renderWhenReady()
-  }, onError('generations'))
+  }).catch(onError('generations'))
   if (adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer)
   adminPresenceExpiryTimer = window.setInterval(renderAdminOnlineUsers, 5000)
-  const stopSongFeedback = onSnapshot(query(collection(db, 'songFeedback'), orderBy('createdAt', 'desc'), limit(500)), snapshot => {
+  void getDocs(query(collection(db, 'songFeedback'), orderBy('createdAt', 'desc'), limit(500))).then(snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminSongFeedback = snapshot.docs.map(item => ({id:item.id,...item.data()}))
     renderAdminSongFeedback()
     renderFeedbackInviteUsers()
-  }, error => {
+  }).catch(error => {
     console.error('[Audinoo admin] Could not load song feedback', error)
     const status = adminFeedbackSection.querySelector('#admin-feedback-status')
     if (status) status.textContent = 'Avis indisponibles : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
   })
-  const stopFeedbackResponses = onSnapshot(query(collection(db, 'feedbackResponses'), orderBy('createdAt', 'desc'), limit(500)), snapshot => {
+  void getDocs(query(collection(db, 'feedbackResponses'), orderBy('createdAt', 'desc'), limit(500))).then(snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminFeedbackResponses = snapshot.docs.map(item => ({id:item.id,...item.data()}))
     renderAdminSongFeedback()
-  }, error => {
+  }).catch(error => {
     console.error('[Audinoo admin] Could not load feedback responses', error)
     const status = adminFeedbackSection.querySelector('#admin-feedback-status')
     if (status) status.textContent = 'Suggestions indisponibles : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
   })
-  const stopActivitySessions = onSnapshot(query(collection(db, 'userActivitySessions'), orderBy('startedAt', 'desc'), limit(5000)), snapshot => {
+  void getDocs(query(collection(db, 'userActivitySessions'), orderBy('startedAt', 'desc'), limit(5000))).then(snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminActivitySessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
     renderAdminRetention()
-  }, error => {
+  }).catch(error => {
     console.error('[Audinoo admin] Could not load user activity sessions', error)
     const status = adminRetentionSection.querySelector('#admin-retention-status')
     if (status) status.textContent = 'Historique indisponible : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
   })
-  const stopPresence = onSnapshot(collection(db, 'presenceSessions'), snapshot => {
+  void getDocs(collection(db, 'presenceSessions')).then(snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminPresenceSessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
     renderAdminOnlineUsers()
-  }, error => {
+  }).catch(error => {
     console.error('[Audinoo admin] Could not load live presence',error)
     const status=adminOnlineSection.querySelector('#admin-online-status')
     if(status) status.textContent='Présence indisponible : '+exactErrorDetails(error)
   })
-  const stopAcquisitionEvents = onSnapshot(query(collection(db, 'acquisitionEvents'), orderBy('createdAt', 'desc'), limit(300)), (snapshot) => {
+  void getDocs(query(collection(db, 'acquisitionEvents'), orderBy('createdAt', 'desc'), limit(300))).then((snapshot) => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminAcquisitionEvents = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))
     renderAdminAcquisitionEvents()
     renderAdminAcquisition()
-  }, (error) => {
+  }).catch((error) => {
     console.error('[Audinoo admin] Could not load acquisition diagnostics', error)
     const status = adminWorkspacePage.querySelector('#admin-acquisition-events-status')
     if (status) status.textContent = error.code === 'permission-denied' ? 'Lecture refusée par Firestore : vérifie que les nouvelles règles acquisitionEvents sont publiées.' : 'Impossible de charger les diagnostics : ' + exactErrorDetails(error)
   })
-  stopAdminStatsListeners = () => { stopUsers(); stopVisitors(); stopGenerations(); stopAcquisitionEvents(); stopPresence(); stopActivitySessions(); stopSongFeedback(); stopFeedbackResponses(); latestAdminActivitySessions=[]; latestAdminSongFeedback=[]; latestAdminFeedbackResponses=[]; if (authUsersSyncTimer) window.clearInterval(authUsersSyncTimer); authUsersSyncTimer=null; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
+  stopAdminStatsListeners = () => { latestAdminActivitySessions=[]; latestAdminSongFeedback=[]; latestAdminFeedbackResponses=[]; latestAdminPresenceSessions=[]; if(adminPresenceExpiryTimer) window.clearInterval(adminPresenceExpiryTimer); adminPresenceExpiryTimer=null; renderAdminOnlineUsers() }
 }
 function getAcquisitionSource() {
   const params = new URLSearchParams(window.location.search)
