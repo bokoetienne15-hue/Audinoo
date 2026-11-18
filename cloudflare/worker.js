@@ -612,7 +612,9 @@ async function voiceStatus(request, env, db, user, url) {
         const createdAt = new Date().toISOString()
         const expiresAt = new Date(Date.now() + RETENTION_MS).toISOString()
         nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId })
-        tx.set(profileRef, { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId } }, true)
+        const nextProfile = { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId } }
+        if (profile.exists) tx.update(profileRef, nextProfile)
+        else tx.create(profileRef, nextProfile)
       })
       await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
     }
