@@ -1789,6 +1789,71 @@ export default {
       }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
     }
+    // Archive les clips terminés dans R2, même si l'utilisateur a quitté sa bibliothèque.
+    if (env.SUNOAPI_KEY) {
+      const videoRows = await db.runQuery({ from: [{ collectionId: 'videoTasks' }], limit: 1000 })
+      let checkedVideos = 0
+      for (const row of videoRows || []) {
+        if (checkedVideos >= 25 || !row.document?.name) break
+        const providerTaskId = row.document.name.split('/documents/videoTasks/')[1]
+        const videoTask = fromFields(row.document.fields || {})
+        if (!providerTaskId || videoTask.archived === true || videoTask.failed === true || !videoTask.uid || !videoTask.taskId) continue
+        checkedVideos++
+        const path = 'users/' + videoTask.uid + '/generations/' + videoTask.taskId
+        try {
+          const generation = await db.get(path)
+          const trackIndex = Number(videoTask.trackIndex)
+          const track = generation.data?.tracks?.[trackIndex]
+          if (!generation.exists || !track) {
+            await db.set('videoTasks/' + providerTaskId, { failed: true, finishedAt: SERVER_TIMESTAMP }, true)
+            continue
+          }
+          if (track.videoKey) {
+            await db.set('videoTasks/' + providerTaskId, { archived: true, archivedAt: SERVER_TIMESTAMP }, true)
+            continue
+          }
+          let videoUrl = String(track.videoSourceUrl || '')
+          let state = String(track.videoStatus || 'PENDING').toUpperCase()
+          if (!videoUrl || state === 'PENDING') {
+            const statusResponse = await fetch(SUNO_VIDEO_STATUS_URL + '?taskId=' + encodeURIComponent(providerTaskId), {
+              headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' },
+              signal: AbortSignal.timeout(15000)
+            })
+            const payload = await statusResponse.json().catch(() => ({}))
+            if (!statusResponse.ok || payload.code !== 200) continue
+            const data = payload.data || {}
+            state = String(data.response?.successFlag || data.successFlag || data.status || 'PENDING').toUpperCase()
+            videoUrl = String(data.response?.videoUrl || data.response?.video_url || data.videoUrl || data.video_url || videoUrl)
+          }
+          if (state === 'SUCCESS' && videoUrl) {
+            const remote = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) })
+            const contentType = remote.headers.get('content-type') || 'video/mp4'
+            if (!remote.ok || !remote.body || !(contentType.toLowerCase().includes('video') || contentType.toLowerCase().includes('octet-stream'))) continue
+            const videoKey = 'private/' + videoTask.uid + '/' + videoTask.taskId + '/' + trackIndex + '.video.mp4'
+            await env.AUDIO_BUCKET.put(videoKey, remote.body, { httpMetadata: { contentType: 'video/mp4', cacheControl: 'private, no-store' }, customMetadata: { uid: videoTask.uid, taskId: videoTask.taskId, trackIndex: String(trackIndex) } })
+            const latest = await db.get(path)
+            const tracks = Array.isArray(latest.data?.tracks) ? [...latest.data.tracks] : []
+            if (tracks[trackIndex]) {
+              tracks[trackIndex] = { ...tracks[trackIndex], videoKey, videoStatus: 'SUCCESS', videoArchivedAt: new Date().toISOString(), videoSourceUrl: '' }
+              await db.set(path, { tracks }, true)
+              await db.set('videoTasks/' + providerTaskId, { archived: true, archivedAt: SERVER_TIMESTAMP }, true)
+            }
+          } else if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') {
+            await refundFailedVideo(db, videoTask.uid, path, trackIndex, providerTaskId, 'La génération vidéo a échoué.')
+            await db.set('videoTasks/' + providerTaskId, { failed: true, finishedAt: SERVER_TIMESTAMP }, true)
+          } else if (videoUrl) {
+            const latest = await db.get(path)
+            const tracks = Array.isArray(latest.data?.tracks) ? [...latest.data.tracks] : []
+            if (tracks[trackIndex]) {
+              tracks[trackIndex] = { ...tracks[trackIndex], videoStatus: state, videoSourceUrl: videoUrl }
+              await db.set(path, { tracks }, true)
+            }
+          }
+        } catch (error) {
+          console.warn('[Audinoo scheduled video archive]', providerTaskId, error)
+        }
+      }
+    }
     // Expired custom voices are hidden by accountPlan but retained for paid reactivation.
   },
   async fetch(request, env) {
