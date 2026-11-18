@@ -2840,7 +2840,7 @@ function startAdminStatsListeners(uid) {
   }).catch((error) => {
     console.warn('[Audinoo admin] Could not load acquisition reset date', error)
   })
-  adminStatsStatus.textContent = 'Chargement des statistiques en direct…'
+  adminStatsStatus.textContent = 'Chargement des statistiques…'
   let latestUsers = null
   let latestVisitors = null
   let latestGenerations = null
@@ -2885,7 +2885,7 @@ function startAdminStatsListeners(uid) {
   }
   void refreshAuthUsers()
   const onError = (source) => (error) => {
-    console.error(`[Audinoo admin] Could not load ${source} live data`, error)
+    console.error(`[Audinoo admin] Could not load ${source} data`, error)
     failedSources.add(source)
     const reason = error.code === 'permission-denied'
       ? 'Les règles Firestore actuellement publiées refusent cette lecture.'
@@ -2932,7 +2932,7 @@ function startAdminStatsListeners(uid) {
     const status = adminRetentionSection.querySelector('#admin-retention-status')
     if (status) status.textContent = 'Historique indisponible : ' + exactErrorDetails(error) + ' Vérifie les règles Firestore publiées.'
   })
-  void getDocs(collection(db, 'presenceSessions')).then(snapshot => {
+  void getDocs(query(collection(db, 'presenceSessions'), where('online', '==', true))).then(snapshot => {
     if (auth.currentUser?.uid !== uid || verifiedAdminUid !== uid) return
     latestAdminPresenceSessions = snapshot.docs.map(item => ({id:item.id,...item.data()}))
     renderAdminOnlineUsers()
