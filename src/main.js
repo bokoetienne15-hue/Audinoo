@@ -3243,6 +3243,12 @@ const discoveryVoiceAdd = document.querySelector('#discovery-voice-add')
 const discoveryVoiceCreation = document.querySelector('#discovery-voice-creation')
 const discoveryVoicePurchase = document.querySelector('#discovery-voice-purchase')
 const discoveryVoiceAccessStatus = document.querySelector('#discovery-voice-access-status')
+const discoveryVoiceReactivate = document.createElement('button')
+discoveryVoiceReactivate.type = 'button'
+discoveryVoiceReactivate.className = discoveryVoicePurchase?.className || 'discovery-voice-purchase'
+discoveryVoiceReactivate.textContent = 'Réactiver mes 2 voix · 500 FCFA'
+discoveryVoiceReactivate.hidden = true
+discoveryVoicePurchase?.insertAdjacentElement('afterend', discoveryVoiceReactivate)
 let discoveryVoiceProfiles = []
 let discoverySelectedVoiceId = ''
 let discoveryVoiceSlotsRemaining = 0
@@ -3372,15 +3378,20 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     discoveryVoiceProfiles = Array.isArray(plan.voiceProfiles) ? plan.voiceProfiles : []
     discoverySelectedVoiceId = plan.selectedVoiceId || discoveryVoiceProfiles[0]?.voiceId || ''
     discoveryVoiceSlotsRemaining = Math.max(0, Number(plan.voiceSlotsRemaining || 0))
+    discoveryVoiceReactivate.hidden = plan.voiceReactivationAvailable !== true
+    if (plan.voiceReactivationAvailable === true) discoveryVoiceReactivate.textContent = 'Réactiver mes 2 voix · 500 FCFA'
     renderDiscoveryVoiceLibrary()
     if (discoveryVoiceAccessStatus) {
       discoveryVoiceAccessStatus.textContent = discoveryVoiceSlotsRemaining > 0
         ? 'Il te reste ' + discoveryVoiceSlotsRemaining + ' emplacement(s) pour créer une voix. Chaque pack donne 2 voix pendant 30 jours.'
+        : plan.voiceReactivationAvailable === true
+        ? 'Tes anciennes voix ont expiré. Tu peux les réactiver toutes les deux pour 500 FCFA pendant 30 jours.'
         : 'Tu as utilisé tes emplacements ou ton accès a expiré. Achète un nouveau pack pour configurer deux autres voix.'
     }
     if (discoveryVoicePurchase) discoveryVoicePurchase.textContent = 'Acheter 2 voix supplémentaires · 1 000 FCFA'
     if (isAdmin) renderAdminDiscoveryPanel(plan)
     if (discoveryVoiceProfiles.length) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
+    else if (plan.voiceReactivationAvailable === true) discoveryVoiceStatus.textContent = 'Tes deux voix précédentes sont conservées. Réactive-les pour 500 FCFA et retrouve-les pendant 30 jours.'
   } catch (error) {
     console.warn('[Audinoo discovery plan]', error)
     workspace.classList.remove('is-discovery-active')
@@ -3415,6 +3426,25 @@ discoveryVoicePurchase?.addEventListener('click', async () => {
     discoveryVoiceStatus.textContent = 'Impossible de préparer le paiement : ' + generationErrorMessage(error.message)
     discoveryVoicePurchase.textContent = original
     discoveryVoicePurchase.disabled = false
+  }
+})
+discoveryVoiceReactivate.addEventListener('click', async () => {
+  if (!auth.currentUser) {
+    discoveryVoiceStatus.textContent = 'Connecte-toi pour réactiver tes voix.'
+    return
+  }
+  const original = discoveryVoiceReactivate.textContent
+  discoveryVoiceReactivate.disabled = true
+  discoveryVoiceReactivate.textContent = 'Préparation du paiement…'
+  try {
+    const checkout = await callAudinooApi('/api/voice/reactivate', { method: 'POST', body: JSON.stringify({}) })
+    if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+    if (checkout.transactionId) sessionStorage.setItem('audinooPendingVoiceReactivationTransaction', String(checkout.transactionId))
+    window.location.assign(checkout.checkoutUrl)
+  } catch (error) {
+    discoveryVoiceStatus.textContent = 'Impossible de préparer la réactivation : ' + generationErrorMessage(error.message)
+    discoveryVoiceReactivate.textContent = original
+    discoveryVoiceReactivate.disabled = false
   }
 })
 function setDiscoveryVoiceStep(step) {
@@ -4641,6 +4671,48 @@ function libraryGenerationDateLabel(value) {
   return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
 }
 
+async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
+  if (button.disabled) return
+  const original = button.textContent
+  button.disabled = true
+  button.textContent = track.videoTaskId ? 'Vérification du clip…' : 'Préparation du clip…'
+  try {
+    if (!track.videoTaskId && !track.videoUrl) {
+      const created = await callAudinooApi('/api/video/create', { method: 'POST', body: JSON.stringify({ taskId, trackIndex }) })
+      track.videoTaskId = created.videoTaskId || track.videoTaskId
+      if (created.status === 'SUCCESS' && created.videoUrl) {
+        await loadUserLibrary()
+        return
+      }
+    }
+    button.textContent = 'Vidéo en cours…'
+    let result = null
+    for (let attempt = 0; attempt < 40; attempt++) {
+      result = await callAudinooApi('/api/video/status?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex)
+      if (result.completed && result.videoUrl) {
+        toast.textContent = 'Ton clip est prêt et enregistré dans ta bibliothèque. Tu peux le télécharger.'
+        toast.classList.add('show')
+        window.setTimeout(() => toast.classList.remove('show'), 4000)
+        await loadUserLibrary()
+        return
+      }
+      if (result.failed) throw new Error('video-generation-failed')
+      if (attempt < 39) await new Promise(resolve => window.setTimeout(resolve, 30000))
+    }
+    button.textContent = 'Vérifier le clip'
+    button.disabled = false
+    toast.textContent = 'Ton clip est toujours en préparation. Tu peux revenir vérifier son état dans ta bibliothèque.'
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 5000)
+  } catch (error) {
+    button.textContent = original || 'Réessayer'
+    button.disabled = false
+    toast.textContent = generationErrorMessage(error.message)
+    toast.classList.add('show')
+    window.setTimeout(() => toast.classList.remove('show'), 5000)
+  }
+}
+
 function renderLibraryGeneration(generation) {
   const taskId = String(generation.taskId || '')
   if (!taskId) return
@@ -4742,16 +4814,31 @@ function renderLibraryGeneration(generation) {
       const variant = document.createElement('small')
       variant.textContent = 'Version ' + (index + 1)
       info.append(title, variant)
-      const action = document.createElement('button')
-      action.type = 'button'
-      action.className = 'library-video-get-button'
-      action.textContent = 'Obtenir la vidéo'
-      action.addEventListener('click', () => {
-        toast.textContent = 'La création des clips vidéo sera bientôt disponible.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 3200)
-      })
-      card.append(cover, info, action)
+      if (track.videoUrl) {
+        const preview = document.createElement('video')
+        preview.className = 'library-video-preview'
+        preview.src = track.videoUrl
+        preview.controls = true
+        preview.preload = 'metadata'
+        preview.playsInline = true
+        preview.setAttribute('aria-label', 'Clip vidéo de ' + title.textContent)
+        card.append(cover, info, preview)
+        const action = document.createElement('button')
+        action.type = 'button'
+        action.className = 'library-video-get-button'
+        action.textContent = 'Télécharger la vidéo'
+        action.addEventListener('click', () => {
+          window.location.assign(track.videoUrl + '&download=1')
+        })
+        card.append(action)
+      } else {
+        const action = document.createElement('button')
+        action.type = 'button'
+        action.className = 'library-video-get-button'
+        action.textContent = track.videoTaskId ? 'Vérifier le clip' : 'Créer le clip · 1 crédit'
+        action.addEventListener('click', () => { void createOrCheckLibraryVideo(taskId, index, track, action) })
+        card.append(cover, info, action)
+      }
       videoEntry.append(card)
     })
     const videoDateHeading = videoGroup.querySelector(':scope > .library-generation-date')
@@ -4799,6 +4886,15 @@ function generationErrorMessage(errorCode) {
     'no-free-credit': 'Votre solde est insuffisant pour créer ce morceau.',
     'voice-pack-required': 'Tu as utilisé tes deux emplacements de voix. Achète un nouveau pack à 1 000 FCFA pour en ajouter deux autres.',
     'voice-pack-expired': 'La période de 30 jours de ton pack de voix est terminée. Achète un nouveau pack pour continuer.',
+    'voice-reactivation-unavailable': 'Aucune ancienne voix ne peut être réactivée pour le moment.',
+    'video-credit-required': 'Il te faut un crédit acheté de 300 FCFA pour créer un clip vidéo.',
+    'video-provider-credit-limit': 'Le service vidéo est momentanément à court de crédits. Réessaie plus tard ; ton crédit Audinoo a été restitué.',
+    'video-generation-running': 'La création de ce clip est déjà en cours.',
+    'video-source-not-ready': 'Cette chanson n’est pas encore prête pour créer une vidéo.',
+    'video-provider-unavailable': 'Le service vidéo est momentanément indisponible. Ton crédit a été restitué.',
+    'video-provider-rejected-request': 'Le fournisseur n’a pas accepté la création du clip. Ton crédit a été restitué.',
+    'video-status-unavailable': 'Impossible de vérifier le clip pour le moment.',
+    'video-archive-failed': 'Le clip est prêt mais son archivage a échoué. Réessaie dans quelques instants.',
     'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur le serveur de paiement. Réessaie après activation de FedaPay.',
     'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
     'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
@@ -4913,7 +5009,7 @@ async function pollGeneration(taskId, card) {
 
 const paymentReturnParams = new URLSearchParams(window.location.search)
 const paymentReturnType = paymentReturnParams.get('payment_return')
-const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id') || (paymentReturnType === 'credits' ? sessionStorage.getItem('audinooPendingCreditTransaction') : paymentReturnType === 'track' ? sessionStorage.getItem('audinooPendingTrackTransaction') : paymentReturnType === 'voice' ? sessionStorage.getItem('audinooPendingVoiceTransaction') : '')
+const returnedPaymentId = paymentReturnParams.get('transaction_id') || paymentReturnParams.get('id') || (paymentReturnType === 'credits' ? sessionStorage.getItem('audinooPendingCreditTransaction') : paymentReturnType === 'track' ? sessionStorage.getItem('audinooPendingTrackTransaction') : paymentReturnType === 'voice' ? sessionStorage.getItem('audinooPendingVoiceTransaction') : paymentReturnType === 'voice_reactivation' ? sessionStorage.getItem('audinooPendingVoiceReactivationTransaction') : '')
 if (paymentReturnType === 'credits') {
   const verificationScreen = document.createElement('main')
   verificationScreen.className = 'payment-verification-screen'
@@ -5063,7 +5159,8 @@ if (paymentReturnType === 'credits') {
       returnButton.hidden = false
     }
   })()
-} else if (paymentReturnType === 'voice') {
+} else if (paymentReturnType === 'voice' || paymentReturnType === 'voice_reactivation') {
+  const isVoiceReactivationPayment = paymentReturnType === 'voice_reactivation'
   const verificationScreen = document.createElement('main')
   verificationScreen.className = 'payment-verification-screen is-pending'
   verificationScreen.setAttribute('role', 'status')
@@ -5074,6 +5171,10 @@ if (paymentReturnType === 'credits') {
   const spinner = verificationScreen.querySelector('.payment-verification-spinner')
   const returnButton = verificationScreen.querySelector('.payment-verification-return')
   const transactionId = returnedPaymentId
+  if (isVoiceReactivationPayment) {
+    verificationScreen.querySelector('h1').textContent = 'Réactivation de tes voix'
+    message.textContent = 'Nous confirmons ton paiement de 500 FCFA pour réactiver tes deux anciennes voix pendant 30 jours.'
+  }
   if (transactionId) verificationScreen.querySelector('.payment-verification-reference').textContent = 'Référence : ' + transactionId
   returnButton.addEventListener('click', async () => {
     verificationScreen.remove()
@@ -5089,24 +5190,24 @@ if (paymentReturnType === 'credits') {
       if (!auth.currentUser || !transactionId) throw new Error('payment-reference-missing')
       let result = null
       for (let attempt = 0; attempt < 30; attempt++) {
-        result = await callAudinooApi('/api/voice/confirm?transaction_id=' + encodeURIComponent(transactionId))
-        if (result.purchased || result.failed) break
+        result = await callAudinooApi((isVoiceReactivationPayment ? '/api/voice/reactivate-confirm' : '/api/voice/confirm') + '?transaction_id=' + encodeURIComponent(transactionId))
+        if (result.purchased || result.reactivated || result.failed) break
         if (attempt < 29) await new Promise(resolve => window.setTimeout(resolve, 1000))
       }
       spinner.hidden = true
-      if (result?.purchased) {
-        sessionStorage.removeItem('audinooPendingVoiceTransaction')
+      if (result?.purchased || result?.reactivated) {
+        sessionStorage.removeItem(isVoiceReactivationPayment ? 'audinooPendingVoiceReactivationTransaction' : 'audinooPendingVoiceTransaction')
         verificationScreen.classList.remove('is-pending')
         verificationScreen.classList.add('is-success')
-        verificationScreen.querySelector('h1').textContent = 'Pack de voix activé'
-        message.textContent = 'Paiement confirmé ! Tu peux maintenant configurer deux voix personnalisées pendant 30 jours.'
+        verificationScreen.querySelector('h1').textContent = isVoiceReactivationPayment ? 'Voix réactivées' : 'Pack de voix activé'
+        message.textContent = isVoiceReactivationPayment ? 'Paiement confirmé ! Tes deux anciennes voix sont de nouveau accessibles pendant 30 jours.' : 'Paiement confirmé ! Tu peux maintenant configurer deux voix personnalisées pendant 30 jours.'
         await refreshDiscoveryPlan(auth.currentUser.uid)
       } else if (result?.failed) {
         verificationScreen.classList.add('is-error')
         verificationScreen.querySelector('h1').textContent = 'Paiement échoué'
-        message.textContent = 'Aucun emplacement de voix n’a été ajouté. Tu peux réessayer depuis Ma voix.'
+        message.textContent = isVoiceReactivationPayment ? 'Aucune voix n’a été réactivée. Tu peux réessayer depuis Ma voix.' : 'Aucun emplacement de voix n’a été ajouté. Tu peux réessayer depuis Ma voix.'
       } else {
-        message.textContent = 'Le paiement est toujours en attente. Tes deux emplacements seront ajoutés dès confirmation FedaPay.'
+        message.textContent = isVoiceReactivationPayment ? 'Le paiement est toujours en attente. Tes anciennes voix seront réactivées dès confirmation FedaPay.' : 'Le paiement est toujours en attente. Tes deux emplacements seront ajoutés dès confirmation FedaPay.'
       }
       returnButton.hidden = false
     } catch (error) {
