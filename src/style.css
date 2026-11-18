@@ -3812,3 +3812,59 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   .discovery-voice-welcome { margin: 14px auto; padding: 26px 19px; border-radius: 18px; }
   .discovery-voice-welcome p:not(.workspace-kicker) { font-size: 13px; }
 }
+
+/* Carte illustrée de lancement de la fonctionnalité Ma voix */
+.discovery-voice-welcome-art {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 18px;
+  border-radius: 17px;
+  background: #29163f;
+}
+.discovery-voice-welcome-art svg { display: block; width: 100%; height: auto; }
+.discovery-voice-welcome-art-label {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: rgba(255,255,255,.88);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
+.discovery-voice-welcome-badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 17px;
+}
+.discovery-voice-welcome-badges span {
+  padding: 6px 9px;
+  border: 1px solid rgba(211,166,244,.25);
+  border-radius: 999px;
+  color: #e8c9ff;
+  background: rgba(154,91,195,.13);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .07em;
+}
+.discovery-voice-welcome-price {
+  margin: 0 0 13px !important;
+  color: #f0d9ff !important;
+  font-size: 13px !important;
+  font-weight: 750;
+}
+.discovery-voice-welcome-note {
+  display: block;
+  margin-top: 11px;
+  color: #a99bb8;
+  font-size: 10px;
+}
+.discovery-voice-welcome-button { max-width: 100%; }
+@media (max-width: 600px) {
+  .discovery-voice-welcome-art { border-radius: 13px; }
+  .discovery-voice-welcome-art-label { font-size: 7px; }
+  .discovery-voice-welcome-button { width: 100%; padding-inline: 12px; font-size: 13px; }
+}
