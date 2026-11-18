@@ -3406,7 +3406,6 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
         : 'Tu as utilisé tes emplacements ou ton accès a expiré. Achète un nouveau pack pour configurer deux autres voix.'
     }
     if (discoveryVoicePurchase) discoveryVoicePurchase.textContent = 'Acheter 2 voix supplémentaires · 1 000 FCFA'
-    if (isAdmin) 
     if (discoveryVoiceProfiles.length) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
     else if (plan.voiceReactivationAvailable === true) discoveryVoiceStatus.textContent = 'Tes deux voix précédentes sont conservées. Réactive-les pour 500 FCFA et retrouve-les pendant 30 jours.'
   } catch (error) {
@@ -3414,7 +3413,6 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspace.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
-    if (isAdmin) 
   } finally {
     workspace.classList.remove('is-plan-checking')
   }
