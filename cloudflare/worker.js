@@ -1054,15 +1054,22 @@ async function generate(request, env, db, user) {
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true,  })
 }
 async function releaseVideoCredit(db, uid, lockPath) {
-  const profileRef = db.doc('users/' + uid), lockRef = db.doc(lockPath)
+  const profileRef = db.doc('users/' + uid), lockRef = db.doc(lockPath), policyRef = db.doc('settings/credits')
   await db.runTransaction(async tx => {
-    const [profile, lock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)])
+    const [profile, lock, policy] = await Promise.all([tx.get(profileRef), tx.get(lockRef), tx.get(policyRef)])
     if (!lock.exists || lock.data().uid !== uid) return
-    if (profile.exists) tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    const creditType = String(lock.data().creditType || 'paid')
+    if (creditType === 'paid' && profile.exists) tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'discovery' && profile.exists) {
+      const plan = profile.data().discoverySubscription || {}
+      if (isDiscoverySubscriptionActive(plan)) tx.update(profileRef, { discoveryCredits: Math.max(0, Number(profile.data().discoveryCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    }
+    if (creditType === 'free' && policy.exists && policy.data().freeGenerationCampaignId === lock.data().campaignId) {
+      tx.update(policyRef, { freeGenerationReservations: Math.max(0, Number(policy.data().freeGenerationReservations || 0) - 1) })
+    }
     tx.delete(lockRef)
   })
-}
-async function createVideoForTrack(request, env, db, user) {
+}async function createVideoForTrack(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
   if (!env.AUDIO_BUCKET) return response(503, { error: 'video-storage-not-configured' })
@@ -1072,10 +1079,12 @@ async function createVideoForTrack(request, env, db, user) {
   const path = 'users/' + user.uid + '/generations/' + taskId
   const profileRef = db.doc('users/' + user.uid), generationRef = db.doc(path)
   const lockPath = 'videoGenerationLocks/' + user.uid + '_' + taskId + '_' + trackIndex, lockRef = db.doc(lockPath)
+  const policyRef = db.doc('settings/credits')
+  await ensureFreeGenerationCounter(db)
   let existingVideoTaskId = '', sourceTrack = null, alreadyArchived = false
   try {
     await db.runTransaction(async tx => {
-      const [profile, generation, lock] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(lockRef)])
+      const [profile, generation, lock, policy] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(lockRef), tx.get(policyRef)])
       if (!profile.exists || !generation.exists) throw new Error('generation-not-found')
       const tracks = Array.isArray(generation.data().tracks) ? generation.data().tracks : []
       sourceTrack = tracks[trackIndex] || null
@@ -1089,10 +1098,21 @@ async function createVideoForTrack(request, env, db, user) {
         retryTracks[trackIndex] = sourceTrack
         tx.update(generationRef, { tracks: retryTracks })
       }
-      const balance = Math.max(0, Math.floor(Number(profile.data().paidCredits || 0)))
-      if (balance < 1) throw new Error('video-credit-required')
-      tx.update(profileRef, { paidCredits: balance - 1, updatedAt: SERVER_TIMESTAMP })
-      tx.create(lockRef, { uid: user.uid, taskId, trackIndex, createdAt: SERVER_TIMESTAMP })
+      const data = profile.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID, freeGenerationCount: 0, freeGenerationReservations: 0, freeGenerationCampaignId: FREE_CREDIT_CAMPAIGN_ID }
+      const campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
+      const sameCampaign = rules.freeGenerationCampaignId === rules.activeCampaignId
+      const freeCount = sameCampaign ? Math.max(0, Number(rules.freeGenerationCount || 0)) : 0
+      const reservations = sameCampaign ? Math.max(0, Number(rules.freeGenerationReservations || 0)) : 0
+      const hasFreeCredit = Boolean(rules.enabled && freeCount + reservations < FREE_GENERATION_LIMIT && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const discoveryActive = isDiscoverySubscriptionActive(data.discoverySubscription || {})
+      const hasDiscoveryCredit = discoveryActive && Number(data.discoveryCredits || 0) > 0
+      const hasPaidCredit = Number(data.paidCredits || 0) > 0
+      const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : hasPaidCredit ? 'paid' : ''
+      if (!creditType) throw new Error('video-credit-required')
+      if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
+      if (creditType === 'discovery') tx.update(profileRef, { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
+      if (creditType === 'paid') tx.update(profileRef, { paidCredits: Math.max(0, Number(data.paidCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
+      tx.create(lockRef, { uid: user.uid, taskId, trackIndex, creditType, campaignId: creditType === 'free' ? campaign : null, createdAt: SERVER_TIMESTAMP })
     })
   } catch (error) {
     const mapped = { 'generation-not-found':[404,'generation-not-found'], 'video-source-not-ready':[409,'video-source-not-ready'], 'video-generation-running':[409,'video-generation-running'], 'video-credit-required':[402,'video-credit-required'] }[error.message]
@@ -1121,10 +1141,19 @@ async function createVideoForTrack(request, env, db, user) {
   }
   const videoTaskId = String(payload.data.taskId)
   await db.runTransaction(async tx => {
-    const [generation, lock] = await Promise.all([tx.get(generationRef), tx.get(lockRef)])
-    if (!generation.exists || !lock.exists) throw new Error('video-generation-reservation-lost')
+    const [generation, lock, profile, policy] = await Promise.all([tx.get(generationRef), tx.get(lockRef), tx.get(profileRef), tx.get(policyRef)])
+    if (!generation.exists || !lock.exists || !profile.exists) throw new Error('video-generation-reservation-lost')
+    if (lock.data().creditType === 'free') {
+      const rules = policy.exists ? policy.data() : {}
+      if (rules.freeGenerationCampaignId === lock.data().campaignId) {
+        const freeGenerationCount = Math.min(FREE_GENERATION_LIMIT, Math.max(0, Number(rules.freeGenerationCount || 0)) + 1)
+        const freeGenerationReservations = Math.max(0, Number(rules.freeGenerationReservations || 0) - 1)
+        tx.update(policyRef, { freeGenerationCount, freeGenerationReservations, ...(freeGenerationCount >= FREE_GENERATION_LIMIT ? { enabled: false, activeCampaignId: null, freeOfferExhausted: true, freeOfferDisabledAt: SERVER_TIMESTAMP } : {}) })
+      }
+      tx.update(profileRef, { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP, updatedAt: SERVER_TIMESTAMP })
+    }
     const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
-    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString(), videoCreditRefunded: false }
+    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString(), videoCreditRefunded: false, videoCreditType: lock.data().creditType, videoCampaignId: lock.data().campaignId || null }
     tx.update(generationRef, { tracks })
     tx.create(db.doc('videoTasks/' + videoTaskId), { uid: user.uid, taskId, trackIndex, createdAt: SERVER_TIMESTAMP })
     tx.delete(lockRef)
@@ -1132,15 +1161,24 @@ async function createVideoForTrack(request, env, db, user) {
   return response(202, { status: 'PENDING', videoTaskId })
 }
 async function refundFailedVideo(db, uid, path, trackIndex, providerTaskId, message) {
-  const profileRef = db.doc('users/' + uid), generationRef = db.doc(path)
+  const profileRef = db.doc('users/' + uid), generationRef = db.doc(path), policyRef = db.doc('settings/credits')
   await db.runTransaction(async tx => {
-    const [profile, generation] = await Promise.all([tx.get(profileRef), tx.get(generationRef)])
+    const [profile, generation, policy] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(policyRef)])
     if (!profile.exists || !generation.exists) return
     const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
     const track = tracks[trackIndex]
     if (!track || String(track.videoTaskId || '') !== String(providerTaskId) || track.videoCreditRefunded === true) return
+    const creditType = String(track.videoCreditType || 'paid')
+    if (creditType === 'paid') tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'discovery' && isDiscoverySubscriptionActive(profile.data().discoverySubscription || {})) tx.update(profileRef, { discoveryCredits: Math.max(0, Number(profile.data().discoveryCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'free') {
+      tx.update(profileRef, { freeCreditUsed: false, freeCreditUsedAt: null, updatedAt: SERVER_TIMESTAMP })
+      if (policy.exists && policy.data().freeGenerationCampaignId === track.videoCampaignId) {
+        const count = Math.max(0, Number(policy.data().freeGenerationCount || 0) - 1)
+        tx.update(policyRef, { freeGenerationCount: count, enabled: count < FREE_GENERATION_LIMIT, activeCampaignId: count < FREE_GENERATION_LIMIT ? track.videoCampaignId : null, freeOfferExhausted: count >= FREE_GENERATION_LIMIT })
+      }
+    }
     tracks[trackIndex] = { ...track, lastVideoTaskId: providerTaskId, videoTaskId: '', videoStatus: 'FAILED', videoError: String(message || 'La génération vidéo a échoué.'), videoCreditRefunded: true }
-    tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
     tx.update(generationRef, { tracks })
   })
 }
