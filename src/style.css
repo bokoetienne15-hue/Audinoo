@@ -3673,3 +3673,40 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   cursor: wait;
   opacity: .7;
 }
+
+
+/* Mobile studio: keep the free/paid credit balance in its proper place. */
+@media (max-width: 760px) {
+  .workspace-mobile-credit {
+    position: sticky;
+    top: 80px;
+    z-index: 7;
+    margin: 0 0 20px;
+    flex-wrap: nowrap;
+    gap: 9px;
+    padding: 10px 11px;
+    background: rgba(24, 16, 39, .97);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(14px);
+  }
+  .workspace-mobile-credit-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .workspace-mobile-credit-info > span {
+    font-size: 9px;
+  }
+  .workspace-mobile-credit strong {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .workspace-mobile-credit small {
+    font-size: 9px;
+  }
+  .workspace-mobile-credit .workspace-upgrade-button {
+    max-width: 118px;
+    white-space: nowrap;
+    font-size: 9px;
+    padding: 9px 8px;
+  }
+}
