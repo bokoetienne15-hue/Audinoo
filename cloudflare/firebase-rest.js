@@ -33,7 +33,18 @@ export async function verifyFirebaseToken(token, env) {
   const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - parts[2].length % 4) % 4)), c => c.charCodeAt(0)), new TextEncoder().encode(parts[0] + '.' + parts[1]))
   if (!valid) throw new Error('invalid-token')
   const lookup = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${env.FIREBASE_WEB_API_KEY || FIREBASE_API_KEY}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ idToken: token }) })
-  if (!lookup.ok) throw new Error('invalid-token')
+  if (!lookup.ok) {
+    const lookupBody = await lookup.json().catch(() => ({}))
+    const lookupError = lookupBody.error || {}
+    if (lookup.status === 429 || lookupError.status === 'RESOURCE_EXHAUSTED' || /quota exceeded|resource exhausted/i.test(String(lookupError.message || ''))) {
+      const error = new Error('firebase-quota-exceeded')
+      error.status = 429
+      error.service = 'firebase-auth'
+      error.firebaseStatus = lookupError.status || ''
+      throw error
+    }
+    throw new Error('invalid-token')
+  }
   const account = (await lookup.json()).users?.[0]
   if (!account || account.localId !== claims.sub || account.disabled === true) throw new Error('invalid-token')
   if (account.validSince && Number(account.validSince) > Number(claims.auth_time)) throw new Error('invalid-token')
