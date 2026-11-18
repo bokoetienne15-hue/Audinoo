@@ -1492,9 +1492,10 @@ export default {
         const rawDetails = String(e?.message || 'firestore-library-query-failed').slice(0, 200)
         const details = [e?.firestoreStatus, rawDetails].filter(Boolean).join(' · ')
         const isQuota = status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(details)
+        const quotaService = e?.service === 'firebase-auth' ? 'firebase-auth' : 'firestore'
         return response(isQuota ? 429 : status, {
-          error: isQuota ? 'firestore-quota-exceeded' : 'library-load-failed',
-          service: 'firestore',
+          error: isQuota ? (quotaService === 'firebase-auth' ? 'firebase-quota-exceeded' : 'firestore-quota-exceeded') : 'library-load-failed',
+          service: quotaService,
           details,
           upstreamCode: e?.code || status,
           upstreamStatusText: e?.firestoreStatus || '',
