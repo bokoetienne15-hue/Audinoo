@@ -1429,6 +1429,12 @@ function renderAdminNotificationRecipients() {
   })
   if ([...adminNotificationRecipient.options].some(option => option.value === selected)) adminNotificationRecipient.value = selected
 }
+adminNotificationRecipient.addEventListener('change', () => {
+  const button = adminNotificationForm.querySelector('button[type="submit"]')
+  if (button) button.innerHTML = adminNotificationRecipient.value
+    ? 'Envoyer à cet utilisateur <span aria-hidden="true">→</span>'
+    : 'Publier à tous les utilisateurs <span aria-hidden="true">→</span>'
+})
 const adminStatsStatus = adminWorkspacePage.querySelector('#admin-stats-status')
 const workspaceFreeCreditCount = document.querySelector('#workspace-free-credit-count')
 const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credit-caption')
@@ -6854,6 +6860,11 @@ onAuthStateChanged(auth, async (user) => {
     stopUserActivityTracking()
     stopAdminStatsListeners?.()
     stopAdminStatsListeners = null
+    stopAdminNotificationListener?.()
+    stopAdminNotificationReadListener?.()
+    stopAdminNotificationListener = null
+    stopAdminNotificationReadListener = null
+    adminNotificationReadItems = []
     startNotificationListeners(null)
     stopFreeCreditPolicyListener?.()
     stopFreeCreditPolicyListener = null
