@@ -1444,8 +1444,10 @@ const workspaceFreeCreditCount = document.querySelector('#workspace-free-credit-
 const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credit-caption')
 const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
-workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span id="workspace-mobile-credit-plan">Plan standard</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div><button class="workspace-upgrade-button" id="workspace-mobile-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button>'
-// Le résumé mobile est conservé hors du Studio : le solde principal est dans l’en-tête du compte.
+workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span id="workspace-mobile-credit-plan">Plan standard</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">0 gratuit · 0 payant</small></div><button class="workspace-upgrade-button" id="workspace-mobile-upgrade-button" type="button">Acheter des crédits <span aria-hidden="true">→</span></button>'
+// Sur mobile, le solde reste visible en haut du Studio, juste avant les outils de création.
+const studioMobileCreditAnchor = document.querySelector('.workspace-layout > .workspace-content .workspace-intro')
+if (studioMobileCreditAnchor) studioMobileCreditAnchor.insertAdjacentElement('afterend', workspaceMobileCredit)
 const communityNotice = document.querySelector('#community-listen-notice')
 const syncCommunityNoticePlacement = () => {
   if (!communityNotice) return
