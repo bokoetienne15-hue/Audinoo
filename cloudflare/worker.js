@@ -264,6 +264,8 @@ async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
 const DISCOVERY_PRICE_XOF = 1000
 const DISCOVERY_CREDITS = 3
 const DISCOVERY_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+const VOICE_PACK_PRICE_XOF = 1000
+const VOICE_PACK_SIZE = 2
 const SUNO_VOICE_VALIDATE_URL = 'https://api.sunoapi.org/api/v1/voice/validate'
 const SUNO_VOICE_VALIDATE_INFO_URL = 'https://api.sunoapi.org/api/v1/voice/validate-info'
 const SUNO_VOICE_GENERATE_URL = 'https://api.sunoapi.org/api/v1/voice/generate'
@@ -327,16 +329,28 @@ async function accountPlan(request, db, user) {
   const currentPlan = profile.data?.discoverySubscription || {}
   const currentActive = isDiscoverySubscriptionActive(currentPlan)
   const expires = currentPlan.expiresAt instanceof Date ? currentPlan.expiresAt : new Date(currentPlan.expiresAt || 0)
+  const now = Date.now()
   const storedVoices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
-  const voiceProfiles = currentActive ? storedVoices.filter(item => {
+  const voicePacks = (Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []).filter(pack => {
+    const expiry = pack?.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack?.expiresAt || 0).getTime()
+    return Number.isFinite(expiry) && expiry > now
+  }).map(pack => ({
+    packId: String(pack.packId || ''),
+    used: Math.max(0, Number(pack.used || 0)),
+    reserved: Math.max(0, Number(pack.reserved || 0)),
+    expiresAt: pack.expiresAt instanceof Date ? pack.expiresAt.toISOString() : pack.expiresAt
+  }))
+  const activePackIds = new Set(voicePacks.map(pack => pack.packId))
+  const voiceProfiles = storedVoices.filter(item => {
     if (!item?.voiceId) return false
-    if (!item.expiresAt) return true
-    const voiceExpiry = new Date(item.expiresAt).getTime()
-    return Number.isFinite(voiceExpiry) && voiceExpiry > Date.now()
-  }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null })) : []
+    const expiry = item.expiresAt ? new Date(item.expiresAt).getTime() : (currentActive ? now + 1 : 0)
+    if (!Number.isFinite(expiry) || expiry <= now) return false
+    return item.packId ? activePackIds.has(String(item.packId)) : currentActive
+  }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null, packId: item.packId || null }))
   const requestedVoiceId = Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')
   const selectedVoice = voiceProfiles.find(item => item.voiceId === requestedVoiceId) || null
-  if (currentActive && voiceProfiles.length !== storedVoices.length) {
+  const voiceSlotsRemaining = voicePacks.reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - pack.used - pack.reserved), 0)
+  if (voiceProfiles.length !== storedVoices.length || selectedVoice?.voiceId !== requestedVoiceId) {
     await db.set('users/' + user.uid, { voiceProfiles, selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
   }
   return response(200, {
@@ -347,6 +361,9 @@ async function accountPlan(request, db, user) {
     paidCredits: Math.max(0, Number(profile.data?.paidCredits || 0)),
     voiceProfile: selectedVoice ? { name: selectedVoice.name || 'Ma voix', ready: true } : null,
     voiceProfiles,
+    voicePacks,
+    voiceSlotsRemaining,
+    voiceAccessActive: voicePacks.length > 0,
     selectedVoiceId: selectedVoice?.voiceId || ''
   })
 }
@@ -376,6 +393,78 @@ async function createDiscoveryPayment(request, env, db, user) {
   const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
   if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
+}
+async function createVoicePackPayment(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) return response(404, { error: 'profile-not-found' })
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
+  if (!email) return response(400, { error: 'customer-email-required' })
+  const origin = new URL(request.url).origin
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify({
+    description: 'Audinoo — Pack de 2 voix personnalisées (30 jours)',
+    amount: VOICE_PACK_PRICE_XOF, currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=voice',
+    customer: { email }
+  }) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: VOICE_PACK_PRICE_XOF, currency: 'XOF',
+    kind: 'voice_pack', voiceSlots: VOICE_PACK_SIZE,
+    status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmVoicePackPayment(env, db, transactionId, expectedUid = '') {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists || order.data.kind !== 'voice_pack' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) {
+    const profile = await db.get('users/' + order.data.uid)
+    const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+    const remaining = packs.filter(pack => new Date(pack.expiresAt || 0).getTime() > Date.now()).reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - Number(pack.used || 0) - Number(pack.reserved || 0)), 0)
+    return { status: 'approved', purchased: true, voiceSlotsRemaining: remaining }
+  }
+  const providerResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
+  const transaction = fedapayObject(providerResponse, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, purchased: false }
+  }
+  if (status !== 'approved') return { status: status || 'pending', purchased: false }
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (Number(transaction.amount) !== VOICE_PACK_PRICE_XOF || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  const profileRef = db.doc('users/' + order.data.uid)
+  await db.runTransaction(async tx => {
+    const [currentOrder, profile] = await Promise.all([tx.get(orderRef), tx.get(profileRef)])
+    if (!currentOrder.exists || !profile.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    const now = Date.now()
+    const pack = {
+      packId: String(transactionId),
+      used: 0,
+      reserved: 0,
+      createdAt: new Date(now),
+      expiresAt: new Date(now + RETENTION_MS),
+      transactionId: String(transactionId)
+    }
+    const packs = Array.isArray(profile.data().voicePacks) ? profile.data().voicePacks : []
+    tx.update(profileRef, { voicePacks: [...packs.filter(item => String(item.packId || '') !== String(transactionId)), pack], updatedAt: SERVER_TIMESTAMP })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP })
+  })
+  const refreshed = await db.get(profileRef.path)
+  const packs = Array.isArray(refreshed.data?.voicePacks) ? refreshed.data.voicePacks : []
+  const remaining = packs.filter(pack => new Date(pack.expiresAt || 0).getTime() > Date.now()).reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - Number(pack.used || 0) - Number(pack.reserved || 0)), 0)
+  return { status: 'approved', purchased: true, voiceSlotsRemaining: remaining }
 }
 async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '') {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
@@ -539,19 +628,55 @@ async function voiceCreate(request, env, db, user) {
   const body = await request.json().catch(() => ({}))
   const taskId = String(body.taskId || ''), token = String(body.token || '')
   const requestedVoiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40) || 'Ma voix'
-  const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
+  const taskRef = db.doc('users/' + user.uid + '/voiceTasks/' + taskId)
+  const profileRef = db.doc('users/' + user.uid)
   const verify = await db.get('voiceFileTokens/' + token)
-  if (!task.exists || !verify.exists || verify.data.uid !== user.uid || task.data.stage !== 'wait_validating') return response(400, { error: 'voice-verification-not-ready' })
-  await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { voiceName: requestedVoiceName }, true)
+  if (!verify.exists || verify.data.uid !== user.uid) return response(400, { error: 'voice-verification-not-ready' })
+  let reservedPackId = ''
+  try {
+    await db.runTransaction(async tx => {
+      const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+      if (!profile.exists || !task.exists || task.data().stage !== 'wait_validating') throw new Error('voice-verification-not-ready')
+      const now = Date.now()
+      const packs = Array.isArray(profile.data().voicePacks) ? profile.data().voicePacks : []
+      const index = packs.findIndex(pack => {
+        const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+        return Number.isFinite(expiry) && expiry > now && Math.max(0, Number(pack.used || 0)) + Math.max(0, Number(pack.reserved || 0)) < VOICE_PACK_SIZE
+      })
+      if (index < 0) throw new Error('voice-pack-required')
+      const nextPacks = [...packs]
+      const pack = { ...nextPacks[index] }
+      pack.reserved = Math.max(0, Number(pack.reserved || 0)) + 1
+      reservedPackId = String(pack.packId)
+      nextPacks[index] = pack
+      tx.update(profileRef, { voicePacks: nextPacks, updatedAt: SERVER_TIMESTAMP })
+      tx.update(taskRef, { voiceName: requestedVoiceName, stage: 'creating-requested', voicePackId: reservedPackId, slotReserved: true },)
+    })
+  } catch (error) {
+    if (error.message === 'voice-pack-required') return response(402, { error: 'voice-pack-required' })
+    if (error.message === 'voice-verification-not-ready') return response(409, { error: error.message })
+    throw error
+  }
   const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
   const payload = await result.json().catch(() => ({}))
-  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) return response(502, {
-    error: 'voice-creation-rejected',
-    providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
-    providerCode: payload.code ?? null,
-    providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
-  })
-  await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
+  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) {
+    await db.runTransaction(async tx => {
+      const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+      if (!profile.exists || !task.exists || task.data().slotReserved !== true) return
+      const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
+      const index = packs.findIndex(pack => String(pack.packId) === reservedPackId)
+      if (index >= 0) packs[index] = { ...packs[index], reserved: Math.max(0, Number(packs[index].reserved || 0) - 1) }
+      tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
+      tx.update(taskRef, { stage: 'wait_validating', slotReserved: false, voicePackId: null })
+    })
+    return response(502, {
+      error: 'voice-creation-rejected',
+      providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
+      providerCode: payload.code ?? null,
+      providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
+    })
+  }
+  await db.set(taskRef.path, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
   return response(200, { taskId, creationTaskId: String(payload.data.taskId) })
 }
 async function selectVoiceProfile(request, db, user) {
@@ -566,8 +691,13 @@ async function selectVoiceProfile(request, db, user) {
     if (!profile.exists) throw new Error('profile-not-found')
     const data = profile.data()
     const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
+    const now = Date.now()
+    const activePackIds = new Set((Array.isArray(data.voicePacks) ? data.voicePacks : []).filter(pack => {
+      const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+      return Number.isFinite(expiry) && expiry > now
+    }).map(pack => String(pack.packId)))
     if (voiceId) {
-      selected = voices.find(item => String(item.voiceId || '') === voiceId) || null
+      selected = voices.find(item => String(item.voiceId || '') === voiceId && (item.packId ? activePackIds.has(String(item.packId)) : isDiscoverySubscriptionActive(data.discoverySubscription, now))) || null
       if (!selected) throw new Error('voice-profile-not-found')
       tx.update(profileRef, { selectedVoiceId: voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
     } else {
@@ -604,19 +734,38 @@ async function voiceStatus(request, env, db, user, url) {
     ready = checkPayload.data?.isAvailable === true
     if (ready) {
       const profileRef = db.doc('users/' + user.uid)
+      const taskRef = db.doc('users/' + user.uid + '/voiceTasks/' + taskId)
+      let packExpired = false
       await db.runTransaction(async tx => {
-        const profile = await tx.get(profileRef)
-        const current = profile.exists ? profile.data() : {}
+        const [profile, currentTask] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+        if (!profile.exists || !currentTask.exists) throw new Error('voice-task-not-found')
+        if (currentTask.data().stage === 'success') return
+        const current = profile.data()
+        const packs = Array.isArray(current.voicePacks) ? [...current.voicePacks] : []
+        const packIndex = packs.findIndex(item => String(item.packId || '') === String(currentTask.data().voicePackId || ''))
+        if (packIndex < 0) throw new Error('voice-pack-required')
+        const pack = { ...packs[packIndex] }
+        const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+        if (!Number.isFinite(expiry) || expiry <= Date.now()) {
+          packExpired = true
+          pack.reserved = Math.max(0, Number(pack.reserved || 0) - 1)
+          packs[packIndex] = pack
+          tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
+          tx.update(taskRef, { stage: 'expired', slotReserved: false })
+          return
+        }
+        pack.reserved = Math.max(0, Number(pack.reserved || 0) - 1)
+        pack.used = Math.min(VOICE_PACK_SIZE, Math.max(0, Number(pack.used || 0)) + 1)
+        packs[packIndex] = pack
         const voices = Array.isArray(current.voiceProfiles) ? current.voiceProfiles : (current.voiceProfile?.voiceId ? [current.voiceProfile] : [])
-        const nextVoices = voices.filter(item => String(item.voiceId || '') !== voiceId)
         const createdAt = new Date().toISOString()
-        const expiresAt = new Date(Date.now() + RETENTION_MS).toISOString()
-        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId })
-        const nextProfile = { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId } }
-        if (profile.exists) tx.update(profileRef, nextProfile)
-        else tx.create(profileRef, nextProfile)
+        const expiresAt = pack.expiresAt instanceof Date ? pack.expiresAt.toISOString() : new Date(pack.expiresAt).toISOString()
+        const nextVoices = [...voices.filter(item => String(item.voiceId || '') !== voiceId), { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId, packId: pack.packId }]
+        const nextSelected = nextVoices[nextVoices.length - 1]
+        tx.update(profileRef, { voicePacks: packs, voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: nextSelected, updatedAt: SERVER_TIMESTAMP })
+        tx.update(taskRef, { stage: 'success', voiceId, slotReserved: false })
       })
-      await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
+      if (packExpired) return response(410, { error: 'voice-pack-expired' })
     }
   }
   return response(200, {
@@ -674,6 +823,7 @@ async function fedapayWebhook(request, env, db) {
     const order = await db.get('fedapayOrders/' + transactionId)
     if (order.exists && order.data.kind === 'track_download') await confirmTrackPurchase(env, db, transactionId)
     else if (order.exists && order.data.kind === 'discovery_subscription') await confirmDiscoveryPayment(env, db, transactionId)
+    else if (order.exists && order.data.kind === 'voice_pack') await confirmVoicePackPayment(env, db, transactionId)
     else await confirmCreditPayment(env, db, transactionId)
     return response(200, { received: true })
   } catch (error) {
@@ -717,10 +867,16 @@ async function generate(request, env, db, user) {
       const hasPaidCredit = Number(data.paidCredits || 0) > 0
       const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : hasPaidCredit ? 'paid' : ''
       if (!creditType) throw new Error('no-free-credit')
-      if (discoveryIsActive) {
-        const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : []
+      {
+        const now = Date.now()
+        const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
+        const activePackIds = new Set((Array.isArray(data.voicePacks) ? data.voicePacks : []).filter(pack => {
+          const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+          return Number.isFinite(expiry) && expiry > now
+        }).map(pack => String(pack.packId)))
         const selectedVoiceId = Object.prototype.hasOwnProperty.call(data, 'selectedVoiceId') ? String(data.selectedVoiceId || '') : String(data.voiceProfile?.voiceId || '')
-        voiceId = String(voices.find(item => String(item.voiceId || '') === selectedVoiceId)?.voiceId || data.voiceProfile?.voiceId || '')
+        const selectedVoice = voices.find(item => String(item.voiceId || '') === selectedVoiceId && (item.packId ? activePackIds.has(String(item.packId)) : discoveryIsActive && (!item.expiresAt || new Date(item.expiresAt).getTime() > now)))
+        voiceId = String(selectedVoice?.voiceId || '')
       }
       if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
       if (creditType === 'discovery') tx.update(db.doc(profile), { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
@@ -1423,6 +1579,11 @@ export default {
       if (url.pathname === '/api/discovery/confirm') { if (request.method !== 'GET') return response(405,{error:'method-not-allowed'}); return response(200, await confirmDiscoveryPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid)) }
       if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
       if (url.pathname === '/api/admin/discovery/cancel') return await adminCancelDiscovery(request,db,user)
+      if (url.pathname === '/api/voice/purchase') return await createVoicePackPayment(request,env,db,user)
+      if (url.pathname === '/api/voice/confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        return response(200, await confirmVoicePackPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid))
+      }
       if (url.pathname === '/api/voice/upload') return await voiceUpload(request,env,db,user)
       if (url.pathname === '/api/voice/validate') return await voiceValidate(request,env,db,user)
       if (url.pathname === '/api/voice/validate-info') return await voiceValidateInfo(request,env,db,user,url)
