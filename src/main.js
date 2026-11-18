@@ -4797,6 +4797,8 @@ function upsertGenerationCard(container, generation) {
 function generationErrorMessage(errorCode) {
   const messages = {
     'no-free-credit': 'Votre solde est insuffisant pour créer ce morceau.',
+    'voice-pack-required': 'Tu as utilisé tes deux emplacements de voix. Achète un nouveau pack à 1 000 FCFA pour en ajouter deux autres.',
+    'voice-pack-expired': 'La période de 30 jours de ton pack de voix est terminée. Achète un nouveau pack pour continuer.',
     'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur le serveur de paiement. Réessaie après activation de FedaPay.',
     'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
     'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
