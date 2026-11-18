@@ -858,31 +858,11 @@ function renderHomeTracks() {
     const more = document.createElement('button')
     more.type = 'button'
     more.className = 'home-track-more'
-    more.textContent = '⋮'
-    more.setAttribute('aria-label', 'Ouvrir les options de partage pour ' + title.textContent)
-    more.setAttribute('aria-expanded', 'false')
-    more.title = 'Plus d’options'
-    const shareMenu = document.createElement('div')
-    shareMenu.className = 'home-track-share-menu'
-    shareMenu.hidden = true
-    const shareButton = document.createElement('button')
-    shareButton.type = 'button'
-    shareButton.className = 'home-track-share-action'
-    shareButton.textContent = '↗  Partager'
-    shareButton.addEventListener('click', () => {
-      shareMenu.hidden = true
-      more.setAttribute('aria-expanded', 'false')
-      void shareHomeTrack(track)
-    })
-    shareMenu.append(shareButton)
-    more.addEventListener('click', () => {
-      const opening = shareMenu.hidden
-      document.querySelectorAll('.home-track-share-menu').forEach(menu => { menu.hidden = true })
-      document.querySelectorAll('.home-track-more[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'))
-      shareMenu.hidden = !opening
-      more.setAttribute('aria-expanded', String(opening))
-    })
-    row.append(cover, details, play, like, more, shareMenu)
+    more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.6 10.9 15.4 6.8M8.6 13.1l6.8 4.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>'
+    more.setAttribute('aria-label', 'Partager ' + title.textContent)
+    more.title = 'Partager'
+    more.addEventListener('click', () => { void shareHomeTrack(track) })
+    row.append(cover, details, play, like, more)
     return row
   }))
   if (!visible.length) {
