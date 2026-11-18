@@ -1081,8 +1081,14 @@ async function createVideoForTrack(request, env, db, user) {
       sourceTrack = tracks[trackIndex] || null
       if (!sourceTrack || sourceTrack.deleted === true || !sourceTrack.id) throw new Error('video-source-not-ready')
       if (sourceTrack.videoKey) { alreadyArchived = true; return }
-      if (sourceTrack.videoTaskId) { existingVideoTaskId = String(sourceTrack.videoTaskId); return }
+      if (sourceTrack.videoTaskId && !['FAILED','GENERATE_MP4_FAILED','CREATE_TASK_FAILED'].includes(String(sourceTrack.videoStatus || '').toUpperCase())) { existingVideoTaskId = String(sourceTrack.videoTaskId); return }
       if (lock.exists) throw new Error('video-generation-running')
+      if (sourceTrack.videoTaskId) {
+        const retryTracks = [...tracks]
+        sourceTrack = { ...sourceTrack, lastVideoTaskId: sourceTrack.videoTaskId, videoTaskId: '', videoStatus: '', videoSourceUrl: '', videoError: '' }
+        retryTracks[trackIndex] = sourceTrack
+        tx.update(generationRef, { tracks: retryTracks })
+      }
       const balance = Math.max(0, Math.floor(Number(profile.data().paidCredits || 0)))
       if (balance < 1) throw new Error('video-credit-required')
       tx.update(profileRef, { paidCredits: balance - 1, updatedAt: SERVER_TIMESTAMP })
@@ -1124,6 +1130,19 @@ async function createVideoForTrack(request, env, db, user) {
   })
   return response(202, { status: 'PENDING', videoTaskId })
 }
+async function refundFailedVideo(db, uid, path, trackIndex, providerTaskId, message) {
+  const profileRef = db.doc('users/' + uid), generationRef = db.doc(path)
+  await db.runTransaction(async tx => {
+    const [profile, generation] = await Promise.all([tx.get(profileRef), tx.get(generationRef)])
+    if (!profile.exists || !generation.exists) return
+    const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
+    const track = tracks[trackIndex]
+    if (!track || String(track.videoTaskId || '') !== String(providerTaskId) || track.videoCreditRefunded === true) return
+    tracks[trackIndex] = { ...track, lastVideoTaskId: providerTaskId, videoTaskId: '', videoStatus: 'FAILED', videoError: String(message || 'La génération vidéo a échoué.'), videoCreditRefunded: true }
+    tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    tx.update(generationRef, { tracks })
+  })
+}
 async function videoStatus(request, env, db, user, url) {
   if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
   const taskId = url.searchParams.get('taskId') || '', trackIndex = Number(url.searchParams.get('track') || 0)
@@ -1163,7 +1182,10 @@ async function videoStatus(request, env, db, user, url) {
       return response(502, { error: 'video-archive-failed' })
     }
   }
-  if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') return response(200, { status: 'FAILED', failed: true, message: track.videoError || 'La création du clip a échoué.' })
+  if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') {
+    await refundFailedVideo(db, user.uid, path, trackIndex, track.videoTaskId, track.videoError || 'La génération vidéo a échoué.')
+    return response(200, { status: 'FAILED', failed: true, message: track.videoError || 'La création du clip a échoué. Ton crédit a été restitué.' })
+  }
   return response(200, { status: 'PENDING', completed: false })
 }
 async function sunoHealth(request, env) {
@@ -1661,7 +1683,7 @@ async function library(request, env, db, user) {
   const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl, videoStatus:track.videoStatus || '', videoUrl:track.videoKey ? '/api/my-video?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : '', videoError:track.videoError || '' })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl, videoTaskId:track.videoTaskId || '', videoStatus:track.videoStatus || '', videoUrl:track.videoKey ? '/api/my-video?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : '', videoError:track.videoError || '' })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   libraryResponseCache.set(user.uid, { generations, expiresAt: Date.now() + LIBRARY_CACHE_TTL_MS })
   if (libraryResponseCache.size > 500) {
