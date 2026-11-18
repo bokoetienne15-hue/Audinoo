@@ -175,7 +175,7 @@ service cloud.firestore {
       allow get, list: if isAdmin()
         || (signedIn() && (resource.data.audience == 'all' || resource.data.recipientUid == request.auth.uid));
       allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly(['title','message','audience','recipientUid','createdBy','createdAt'])
+        && request.resource.data.keys().hasOnly(['title','message','audience','recipientUid','createdBy','createdAt','sentCount'])
         && request.resource.data.keys().hasAll(['title','message','audience','createdBy','createdAt'])
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 2
@@ -185,6 +185,7 @@ service cloud.firestore {
         && request.resource.data.message.size() <= 600
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
+        && (!('sentCount' in request.resource.data) || (request.resource.data.sentCount is int && request.resource.data.sentCount >= 0 && request.resource.data.sentCount <= 1000000))
         && ((request.resource.data.audience == 'all' && !('recipientUid' in request.resource.data))
           || (request.resource.data.audience == 'user' && request.resource.data.recipientUid is string && request.resource.data.recipientUid.size() > 0));
       allow update, delete: if isAdmin();
@@ -231,7 +232,7 @@ service cloud.firestore {
     }
 
     match /notificationReads/{readId} {
-      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow get, list: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['userId', 'notificationId', 'readAt'])
         && request.resource.data.keys().hasAll(['userId', 'notificationId', 'readAt'])
