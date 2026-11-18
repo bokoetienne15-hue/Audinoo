@@ -6408,17 +6408,28 @@ whatsNewOverlay.setAttribute('aria-modal', 'true')
 whatsNewOverlay.setAttribute('aria-labelledby', 'audinoo-whats-new-title')
 whatsNewOverlay.innerHTML = '<div class="audinoo-whats-new-card"><div class="audinoo-whats-new-copy"><span class="audinoo-whats-new-badge">✦ NOUVEAUTÉ AUDINOO</span><h2 id="audinoo-whats-new-title">Et si ta voix devenait ta signature&nbsp;?</h2><p>Tu peux maintenant créer des chansons avec <strong>ta propre voix</strong>. Enregistre quelques secondes de ta voix ou importe un audio, configure ton profil vocal et retrouve ta voix dans tes prochaines créations.</p><div class="audinoo-whats-new-actions"><button type="button" class="audinoo-whats-new-cta" id="audinoo-whats-new-discover">Découvrir Ma voix</button><button type="button" class="audinoo-whats-new-dismiss" id="audinoo-whats-new-close">Plus tard</button></div></div><div class="audinoo-whats-new-art"><img src="/new-feature-voice.svg" alt="Illustration d’un microphone et d’ondes musicales"></div></div>'
 workspace.append(whatsNewOverlay)
-function showWhatsNewForLogin(user) {
+async function showWhatsNewForLogin(user) {
   if (!user?.uid) return
   const now = new Date()
   const day = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-')
   const storageKey = 'audinoo-whats-new-voice-' + user.uid + '-' + day
+  const display = () => {
+    whatsNewOverlay.hidden = false
+    document.getElementById('audinoo-whats-new-close')?.focus()
+  }
+  try {
+    const result = await callAudinooApi('/api/whats-new/claim', { method: 'POST', body: JSON.stringify({ day }) })
+    if (result.show === true) display()
+    return
+  } catch (error) {
+    console.warn('[Audinoo nouveautés] Compteur serveur indisponible, utilisation locale', error)
+  }
+  // Secours hors ligne : le compteur principal reste conservé côté compte sur le serveur.
   let shown = 0
   try { shown = Math.max(0, Number(window.localStorage.getItem(storageKey) || 0)) } catch (_) {}
   if (shown >= 5) return
   try { window.localStorage.setItem(storageKey, String(shown + 1)) } catch (_) {}
-  whatsNewOverlay.hidden = false
-  document.getElementById('audinoo-whats-new-close')?.focus()
+  display()
 }
 function closeWhatsNew() { whatsNewOverlay.hidden = true }
 whatsNewOverlay.querySelector('#audinoo-whats-new-close').addEventListener('click', closeWhatsNew)
