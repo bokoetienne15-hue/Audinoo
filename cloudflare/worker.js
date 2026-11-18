@@ -1711,6 +1711,28 @@ async function trackEngagement(request, db, user) {
     }
   }).then(result => result.error ? response(404, { error: result.error }) : response(200, result))
 }
+async function claimWhatsNewDisplay(request, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  const body = await request.json().catch(() => ({}))
+  const day = String(body.day || '')
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)) return response(400, { error: 'invalid-day' })
+  const path = 'users/' + user.uid
+  const result = await db.runTransaction(async tx => {
+    const profile = await tx.get(db.doc(path))
+    if (!profile.exists) return { show: false, count: 0 }
+    const data = profile.data()
+    const count = data.whatsNewVoiceShownDay === day ? Math.max(0, Number(data.whatsNewVoiceShownCount || 0)) : 0
+    if (count >= 5) return { show: false, count: 5 }
+    const nextCount = count + 1
+    tx.update(db.doc(path), {
+      whatsNewVoiceShownDay: day,
+      whatsNewVoiceShownCount: nextCount,
+      whatsNewVoiceShownAt: SERVER_TIMESTAMP
+    })
+    return { show: true, count: nextCount }
+  })
+  return response(200, result)
+}
 async function adminHomeEngagement(request, db, user) {
   if (request.method !== 'GET' && request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
@@ -2054,6 +2076,7 @@ export default {
       if (url.pathname === '/api/admin/users/auth-list') return await adminAuthUsers(request,db,user)
       if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
       if (url.pathname === '/api/admin/acquisition') return await adminAcquisition(request,db,user)
+      if (url.pathname === '/api/whats-new/claim') return await claimWhatsNewDisplay(request,db,user)
       if (url.pathname === '/api/admin/home-engagement') return await adminHomeEngagement(request,db,user)
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
