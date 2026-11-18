@@ -107,7 +107,7 @@ export class FirestoreRest {
       let body = {}
       try { body = rawBody ? JSON.parse(rawBody) : {} } catch {}
       if (!response.ok) {
-        if (retryableQuery && response.status === 429 && attempt < 2) {
+        if (retryableQuery && response.status === 429 && body.error?.status !== 'RESOURCE_EXHAUSTED' && !/quota exceeded/i.test(String(body.error?.message || '')) && attempt < 2) {
           const retryAfter = Number(response.headers.get('retry-after') || 0)
           const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 2500) : 300 * (2 ** attempt)
           await new Promise(resolve => setTimeout(resolve, delay))
