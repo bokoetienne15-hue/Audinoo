@@ -2451,17 +2451,26 @@ button.is-generating:disabled {
 .workspace-home-page .home-track-like.is-liked svg{fill:currentColor;transform:scale(1.06)}
 .workspace-home-page .home-track-like:disabled{opacity:.55;cursor:wait}
 .workspace-home-page .home-track-more{
-  width:22px;
-  min-width:22px;
+  display:grid;
+  place-items:center;
+  width:32px;
+  min-width:32px;
+  height:36px;
   justify-self:end;
   padding:0;
-  text-align:center;
+  border:0;
+  border-radius:9px;
+  background:transparent;
   color:#c9c2d8;
+  cursor:pointer;
 }
+.workspace-home-page .home-track-more svg{display:block;width:20px;height:20px;overflow:visible}
+.workspace-home-page .home-track-more:hover{color:#fff;background:rgba(139,78,224,.16)}
+.workspace-home-page .home-track-more:active{transform:scale(.94)}
 .workspace-home-page .home-track-more:disabled{opacity:.45}
 @media(max-width:650px){
   .workspace-home-page .home-track-row{
-    grid-template-columns:64px minmax(0,1fr) 34px 32px 20px;
+    grid-template-columns:64px minmax(0,1fr) 34px 32px 32px;
     gap:8px;
     min-height:84px;
     padding:9px 0;
@@ -2471,7 +2480,7 @@ button.is-generating:disabled {
   .workspace-home-page .home-track-details small{font-size:9px}
   .workspace-home-page .home-track-play{width:32px;height:32px}
   .workspace-home-page .home-track-like{width:32px;min-width:32px}
-  .workspace-home-page .home-track-more{width:20px;min-width:20px}
+  .workspace-home-page .home-track-more{width:32px;min-width:32px}
 }
 
 
