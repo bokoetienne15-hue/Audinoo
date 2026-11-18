@@ -190,6 +190,13 @@ app.innerHTML = `
     </button>
   </div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
+      <div class="discovery-voice-welcome" id="discovery-voice-welcome" hidden>
+        <span class="discovery-voice-welcome-icon" aria-hidden="true">♫</span>
+        <p class="workspace-kicker">TA VOIX, TON IDENTITÉ</p>
+        <h2>Et si tes chansons portaient ta voix ?</h2>
+        <p>Crée des morceaux qui te ressemblent vraiment. Enregistre simplement ta voix, sans caméra, et fais chanter tes chansons avec ton identité.</p>
+        <button type="button" class="discovery-voice-welcome-button" id="discovery-voice-welcome-button">Découvrir ma voix <span aria-hidden="true">→</span></button>
+      </div>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">2 VOIX · 30 JOURS</span></div>
       <div class="discovery-voice-access"><p id="discovery-voice-access-status">Achète un pack pour configurer deux voix personnalisées pendant 30 jours.</p><button type="button" id="discovery-voice-purchase" class="discovery-voice-purchase">Débloquer 2 voix · 1 000 FCFA</button></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
@@ -3189,6 +3196,11 @@ workspaceDarkMode.addEventListener('change', async () => {
 const discoveryVoiceEntry = document.querySelector('#discovery-voice-entry')
 const discoveryVoiceToggle = document.querySelector('#discovery-voice-toggle')
 const discoveryVoicePanel = document.querySelector('#discovery-voice-panel')
+const discoveryVoiceWelcome = document.querySelector('#discovery-voice-welcome')
+const discoveryVoiceWelcomeButton = document.querySelector('#discovery-voice-welcome-button')
+const discoveryVoiceHeading = discoveryVoicePanel?.querySelector('.discovery-voice-heading')
+const discoveryVoiceAccess = discoveryVoicePanel?.querySelector('.discovery-voice-access')
+let discoveryVoiceIntroSeen = false
 const discoveryVoiceStatus = document.querySelector('#discovery-voice-status')
 const discoveryVoiceVerification = document.querySelector('#discovery-voice-verification')
 const discoveryVoiceBack = document.querySelector('#discovery-voice-back')
@@ -3420,6 +3432,15 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceStatus.textContent = 'Choisis comment ajouter ta voix.'
   setDiscoveryVoiceStep(1)
 })
+discoveryVoiceWelcomeButton?.addEventListener('click', () => {
+  if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = true
+  if (discoveryVoiceHeading) discoveryVoiceHeading.hidden = false
+  if (discoveryVoiceAccess) discoveryVoiceAccess.hidden = false
+  discoveryVoiceLibrary.hidden = false
+  discoveryVoiceCreation.hidden = true
+  discoveryVoiceProgress.hidden = true
+  discoveryVoiceIntroSeen = true
+})
 discoveryVoiceBack?.addEventListener('click', () => {
   stopActiveVoiceRecording?.()
   discoveryVoicePanel.hidden = true
@@ -3434,13 +3455,18 @@ discoveryVoiceToggle?.addEventListener('click', () => {
   if (opening) {
     document.body.append(discoveryVoicePanel)
     discoveryVoicePanel.hidden = false
-    discoveryVoiceLibrary.hidden = false
+    const showWelcome = discoveryVoiceProfiles.length === 0 && !discoveryVoiceIntroSeen
+    if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = !showWelcome
+    if (discoveryVoiceHeading) discoveryVoiceHeading.hidden = showWelcome
+    if (discoveryVoiceAccess) discoveryVoiceAccess.hidden = showWelcome
+    discoveryVoiceLibrary.hidden = showWelcome
     discoveryVoiceCreation.hidden = true
     discoveryVoiceProgress.hidden = true
     discoveryVoiceCopy.hidden = false
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
+    if (showWelcome) discoveryVoiceIntroSeen = true
     setDiscoveryVoiceStep(1)
     renderDiscoveryVoiceLibrary()
     document.body.classList.add('discovery-voice-screen-open')
@@ -4665,6 +4691,7 @@ async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
     toast.textContent = generationErrorMessage(error.message)
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 5000)
+    if (error.message === 'video-credit-required') windowPricingOpen()
   }
 }
 
@@ -4782,8 +4809,36 @@ function renderLibraryGeneration(generation) {
         action.type = 'button'
         action.className = 'library-video-get-button'
         action.textContent = 'Télécharger la vidéo'
-        action.addEventListener('click', () => {
-          window.location.assign(track.videoUrl + '&download=1')
+        action.addEventListener('click', async () => {
+          if (action.disabled || !auth.currentUser) return
+          const originalLabel = action.textContent
+          action.disabled = true
+          action.textContent = 'Préparation du téléchargement…'
+          try {
+            const token = await auth.currentUser.getIdToken()
+            const downloadUrl = new URL(track.videoUrl, window.location.origin)
+            downloadUrl.searchParams.set('download', '1')
+            const result = await fetch(downloadUrl.toString(), { headers: { authorization: 'Bearer ' + token } })
+            if (!result.ok) {
+              const details = await result.json().catch(() => ({}))
+              throw new Error(details.error || 'video-download-failed')
+            }
+            const blobUrl = URL.createObjectURL(await result.blob())
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = 'audinoo-' + String(title.textContent || 'clip').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60) + '.mp4'
+            document.body.append(link)
+            link.click()
+            link.remove()
+            window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+          } catch (error) {
+            toast.textContent = error.message === 'authentication-required' ? 'Ta session a expiré. Reconnecte-toi puis réessaie.' : 'Le téléchargement de ta vidéo a échoué. Réessaie.'
+            toast.classList.add('show')
+            window.setTimeout(() => toast.classList.remove('show'), 5000)
+          } finally {
+            action.disabled = false
+            action.textContent = originalLabel
+          }
         })
         card.append(action)
       } else {
@@ -4842,7 +4897,7 @@ function generationErrorMessage(errorCode) {
     'voice-pack-required': 'Tu as utilisé tes deux emplacements de voix. Achète un nouveau pack à 1 000 FCFA pour en ajouter deux autres.',
     'voice-pack-expired': 'La période de 30 jours de ton pack de voix est terminée. Achète un nouveau pack pour continuer.',
     'voice-reactivation-unavailable': 'Aucune ancienne voix ne peut être réactivée pour le moment.',
-    'video-credit-required': 'Il te faut un crédit acheté de 300 FCFA pour créer un clip vidéo.',
+    'video-credit-required': 'Ton solde est insuffisant pour créer ce clip. Achète un crédit de 300 FCFA pour continuer.',
     'video-provider-credit-limit': 'Le service vidéo est momentanément à court de crédits. Réessaie plus tard ; ton crédit Audinoo a été restitué.',
     'video-generation-running': 'La création de ce clip est déjà en cours.',
     'video-source-not-ready': 'Cette chanson n’est pas encore prête pour créer une vidéo.',
