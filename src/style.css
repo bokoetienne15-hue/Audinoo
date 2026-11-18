@@ -3641,3 +3641,46 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
     font-size:7px!important;
   }
 }
+
+
+/* Résumé des crédits dans le Studio mobile : informatif, sans bouton d'achat. */
+@media (max-width: 760px) {
+  .workspace-mobile-credit {
+    position: sticky;
+    top: 80px;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    border: 1px solid rgba(185,106,232,.3);
+    border-radius: 14px;
+    background: linear-gradient(110deg,rgba(87,32,119,.42),rgba(21,16,36,.92));
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+  .workspace-mobile-credit-info { min-width: 0; flex: 1 1 auto; }
+  .workspace-mobile-credit-info > span {
+    display: block;
+    color: #b9a9cc;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+  }
+  .workspace-mobile-credit-info strong,
+  .workspace-mobile-credit-info small { display: block; }
+  .workspace-mobile-credit-info strong {
+    margin-top: 3px;
+    color: #f3dcff;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .workspace-mobile-credit-info small {
+    margin-top: 3px;
+    color: #c0b4ce;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .workspace-mobile-credit-icon { flex: 0 0 auto; }
+}
