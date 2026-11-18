@@ -5,6 +5,8 @@ const FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
 const SUNO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/generate'
 const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
 const SUNO_CREDIT_URL = 'https://api.sunoapi.org/api/v1/generate/credit'
+const SUNO_VIDEO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/mp4/generate'
+const SUNO_VIDEO_STATUS_URL = 'https://api.sunoapi.org/api/v1/mp4/record-info'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 const LIBRARY_CACHE_TTL_MS = 12000
@@ -264,6 +266,9 @@ async function confirmTrackPurchase(env, db, transactionId, expectedUid = '') {
 const DISCOVERY_PRICE_XOF = 1000
 const DISCOVERY_CREDITS = 3
 const DISCOVERY_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+const VOICE_PACK_PRICE_XOF = 1000
+const VOICE_REACTIVATION_PRICE_XOF = 500
+const VOICE_PACK_SIZE = 2
 const SUNO_VOICE_VALIDATE_URL = 'https://api.sunoapi.org/api/v1/voice/validate'
 const SUNO_VOICE_VALIDATE_INFO_URL = 'https://api.sunoapi.org/api/v1/voice/validate-info'
 const SUNO_VOICE_GENERATE_URL = 'https://api.sunoapi.org/api/v1/voice/generate'
@@ -327,17 +332,36 @@ async function accountPlan(request, db, user) {
   const currentPlan = profile.data?.discoverySubscription || {}
   const currentActive = isDiscoverySubscriptionActive(currentPlan)
   const expires = currentPlan.expiresAt instanceof Date ? currentPlan.expiresAt : new Date(currentPlan.expiresAt || 0)
+  const now = Date.now()
   const storedVoices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
-  const voiceProfiles = currentActive ? storedVoices.filter(item => {
+  const allPacks = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const packExpiry = pack => pack?.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack?.expiresAt || 0).getTime()
+  const voicePacks = allPacks.filter(pack => Number.isFinite(packExpiry(pack)) && packExpiry(pack) > now).map(pack => ({
+    packId: String(pack.packId || ''),
+    used: Math.max(0, Number(pack.used || 0)),
+    reserved: Math.max(0, Number(pack.reserved || 0)),
+    expiresAt: pack.expiresAt instanceof Date ? pack.expiresAt.toISOString() : pack.expiresAt
+  }))
+  const activePackIds = new Set(voicePacks.map(pack => pack.packId))
+  const voiceProfiles = storedVoices.filter(item => {
     if (!item?.voiceId) return false
-    if (!item.expiresAt) return true
-    const voiceExpiry = new Date(item.expiresAt).getTime()
-    return Number.isFinite(voiceExpiry) && voiceExpiry > Date.now()
-  }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null })) : []
+    const expiry = item.expiresAt ? new Date(item.expiresAt).getTime() : (currentActive ? now + 1 : 0)
+    if (!Number.isFinite(expiry) || expiry <= now) return false
+    return item.packId ? activePackIds.has(String(item.packId)) : currentActive
+  }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null, packId: item.packId || null }))
+  // Keep expired voice metadata in Firestore so a 500 FCFA reactivation can restore the same voices.
+  const expiredPacks = allPacks.filter(pack => Number.isFinite(packExpiry(pack)) && packExpiry(pack) <= now && Number(pack.used || 0) > 0)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+  const reactivationPack = expiredPacks.find(pack => storedVoices.some(voice => String(voice.packId || '') === String(pack.packId || '') && voice.voiceId))
+  const expiredVoiceProfiles = reactivationPack
+    ? storedVoices.filter(voice => String(voice.packId || '') === String(reactivationPack.packId || '') && voice.voiceId)
+      .map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null, packId: item.packId || null }))
+    : []
   const requestedVoiceId = Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')
   const selectedVoice = voiceProfiles.find(item => item.voiceId === requestedVoiceId) || null
-  if (currentActive && voiceProfiles.length !== storedVoices.length) {
-    await db.set('users/' + user.uid, { voiceProfiles, selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
+  const voiceSlotsRemaining = voicePacks.reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - pack.used - pack.reserved), 0)
+  if (selectedVoice?.voiceId !== requestedVoiceId) {
+    await db.set('users/' + user.uid, { selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
   }
   return response(200, {
     plan: currentActive ? 'discovery' : 'unit',
@@ -347,6 +371,12 @@ async function accountPlan(request, db, user) {
     paidCredits: Math.max(0, Number(profile.data?.paidCredits || 0)),
     voiceProfile: selectedVoice ? { name: selectedVoice.name || 'Ma voix', ready: true } : null,
     voiceProfiles,
+    expiredVoiceProfiles,
+    voiceReactivationAvailable: expiredVoiceProfiles.length > 0,
+    voiceReactivationPackId: reactivationPack?.packId || null,
+    voicePacks,
+    voiceSlotsRemaining,
+    voiceAccessActive: voicePacks.length > 0,
     selectedVoiceId: selectedVoice?.voiceId || ''
   })
 }
@@ -376,6 +406,152 @@ async function createDiscoveryPayment(request, env, db, user) {
   const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
   if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
   return response(200, { checkoutUrl, transactionId })
+}
+async function createVoicePackPayment(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) return response(503, { error: 'fedapay-not-configured' })
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) return response(404, { error: 'profile-not-found' })
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
+  if (!email) return response(400, { error: 'customer-email-required' })
+  const origin = new URL(request.url).origin
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify({
+    description: 'Audinoo — Pack de 2 voix personnalisées (30 jours)',
+    amount: VOICE_PACK_PRICE_XOF, currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=voice',
+    customer: { email }
+  }) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: VOICE_PACK_PRICE_XOF, currency: 'XOF',
+    kind: 'voice_pack', voiceSlots: VOICE_PACK_SIZE,
+    status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmVoicePackPayment(env, db, transactionId, expectedUid = '') {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists || order.data.kind !== 'voice_pack' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) {
+    const profile = await db.get('users/' + order.data.uid)
+    const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+    const remaining = packs.filter(pack => new Date(pack.expiresAt || 0).getTime() > Date.now()).reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - Number(pack.used || 0) - Number(pack.reserved || 0)), 0)
+    return { status: 'approved', purchased: true, voiceSlotsRemaining: remaining }
+  }
+  const providerResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
+  const transaction = fedapayObject(providerResponse, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, purchased: false }
+  }
+  if (status !== 'approved') return { status: status || 'pending', purchased: false }
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (Number(transaction.amount) !== VOICE_PACK_PRICE_XOF || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  const profileRef = db.doc('users/' + order.data.uid)
+  await db.runTransaction(async tx => {
+    const [currentOrder, profile] = await Promise.all([tx.get(orderRef), tx.get(profileRef)])
+    if (!currentOrder.exists || !profile.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    const now = Date.now()
+    const pack = {
+      packId: String(transactionId),
+      used: 0,
+      reserved: 0,
+      createdAt: new Date(now),
+      expiresAt: new Date(now + RETENTION_MS),
+      transactionId: String(transactionId)
+    }
+    const packs = Array.isArray(profile.data().voicePacks) ? profile.data().voicePacks : []
+    tx.update(profileRef, { voicePacks: [...packs.filter(item => String(item.packId || '') !== String(transactionId)), pack], updatedAt: SERVER_TIMESTAMP })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP })
+  })
+  const refreshed = await db.get(profileRef.path)
+  const packs = Array.isArray(refreshed.data?.voicePacks) ? refreshed.data.voicePacks : []
+  const remaining = packs.filter(pack => new Date(pack.expiresAt || 0).getTime() > Date.now()).reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - Number(pack.used || 0) - Number(pack.reserved || 0)), 0)
+  return { status: 'approved', purchased: true, voiceSlotsRemaining: remaining }
+}
+async function createVoiceReactivationPayment(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) throw new Error('profile-not-found')
+  const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const voices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
+  const now = Date.now()
+  const expiredPack = packs.filter(pack => {
+    const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+    return Number.isFinite(expiry) && expiry <= now && Number(pack.used || 0) > 0 && voices.some(voice => String(voice.packId || '') === String(pack.packId || '') && voice.voiceId)
+  }).sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0]
+  if (!expiredPack) throw new Error('voice-reactivation-unavailable')
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
+  if (!email) throw new Error('customer-email-required')
+  const origin = new URL(request.url).origin
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify({
+    description: 'Audinoo — Réactivation de deux voix personnalisées (30 jours)',
+    amount: VOICE_REACTIVATION_PRICE_XOF, currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=voice_reactivation',
+    customer: { email }
+  }) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: VOICE_REACTIVATION_PRICE_XOF, currency: 'XOF',
+    kind: 'voice_reactivation', voicePackId: String(expiredPack.packId),
+    status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmVoiceReactivationPayment(env, db, transactionId, expectedUid = '') {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists || order.data.kind !== 'voice_reactivation' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) return { status: 'approved', reactivated: true }
+  const providerResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
+  const transaction = fedapayObject(providerResponse, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, reactivated: false }
+  }
+  if (status !== 'approved') return { status: status || 'pending', reactivated: false }
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (Number(transaction.amount) !== VOICE_REACTIVATION_PRICE_XOF || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  const profileRef = db.doc('users/' + order.data.uid)
+  await db.runTransaction(async tx => {
+    const [currentOrder, profile] = await Promise.all([tx.get(orderRef), tx.get(profileRef)])
+    if (!currentOrder.exists || !profile.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    const packId = String(currentOrder.data().voicePackId || '')
+    const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
+    const packIndex = packs.findIndex(pack => String(pack.packId || '') === packId)
+    if (packIndex < 0) throw new Error('voice-reactivation-unavailable')
+    const voices = Array.isArray(profile.data().voiceProfiles) ? [...profile.data().voiceProfiles] : (profile.data().voiceProfile?.voiceId ? [profile.data().voiceProfile] : [])
+    const restoredVoices = voices.filter(voice => String(voice.packId || '') === packId && voice.voiceId)
+    if (!restoredVoices.length) throw new Error('voice-reactivation-unavailable')
+    const expiresAt = new Date(Date.now() + RETENTION_MS)
+    packs[packIndex] = { ...packs[packIndex], expiresAt, reactivatedAt: new Date(), reactivationCount: Math.max(0, Number(packs[packIndex].reactivationCount || 0)) + 1, lastReactivationTransactionId: String(transactionId) }
+    const nextVoices = voices.map(voice => String(voice.packId || '') === packId ? { ...voice, expiresAt: expiresAt.toISOString() } : voice)
+    const selectedId = String(profile.data().selectedVoiceId || '')
+    const selected = nextVoices.find(voice => String(voice.voiceId) === selectedId && String(voice.packId || '') === packId) || nextVoices.find(voice => String(voice.packId || '') === packId)
+    tx.update(profileRef, { voicePacks: packs, voiceProfiles: nextVoices, selectedVoiceId: selected.voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP, reactivatedAt: SERVER_TIMESTAMP })
+  })
+  return { status: 'approved', reactivated: true, expiresAt: new Date(Date.now() + RETENTION_MS).toISOString() }
 }
 async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '') {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
@@ -480,12 +656,22 @@ async function adminCancelDiscovery(request, db, user) {
     paidCredits: Math.max(0, Number(updated.data?.paidCredits || 0))
   })
 }
+async function hasAvailableVoicePackSlot(db, uid) {
+  const profile = await db.get('users/' + uid)
+  const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const now = Date.now()
+  return packs.some(pack => {
+    const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+    return Number.isFinite(expiry) && expiry > now && Math.max(0, Number(pack.used || 0)) + Math.max(0, Number(pack.reserved || 0)) < VOICE_PACK_SIZE
+  })
+}
 function voiceApiHeaders(env) {
   if (!env.SUNOAPI_KEY) throw new Error('music-provider-not-configured')
   return { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }
 }
 async function voiceUpload(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await hasAvailableVoicePackSlot(db, user.uid))) return response(402, { error: 'voice-pack-required' })
   if (!env.AUDIO_BUCKET) return response(503, { error: 'voice-storage-not-configured' })
   const form = await request.formData()
   const audio = form.get('audio')
@@ -509,6 +695,7 @@ async function publicVoiceFile(request, env, db, token) {
 }
 async function voiceValidate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await hasAvailableVoicePackSlot(db, user.uid))) return response(402, { error: 'voice-pack-required' })
   const body = await request.json().catch(() => ({}))
   const token = String(body.token || '')
   const voiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40)
@@ -534,24 +721,73 @@ async function voiceValidateInfo(request, env, db, user, url) {
   if (payload.data?.validateInfo) await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { validateInfo: String(payload.data.validateInfo), stage: String(payload.data.status || 'wait_validating') }, true)
   return response(200, { taskId, status: payload.data?.status || 'processing', validateInfo: payload.data?.validateInfo || '', errorMessage: payload.data?.errorMessage || '' })
 }
+async function releaseVoicePackReservation(db, uid, taskId) {
+  const profileRef = db.doc('users/' + uid)
+  const taskRef = db.doc('users/' + uid + '/voiceTasks/' + taskId)
+  await db.runTransaction(async tx => {
+    const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+    if (!profile.exists || !task.exists || task.data().slotReserved !== true) return
+    const packId = String(task.data().voicePackId || '')
+    const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
+    const index = packs.findIndex(pack => String(pack.packId || '') === packId)
+    if (index >= 0) packs[index] = { ...packs[index], reserved: Math.max(0, Number(packs[index].reserved || 0) - 1) }
+    tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
+    tx.update(taskRef, { slotReserved: false, stage: 'wait_validating' })
+  })
+}
 async function voiceCreate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   const body = await request.json().catch(() => ({}))
   const taskId = String(body.taskId || ''), token = String(body.token || '')
   const requestedVoiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40) || 'Ma voix'
-  const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
+  const taskRef = db.doc('users/' + user.uid + '/voiceTasks/' + taskId)
+  const profileRef = db.doc('users/' + user.uid)
   const verify = await db.get('voiceFileTokens/' + token)
-  if (!task.exists || !verify.exists || verify.data.uid !== user.uid || task.data.stage !== 'wait_validating') return response(400, { error: 'voice-verification-not-ready' })
-  await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { voiceName: requestedVoiceName }, true)
-  const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
-  const payload = await result.json().catch(() => ({}))
-  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) return response(502, {
-    error: 'voice-creation-rejected',
-    providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
-    providerCode: payload.code ?? null,
-    providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
-  })
-  await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
+  const verifyExpiry = verify.data?.expiresAt instanceof Date ? verify.data.expiresAt.getTime() : new Date(verify.data?.expiresAt || 0).getTime()
+  if (!verify.exists || verify.data.uid !== user.uid || !Number.isFinite(verifyExpiry) || verifyExpiry <= Date.now()) return response(400, { error: 'voice-verification-not-ready' })
+  let reservedPackId = ''
+  try {
+    await db.runTransaction(async tx => {
+      const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+      if (!profile.exists || !task.exists || task.data().stage !== 'wait_validating') throw new Error('voice-verification-not-ready')
+      const now = Date.now()
+      const packs = Array.isArray(profile.data().voicePacks) ? profile.data().voicePacks : []
+      const index = packs.findIndex(pack => {
+        const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+        return Number.isFinite(expiry) && expiry > now && Math.max(0, Number(pack.used || 0)) + Math.max(0, Number(pack.reserved || 0)) < VOICE_PACK_SIZE
+      })
+      if (index < 0) throw new Error('voice-pack-required')
+      const nextPacks = [...packs]
+      const pack = { ...nextPacks[index] }
+      pack.reserved = Math.max(0, Number(pack.reserved || 0)) + 1
+      reservedPackId = String(pack.packId)
+      nextPacks[index] = pack
+      tx.update(profileRef, { voicePacks: nextPacks, updatedAt: SERVER_TIMESTAMP })
+      tx.update(taskRef, { voiceName: requestedVoiceName, stage: 'creating-requested', voicePackId: reservedPackId, slotReserved: true },)
+    })
+  } catch (error) {
+    if (error.message === 'voice-pack-required') return response(402, { error: 'voice-pack-required' })
+    if (error.message === 'voice-verification-not-ready') return response(409, { error: error.message })
+    throw error
+  }
+  let result, payload
+  try {
+    result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
+    payload = await result.json().catch(() => ({}))
+  } catch (error) {
+    await releaseVoicePackReservation(db, user.uid, taskId)
+    throw error
+  }
+  if (!result.ok || payload.code !== 200 || !payload.data?.taskId) {
+    await releaseVoicePackReservation(db, user.uid, taskId)
+    return response(502, {
+      error: 'voice-creation-rejected',
+      providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
+      providerCode: payload.code ?? null,
+      providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
+    })
+  }
+  await db.set(taskRef.path, { stage: 'creating', creationTaskId: String(payload.data.taskId), verificationToken: token }, true)
   return response(200, { taskId, creationTaskId: String(payload.data.taskId) })
 }
 async function selectVoiceProfile(request, db, user) {
@@ -566,8 +802,13 @@ async function selectVoiceProfile(request, db, user) {
     if (!profile.exists) throw new Error('profile-not-found')
     const data = profile.data()
     const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
+    const now = Date.now()
+    const activePackIds = new Set((Array.isArray(data.voicePacks) ? data.voicePacks : []).filter(pack => {
+      const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+      return Number.isFinite(expiry) && expiry > now
+    }).map(pack => String(pack.packId)))
     if (voiceId) {
-      selected = voices.find(item => String(item.voiceId || '') === voiceId) || null
+      selected = voices.find(item => String(item.voiceId || '') === voiceId && (item.packId ? activePackIds.has(String(item.packId)) : isDiscoverySubscriptionActive(data.discoverySubscription, now))) || null
       if (!selected) throw new Error('voice-profile-not-found')
       tx.update(profileRef, { selectedVoiceId: voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
     } else {
@@ -581,6 +822,7 @@ async function voiceStatus(request, env, db, user, url) {
   const taskId = url.searchParams.get('taskId') || ''
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   if (!task.exists || !task.data.creationTaskId) return response(404, { error: 'voice-task-not-found' })
+  if (task.data.stage === 'success' && task.data.voiceId) return response(200, { status: 'success', ready: true, voiceId: task.data.voiceId, voiceName: task.data.voiceName || 'Ma voix' })
   const result = await fetch(SUNO_VOICE_RECORD_URL + '?taskId=' + encodeURIComponent(task.data.creationTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
   const payload = await result.json().catch(() => ({}))
   if (!result.ok || payload.code !== 200) return response(502, {
@@ -590,6 +832,7 @@ async function voiceStatus(request, env, db, user, url) {
     providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
   })
   const state = String(payload.data?.status || 'processing').toLowerCase()
+  if (['fail', 'failed', 'processing_validate_fail'].includes(state) && task.data.slotReserved === true) await releaseVoicePackReservation(db, user.uid, taskId)
   let ready = false
   const voiceId = String(payload.data?.voiceId || '')
   if (state === 'success' && voiceId) {
@@ -604,19 +847,38 @@ async function voiceStatus(request, env, db, user, url) {
     ready = checkPayload.data?.isAvailable === true
     if (ready) {
       const profileRef = db.doc('users/' + user.uid)
+      const taskRef = db.doc('users/' + user.uid + '/voiceTasks/' + taskId)
+      let packExpired = false
       await db.runTransaction(async tx => {
-        const profile = await tx.get(profileRef)
-        const current = profile.exists ? profile.data() : {}
+        const [profile, currentTask] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+        if (!profile.exists || !currentTask.exists) throw new Error('voice-task-not-found')
+        if (currentTask.data().stage === 'success') return
+        const current = profile.data()
+        const packs = Array.isArray(current.voicePacks) ? [...current.voicePacks] : []
+        const packIndex = packs.findIndex(item => String(item.packId || '') === String(currentTask.data().voicePackId || ''))
+        if (packIndex < 0) throw new Error('voice-pack-required')
+        const pack = { ...packs[packIndex] }
+        const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+        if (!Number.isFinite(expiry) || expiry <= Date.now()) {
+          packExpired = true
+          pack.reserved = Math.max(0, Number(pack.reserved || 0) - 1)
+          packs[packIndex] = pack
+          tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
+          tx.update(taskRef, { stage: 'expired', slotReserved: false })
+          return
+        }
+        pack.reserved = Math.max(0, Number(pack.reserved || 0) - 1)
+        pack.used = Math.min(VOICE_PACK_SIZE, Math.max(0, Number(pack.used || 0)) + 1)
+        packs[packIndex] = pack
         const voices = Array.isArray(current.voiceProfiles) ? current.voiceProfiles : (current.voiceProfile?.voiceId ? [current.voiceProfile] : [])
-        const nextVoices = voices.filter(item => String(item.voiceId || '') !== voiceId)
         const createdAt = new Date().toISOString()
-        const expiresAt = new Date(Date.now() + RETENTION_MS).toISOString()
-        nextVoices.push({ voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId })
-        const nextProfile = { voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId } }
-        if (profile.exists) tx.update(profileRef, nextProfile)
-        else tx.create(profileRef, nextProfile)
+        const expiresAt = pack.expiresAt instanceof Date ? pack.expiresAt.toISOString() : new Date(pack.expiresAt).toISOString()
+        const nextVoices = [...voices.filter(item => String(item.voiceId || '') !== voiceId), { voiceId, name: task.data.voiceName || 'Ma voix', createdAt, expiresAt, taskId, packId: pack.packId }]
+        const nextSelected = nextVoices[nextVoices.length - 1]
+        tx.update(profileRef, { voicePacks: packs, voiceProfiles: nextVoices, selectedVoiceId: voiceId, voiceProfile: nextSelected, updatedAt: SERVER_TIMESTAMP })
+        tx.update(taskRef, { stage: 'success', voiceId, slotReserved: false })
       })
-      await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { stage: 'success', voiceId }, true)
+      if (packExpired) return response(410, { error: 'voice-pack-expired' })
     }
   }
   return response(200, {
@@ -674,6 +936,8 @@ async function fedapayWebhook(request, env, db) {
     const order = await db.get('fedapayOrders/' + transactionId)
     if (order.exists && order.data.kind === 'track_download') await confirmTrackPurchase(env, db, transactionId)
     else if (order.exists && order.data.kind === 'discovery_subscription') await confirmDiscoveryPayment(env, db, transactionId)
+    else if (order.exists && order.data.kind === 'voice_pack') await confirmVoicePackPayment(env, db, transactionId)
+    else if (order.exists && order.data.kind === 'voice_reactivation') await confirmVoiceReactivationPayment(env, db, transactionId)
     else await confirmCreditPayment(env, db, transactionId)
     return response(200, { received: true })
   } catch (error) {
@@ -717,10 +981,16 @@ async function generate(request, env, db, user) {
       const hasPaidCredit = Number(data.paidCredits || 0) > 0
       const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : hasPaidCredit ? 'paid' : ''
       if (!creditType) throw new Error('no-free-credit')
-      if (discoveryIsActive) {
-        const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : []
+      {
+        const now = Date.now()
+        const voices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
+        const activePackIds = new Set((Array.isArray(data.voicePacks) ? data.voicePacks : []).filter(pack => {
+          const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+          return Number.isFinite(expiry) && expiry > now
+        }).map(pack => String(pack.packId)))
         const selectedVoiceId = Object.prototype.hasOwnProperty.call(data, 'selectedVoiceId') ? String(data.selectedVoiceId || '') : String(data.voiceProfile?.voiceId || '')
-        voiceId = String(voices.find(item => String(item.voiceId || '') === selectedVoiceId)?.voiceId || data.voiceProfile?.voiceId || '')
+        const selectedVoice = voices.find(item => String(item.voiceId || '') === selectedVoiceId && (item.packId ? activePackIds.has(String(item.packId)) : discoveryIsActive && (!item.expiresAt || new Date(item.expiresAt).getTime() > now)))
+        voiceId = String(selectedVoice?.voiceId || '')
       }
       if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
       if (creditType === 'discovery') tx.update(db.doc(profile), { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
@@ -782,6 +1052,181 @@ async function generate(request, env, db, user) {
     tx.create(db.doc(profile + '/generations/' + taskId), { taskId, uid: user.uid, title: generationTitle.slice(0,80) || 'Sans titre', prompt: generationPrompt.slice(0,5000), ...(generationStyle ? { style: generationStyle.slice(0,1000) } : {}), ...(!customMode ? { originalIdea: prompt.slice(0,400) } : {}), state: 'PENDING', paidCreditUsed, downloadIncluded, createdAt: SERVER_TIMESTAMP, expiresAt })
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true,  })
+}
+async function releaseVideoCredit(db, uid, lockPath) {
+  const profileRef = db.doc('users/' + uid), lockRef = db.doc(lockPath), policyRef = db.doc('settings/credits')
+  await db.runTransaction(async tx => {
+    const [profile, lock, policy] = await Promise.all([tx.get(profileRef), tx.get(lockRef), tx.get(policyRef)])
+    if (!lock.exists || lock.data().uid !== uid) return
+    const creditType = String(lock.data().creditType || 'paid')
+    if (creditType === 'paid' && profile.exists) tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'discovery' && profile.exists) {
+      const plan = profile.data().discoverySubscription || {}
+      if (isDiscoverySubscriptionActive(plan)) tx.update(profileRef, { discoveryCredits: Math.max(0, Number(profile.data().discoveryCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    }
+    if (creditType === 'free' && policy.exists && policy.data().freeGenerationCampaignId === lock.data().campaignId) {
+      tx.update(policyRef, { freeGenerationReservations: Math.max(0, Number(policy.data().freeGenerationReservations || 0) - 1) })
+    }
+    tx.delete(lockRef)
+  })
+}async function createVideoForTrack(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
+  if (!env.AUDIO_BUCKET) return response(503, { error: 'video-storage-not-configured' })
+  const body = await request.json().catch(() => ({}))
+  const taskId = String(body.taskId || ''), trackIndex = Number(body.trackIndex)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > 1) return response(400, { error: 'invalid-video-request' })
+  const path = 'users/' + user.uid + '/generations/' + taskId
+  const profileRef = db.doc('users/' + user.uid), generationRef = db.doc(path)
+  const lockPath = 'videoGenerationLocks/' + user.uid + '_' + taskId + '_' + trackIndex, lockRef = db.doc(lockPath)
+  const policyRef = db.doc('settings/credits')
+  await ensureFreeGenerationCounter(db)
+  let existingVideoTaskId = '', sourceTrack = null, alreadyArchived = false
+  try {
+    await db.runTransaction(async tx => {
+      const [profile, generation, lock, policy] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(lockRef), tx.get(policyRef)])
+      if (!profile.exists || !generation.exists) throw new Error('generation-not-found')
+      const tracks = Array.isArray(generation.data().tracks) ? generation.data().tracks : []
+      sourceTrack = tracks[trackIndex] || null
+      if (!sourceTrack || sourceTrack.deleted === true || !sourceTrack.id) throw new Error('video-source-not-ready')
+      if (sourceTrack.videoKey) { alreadyArchived = true; return }
+      if (sourceTrack.videoTaskId && !['FAILED','GENERATE_MP4_FAILED','CREATE_TASK_FAILED'].includes(String(sourceTrack.videoStatus || '').toUpperCase())) { existingVideoTaskId = String(sourceTrack.videoTaskId); return }
+      if (lock.exists) throw new Error('video-generation-running')
+      if (sourceTrack.videoTaskId) {
+        const retryTracks = [...tracks]
+        sourceTrack = { ...sourceTrack, lastVideoTaskId: sourceTrack.videoTaskId, videoTaskId: '', videoStatus: '', videoSourceUrl: '', videoError: '', videoCreditRefunded: false }
+        retryTracks[trackIndex] = sourceTrack
+        tx.update(generationRef, { tracks: retryTracks })
+      }
+      const data = profile.data(), rules = policy.exists ? policy.data() : { enabled: true, activeCampaignId: FREE_CREDIT_CAMPAIGN_ID, freeGenerationCount: 0, freeGenerationReservations: 0, freeGenerationCampaignId: FREE_CREDIT_CAMPAIGN_ID }
+      const campaign = data.freeCreditCampaignId || (!data.freeCreditPolicyAssigned ? FREE_CREDIT_CAMPAIGN_ID : null)
+      const sameCampaign = rules.freeGenerationCampaignId === rules.activeCampaignId
+      const freeCount = sameCampaign ? Math.max(0, Number(rules.freeGenerationCount || 0)) : 0
+      const reservations = sameCampaign ? Math.max(0, Number(rules.freeGenerationReservations || 0)) : 0
+      const hasFreeCredit = Boolean(rules.enabled && freeCount + reservations < FREE_GENERATION_LIMIT && campaign && campaign === rules.activeCampaignId && data.freeCreditUsed !== true)
+      const discoveryActive = isDiscoverySubscriptionActive(data.discoverySubscription || {})
+      const hasDiscoveryCredit = discoveryActive && Number(data.discoveryCredits || 0) > 0
+      const hasPaidCredit = Number(data.paidCredits || 0) > 0
+      const creditType = hasFreeCredit ? 'free' : hasDiscoveryCredit ? 'discovery' : hasPaidCredit ? 'paid' : ''
+      if (!creditType) throw new Error('video-credit-required')
+      if (creditType === 'free') tx.update(policyRef, { freeGenerationReservations: reservations + 1 })
+      if (creditType === 'discovery') tx.update(profileRef, { discoveryCredits: Math.max(0, Number(data.discoveryCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
+      if (creditType === 'paid') tx.update(profileRef, { paidCredits: Math.max(0, Number(data.paidCredits || 0) - 1), updatedAt: SERVER_TIMESTAMP })
+      tx.create(lockRef, { uid: user.uid, taskId, trackIndex, creditType, campaignId: creditType === 'free' ? campaign : null, createdAt: SERVER_TIMESTAMP })
+    })
+  } catch (error) {
+    const mapped = { 'generation-not-found':[404,'generation-not-found'], 'video-source-not-ready':[409,'video-source-not-ready'], 'video-generation-running':[409,'video-generation-running'], 'video-credit-required':[402,'video-credit-required'] }[error.message]
+    if (mapped) return response(mapped[0], { error: mapped[1] })
+    throw error
+  }
+  if (alreadyArchived) return response(200, { status: 'SUCCESS', videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+  if (existingVideoTaskId) return response(200, { status: 'PENDING', videoTaskId: existingVideoTaskId })
+  let upstream, payload
+  try {
+    upstream = await fetch(SUNO_VIDEO_GENERATE_URL, {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ taskId, audioId: String(sourceTrack.id), callBackUrl: new URL('/api/video-callback', request.url).toString(), author: 'Audinoo', domainName: 'audinoo.com' }),
+      signal: AbortSignal.timeout(25000)
+    })
+    payload = await upstream.json().catch(() => ({}))
+  } catch (error) {
+    await releaseVideoCredit(db, user.uid, lockPath)
+    console.error('[Audinoo video provider]', error)
+    return response(502, { error: 'video-provider-unavailable' })
+  }
+  if (!upstream.ok || payload.code !== 200 || !payload.data?.taskId) {
+    await releaseVideoCredit(db, user.uid, lockPath)
+    return response(payload.code === 429 ? 402 : 502, { error: payload.code === 429 ? 'video-provider-credit-limit' : 'video-provider-rejected-request', providerMessage: String(payload.msg || '').slice(0, 240) })
+  }
+  const videoTaskId = String(payload.data.taskId)
+  await db.runTransaction(async tx => {
+    const [generation, lock, profile, policy] = await Promise.all([tx.get(generationRef), tx.get(lockRef), tx.get(profileRef), tx.get(policyRef)])
+    if (!generation.exists || !lock.exists || !profile.exists) throw new Error('video-generation-reservation-lost')
+    if (lock.data().creditType === 'free') {
+      const rules = policy.exists ? policy.data() : {}
+      if (rules.freeGenerationCampaignId === lock.data().campaignId) {
+        const freeGenerationCount = Math.min(FREE_GENERATION_LIMIT, Math.max(0, Number(rules.freeGenerationCount || 0)) + 1)
+        const freeGenerationReservations = Math.max(0, Number(rules.freeGenerationReservations || 0) - 1)
+        tx.update(policyRef, { freeGenerationCount, freeGenerationReservations, ...(freeGenerationCount >= FREE_GENERATION_LIMIT ? { enabled: false, activeCampaignId: null, freeOfferExhausted: true, freeOfferDisabledAt: SERVER_TIMESTAMP } : {}) })
+      }
+      tx.update(profileRef, { freeCreditUsed: true, freeCreditUsedAt: SERVER_TIMESTAMP, updatedAt: SERVER_TIMESTAMP })
+    }
+    const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
+    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString(), videoCreditRefunded: false, videoCreditType: lock.data().creditType, videoCampaignId: lock.data().campaignId || null }
+    tx.update(generationRef, { tracks })
+    tx.create(db.doc('videoTasks/' + videoTaskId), { uid: user.uid, taskId, trackIndex, createdAt: SERVER_TIMESTAMP })
+    tx.delete(lockRef)
+  })
+  return response(202, { status: 'PENDING', videoTaskId })
+}
+async function refundFailedVideo(db, uid, path, trackIndex, providerTaskId, message) {
+  const profileRef = db.doc('users/' + uid), generationRef = db.doc(path), policyRef = db.doc('settings/credits')
+  await db.runTransaction(async tx => {
+    const [profile, generation, policy] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(policyRef)])
+    if (!profile.exists || !generation.exists) return
+    const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
+    const track = tracks[trackIndex]
+    if (!track || String(track.videoTaskId || '') !== String(providerTaskId) || track.videoCreditRefunded === true) return
+    const creditType = String(track.videoCreditType || 'paid')
+    if (creditType === 'paid') tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'discovery' && isDiscoverySubscriptionActive(profile.data().discoverySubscription || {})) tx.update(profileRef, { discoveryCredits: Math.max(0, Number(profile.data().discoveryCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    if (creditType === 'free') {
+      tx.update(profileRef, { freeCreditUsed: false, freeCreditUsedAt: null, updatedAt: SERVER_TIMESTAMP })
+      if (policy.exists && policy.data().freeGenerationCampaignId === track.videoCampaignId) {
+        const count = Math.max(0, Number(policy.data().freeGenerationCount || 0) - 1)
+        const restoreExhaustedOffer = policy.data().freeOfferExhausted === true && count < FREE_GENERATION_LIMIT
+        tx.update(policyRef, { freeGenerationCount: count, ...(restoreExhaustedOffer ? { enabled: true, activeCampaignId: track.videoCampaignId, freeOfferExhausted: false, freeOfferRestoredAt: SERVER_TIMESTAMP } : {}) })
+      }
+    }
+    tracks[trackIndex] = { ...track, lastVideoTaskId: providerTaskId, videoTaskId: '', videoStatus: 'FAILED', videoError: String(message || 'La génération vidéo a échoué.'), videoCreditRefunded: true }
+    tx.update(generationRef, { tracks })
+  })
+}
+async function videoStatus(request, env, db, user, url) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  const taskId = url.searchParams.get('taskId') || '', trackIndex = Number(url.searchParams.get('track') || 0)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > 1) return response(400, { error: 'invalid-video-request' })
+  const path = 'users/' + user.uid + '/generations/' + taskId, generation = await db.get(path)
+  const track = generation.data?.tracks?.[trackIndex]
+  if (!generation.exists || !track) return response(404, { error: 'generation-not-found' })
+  if (track.videoKey) return response(200, { status: 'SUCCESS', completed: true, videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+  if (!track.videoTaskId) return response(404, { error: 'video-task-not-found' })
+  let videoUrl = String(track.videoSourceUrl || ''), state = String(track.videoStatus || 'PENDING').toUpperCase()
+  if (!videoUrl || state === 'PENDING') {
+    const upstream = await fetch(SUNO_VIDEO_STATUS_URL + '?taskId=' + encodeURIComponent(track.videoTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
+    const payload = await upstream.json().catch(() => ({}))
+    if (!upstream.ok || payload.code !== 200) return response(502, { error: 'video-status-unavailable' })
+    const data = payload.data || {}
+    state = String(data.response?.successFlag || data.successFlag || data.status || 'PENDING').toUpperCase()
+    videoUrl = String(data.response?.videoUrl || data.response?.video_url || data.videoUrl || data.video_url || videoUrl)
+    if (videoUrl || state !== 'PENDING') {
+      const tracks = [...generation.data.tracks]
+      tracks[trackIndex] = { ...track, videoStatus: state, ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(state.includes('FAILED') || state === 'CALLBACK_EXCEPTION' ? { videoError: String(data.response?.errorMessage || data.errorMessage || 'La génération vidéo a échoué.') } : {}) }
+      await db.set(path, { tracks }, true)
+    }
+  }
+  if (state === 'SUCCESS' && videoUrl) {
+    try {
+      const remote = await fetch(videoUrl, { signal: AbortSignal.timeout(90000) })
+      const contentType = remote.headers.get('content-type') || 'video/mp4'
+      if (!remote.ok || !remote.body || !(contentType.toLowerCase().includes('video') || contentType.toLowerCase().includes('octet-stream'))) throw new Error('video-download-failed')
+      const videoKey = 'private/' + user.uid + '/' + taskId + '/' + trackIndex + '.video.mp4'
+      await env.AUDIO_BUCKET.put(videoKey, remote.body, { httpMetadata: { contentType: 'video/mp4', cacheControl: 'private, no-store' }, customMetadata: { uid: user.uid, taskId, trackIndex: String(trackIndex) } })
+      const latest = await db.get(path), tracks = [...(latest.data?.tracks || [])]
+      tracks[trackIndex] = { ...tracks[trackIndex], videoKey, videoStatus: 'SUCCESS', videoArchivedAt: new Date().toISOString(), videoSourceUrl: '' }
+      await db.set(path, { tracks }, true)
+      return response(200, { status: 'SUCCESS', completed: true, videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+    } catch (error) {
+      console.error('[Audinoo video archive]', error)
+      return response(502, { error: 'video-archive-failed' })
+    }
+  }
+  if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') {
+    await refundFailedVideo(db, user.uid, path, trackIndex, track.videoTaskId, track.videoError || 'La génération vidéo a échoué.')
+    return response(200, { status: 'FAILED', failed: true, message: track.videoError || 'La création du clip a échoué. Ton crédit a été restitué.' })
+  }
+  return response(200, { status: 'PENDING', completed: false })
 }
 async function sunoHealth(request, env) {
   if (request.method !== 'GET') return response(405, { connected: false, error: 'method-not-allowed' })
@@ -850,10 +1295,10 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
   const track = snap.data?.tracks?.[index]
   if (!snap.exists || (!admin && snap.data.uid !== user.uid)) return response(404, { error: 'media-not-found' })
   if (kind === 'download' && track?.downloadPurchased !== true && snap.data.downloadIncluded !== true) return response(403, { error: 'download-purchase-required' })
-  const key = kind === 'cover' ? track?.coverKey : track?.r2Key
+  const key = kind === 'cover' ? track?.coverKey : kind === 'video' ? track?.videoKey : track?.r2Key
   if (key) {
     const object = await env.AUDIO_BUCKET?.get(key)
-    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, no-store', ...(kind === 'download' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'chanson').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp3"' } : {}), ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
+    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : kind === 'video' ? 'video/mp4' : 'audio/mpeg'), 'cache-control': 'private, no-store', ...(kind === 'download' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'chanson').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp3"' } : kind === 'video' && url.searchParams.get('download') === '1' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'clip').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp4"' } : {}), ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
   }
   // Legacy/unarchived tracks can still be listened to by an authenticated administrator.
   // Publishing will archive this provider URL into R2 before making it public.
@@ -1278,7 +1723,7 @@ async function library(request, env, db, user) {
   const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl, videoTaskId:track.videoTaskId || '', videoStatus:track.videoStatus || '', videoUrl:track.videoKey ? '/api/my-video?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : '', videoError:track.videoError || '' })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   libraryResponseCache.set(user.uid, { generations, expiresAt: Date.now() + LIBRARY_CACHE_TTL_MS })
   if (libraryResponseCache.size > 500) {
@@ -1339,30 +1784,77 @@ export default {
       if (!row.document) continue
       const data = fromFields(row.document.fields || {})
       if (!(data.createdAt instanceof Date) || data.createdAt.getTime() > cutoff) continue
-      for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
+      for (const track of data.tracks || []) {
+        for (const key of [track.r2Key, track.videoKey]) if (key) { try { await env.AUDIO_BUCKET.delete(key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
+      }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
     }
-    const userRows = await db.runQuery({ from: [{ collectionId: 'users' }], limit: 1000 })
-    for (const row of userRows || []) {
-      const document = row.document
-      if (!document?.name) continue
-      const uid = document.name.split('/documents/users/')[1]
-      if (!uid || uid.includes('/')) continue
-      const data = fromFields(document.fields || {})
-      const storedVoices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
-      const validVoices = storedVoices.filter(voice => {
-        if (!voice?.voiceId || !voice.expiresAt) return Boolean(voice?.voiceId)
-        const expiry = new Date(voice.expiresAt).getTime()
-        return Number.isFinite(expiry) && expiry > Date.now()
-      })
-      if (validVoices.length === storedVoices.length) continue
-      const selected = validVoices.find(voice => String(voice.voiceId) === String(data.selectedVoiceId || '')) || null
-      try {
-        await db.set('users/' + uid, { voiceProfiles: validVoices, selectedVoiceId: selected?.voiceId || '', voiceProfile: selected }, true)
-      } catch (error) {
-        console.error('[Audinoo voice retention cleanup]', { uid, error })
+    // Archive les clips terminés dans R2, même si l'utilisateur a quitté sa bibliothèque.
+    if (env.SUNOAPI_KEY) {
+      const videoRows = await db.runQuery({ from: [{ collectionId: 'videoTasks' }], limit: 1000 })
+      let checkedVideos = 0
+      for (const row of videoRows || []) {
+        if (checkedVideos >= 25 || !row.document?.name) break
+        const providerTaskId = row.document.name.split('/documents/videoTasks/')[1]
+        const videoTask = fromFields(row.document.fields || {})
+        if (!providerTaskId || videoTask.archived === true || videoTask.failed === true || !videoTask.uid || !videoTask.taskId) continue
+        checkedVideos++
+        const path = 'users/' + videoTask.uid + '/generations/' + videoTask.taskId
+        try {
+          const generation = await db.get(path)
+          const trackIndex = Number(videoTask.trackIndex)
+          const track = generation.data?.tracks?.[trackIndex]
+          if (!generation.exists || !track) {
+            await db.set('videoTasks/' + providerTaskId, { failed: true, finishedAt: SERVER_TIMESTAMP }, true)
+            continue
+          }
+          if (track.videoKey) {
+            await db.set('videoTasks/' + providerTaskId, { archived: true, archivedAt: SERVER_TIMESTAMP }, true)
+            continue
+          }
+          let videoUrl = String(track.videoSourceUrl || '')
+          let state = String(track.videoStatus || 'PENDING').toUpperCase()
+          if (!videoUrl || state === 'PENDING') {
+            const statusResponse = await fetch(SUNO_VIDEO_STATUS_URL + '?taskId=' + encodeURIComponent(providerTaskId), {
+              headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' },
+              signal: AbortSignal.timeout(15000)
+            })
+            const payload = await statusResponse.json().catch(() => ({}))
+            if (!statusResponse.ok || payload.code !== 200) continue
+            const data = payload.data || {}
+            state = String(data.response?.successFlag || data.successFlag || data.status || 'PENDING').toUpperCase()
+            videoUrl = String(data.response?.videoUrl || data.response?.video_url || data.videoUrl || data.video_url || videoUrl)
+          }
+          if (state === 'SUCCESS' && videoUrl) {
+            const remote = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) })
+            const contentType = remote.headers.get('content-type') || 'video/mp4'
+            if (!remote.ok || !remote.body || !(contentType.toLowerCase().includes('video') || contentType.toLowerCase().includes('octet-stream'))) continue
+            const videoKey = 'private/' + videoTask.uid + '/' + videoTask.taskId + '/' + trackIndex + '.video.mp4'
+            await env.AUDIO_BUCKET.put(videoKey, remote.body, { httpMetadata: { contentType: 'video/mp4', cacheControl: 'private, no-store' }, customMetadata: { uid: videoTask.uid, taskId: videoTask.taskId, trackIndex: String(trackIndex) } })
+            const latest = await db.get(path)
+            const tracks = Array.isArray(latest.data?.tracks) ? [...latest.data.tracks] : []
+            if (tracks[trackIndex]) {
+              tracks[trackIndex] = { ...tracks[trackIndex], videoKey, videoStatus: 'SUCCESS', videoArchivedAt: new Date().toISOString(), videoSourceUrl: '' }
+              await db.set(path, { tracks }, true)
+              await db.set('videoTasks/' + providerTaskId, { archived: true, archivedAt: SERVER_TIMESTAMP }, true)
+            }
+          } else if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') {
+            await refundFailedVideo(db, videoTask.uid, path, trackIndex, providerTaskId, 'La génération vidéo a échoué.')
+            await db.set('videoTasks/' + providerTaskId, { failed: true, finishedAt: SERVER_TIMESTAMP }, true)
+          } else if (videoUrl) {
+            const latest = await db.get(path)
+            const tracks = Array.isArray(latest.data?.tracks) ? [...latest.data.tracks] : []
+            if (tracks[trackIndex]) {
+              tracks[trackIndex] = { ...tracks[trackIndex], videoStatus: state, videoSourceUrl: videoUrl }
+              await db.set(path, { tracks }, true)
+            }
+          }
+        } catch (error) {
+          console.warn('[Audinoo scheduled video archive]', providerTaskId, error)
+        }
       }
     }
+    // Expired custom voices are hidden by accountPlan but retained for paid reactivation.
   },
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -1405,6 +1897,25 @@ export default {
       await callbackDb.set(path,{ state, ...(merged.length ? { tracks: merged } : {}), callbackType, callbackMessage: String(payload.msg || '') },true)
       return response(200,{received:true,savedTracks:merged.length})
     }
+    if (url.pathname === '/api/video-callback') {
+      if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+      const payload = await request.json().catch(() => ({})), data = payload?.data || {}
+      const providerTaskId = String(data.task_id || data.taskId || ''), videoUrl = String(data.video_url || data.videoUrl || '')
+      if (!/^[a-zA-Z0-9_-]{6,120}$/.test(providerTaskId)) return response(200, { received: true, ignored: true })
+      const callbackDb = new FirestoreRest(env)
+      const videoTask = await callbackDb.get('videoTasks/' + providerTaskId)
+      if (videoTask.exists) {
+        const path = 'users/' + videoTask.data.uid + '/generations/' + videoTask.data.taskId
+        const generation = await callbackDb.get(path)
+        const tracks = Array.isArray(generation.data?.tracks) ? [...generation.data.tracks] : []
+        const index = Number(videoTask.data.trackIndex)
+        if (generation.exists && tracks[index] && String(tracks[index].videoTaskId || '') === providerTaskId) {
+          tracks[index] = { ...tracks[index], videoStatus: payload.code === 200 ? 'SUCCESS' : 'FAILED', ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(payload.code !== 200 ? { videoError: String(payload.msg || 'La génération vidéo a échoué.') } : {}) }
+          await callbackDb.set(path, { tracks }, true)
+        }
+      }
+      return response(200, { received: true })
+    }
     if (url.pathname === '/api/fedapay-webhook') return await fedapayWebhook(request,env,new FirestoreRest(env))
     if (url.pathname === '/api/suno-health') return await sunoHealth(request,env)
     if (url.pathname === '/api/session-check') {
@@ -1423,6 +1934,16 @@ export default {
       if (url.pathname === '/api/discovery/confirm') { if (request.method !== 'GET') return response(405,{error:'method-not-allowed'}); return response(200, await confirmDiscoveryPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid)) }
       if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
       if (url.pathname === '/api/admin/discovery/cancel') return await adminCancelDiscovery(request,db,user)
+      if (url.pathname === '/api/voice/purchase') return await createVoicePackPayment(request,env,db,user)
+      if (url.pathname === '/api/voice/reactivate') return await createVoiceReactivationPayment(request,env,db,user)
+      if (url.pathname === '/api/voice/reactivate-confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        return response(200, await confirmVoiceReactivationPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid))
+      }
+      if (url.pathname === '/api/voice/confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        return response(200, await confirmVoicePackPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid))
+      }
       if (url.pathname === '/api/voice/upload') return await voiceUpload(request,env,db,user)
       if (url.pathname === '/api/voice/validate') return await voiceValidate(request,env,db,user)
       if (url.pathname === '/api/voice/validate-info') return await voiceValidateInfo(request,env,db,user,url)
@@ -1441,6 +1962,9 @@ export default {
         if (!order.exists || order.data.uid !== user.uid) return response(404,{error:'payment-order-not-found'})
         return response(200, await confirmCreditPayment(env,db,transactionId))
       }
+      if (url.pathname === '/api/video/create') return await createVideoForTrack(request,env,db,user)
+      if (url.pathname === '/api/video/status') return await videoStatus(request,env,db,user,url)
+      if (url.pathname === '/api/my-video') return await privateMedia(request,env,db,user,'video')
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,env,db,user)
@@ -1479,6 +2003,10 @@ export default {
       if (url.pathname.startsWith('/api/voice/')) {
         const voiceError = status === 401 ? 'invalid-session' : String(e?.message || 'voice-operation-failed').slice(0, 160)
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
+      }
+      if (url.pathname.startsWith('/api/video/')) {
+        const videoErrors = new Set(['video-credit-required','video-provider-credit-limit','video-generation-running','video-source-not-ready','video-storage-not-configured','generation-not-found','video-task-not-found','video-provider-unavailable','video-provider-rejected-request','video-status-unavailable','video-archive-failed','invalid-video-request'])
+        return response(status, { error: videoErrors.has(e.message) ? e.message : 'video-generation-failed', providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       const quotaDetails = [e?.firestoreStatus, e?.firebaseStatus, e?.message].filter(Boolean).join(' · ')
       const isFirebaseQuota = e?.service === 'firebase-auth' || e?.firestoreStatus === 'RESOURCE_EXHAUSTED' || e?.firebaseStatus === 'RESOURCE_EXHAUSTED' || /RESOURCE_EXHAUSTED|quota exceeded/i.test(quotaDetails)
