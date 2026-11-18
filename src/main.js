@@ -3252,7 +3252,12 @@ function renderAdminNotificationList(items) {
     const date = value => value?.toDate ? value.toDate().getTime() : value?.seconds ? value.seconds * 1000 : 0
     return date(b.createdAt) - date(a.createdAt)
   })
-  adminNotificationListStatus.textContent = ordered.length ? ordered.length + ' notification(s) publiée(s) ou ciblée(s).' : 'Aucune notification publiée.'
+  const notificationIds = new Set(ordered.map(item => item.id))
+  const totalSent = ordered.reduce((sum,item) => sum + Math.max(0, Number(item.sentCount ?? (item.audience === 'user' ? 1 : latestAdminUsers.length))), 0)
+  const totalRead = adminNotificationReadItems.filter(read => notificationIds.has(read.notificationId)).length
+  adminNotificationListStatus.textContent = ordered.length
+    ? ordered.length + ' notification(s) · ' + adminNumber(totalSent) + ' envois cumulés · ' + adminNumber(totalRead) + ' lectures enregistrées.'
+    : 'Aucune notification publiée.'
   if (!ordered.length) {
     const empty = document.createElement('p')
     empty.className = 'admin-panel-status'
@@ -6426,7 +6431,6 @@ function openProfile(profile, { requireCountry = false } = {}) {
     // Show the studio first, then ask for the country on top of it. The
     // signup flow must never fall back to the landing page between steps.
     openWorkspace(profile)
-    showWhatsNewForLogin(auth.currentUser || profile)
     showCountrySelection(profile)
     return
   }
@@ -6596,6 +6600,7 @@ countrySubmit.addEventListener('click', async () => {
     void recordAcquisitionEvent('signup_completed', 'Compte prêt, pays enregistré')
     closeCountrySelection()
     openWorkspace(profile)
+    showWhatsNewForLogin(auth.currentUser || profile)
     window.setTimeout(() => { void showPendingFeedbackInvitation(profile.uid) }, 900)
     toast.textContent = 'Ton pays a été enregistré.'
     toast.classList.add('show')
