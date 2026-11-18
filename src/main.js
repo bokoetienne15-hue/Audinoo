@@ -5360,9 +5360,10 @@ async function loadUserLibrary(isAutomaticRetry = false) {
     libraryWorkspacePage.querySelector('.workspace-library-empty').hidden = true
     const quotaLimited = error.message === 'firestore-quota-exceeded' || error.message === 'firebase-quota-exceeded' || error.status === 429 || /RESOURCE_EXHAUSTED|quota exceeded/i.test(error.providerDetails || error.message || '')
     if (quotaLimited) {
-      const delays = [5000, 15000, 30000]
-      if (libraryQuotaRetryAttempt < delays.length && auth.currentUser) {
-        const delay = delays[libraryQuotaRetryAttempt++]
+      const delays = [15000, 60000, 300000, 900000, 1800000, 3600000]
+      if (auth.currentUser) {
+        const delay = delays[Math.min(libraryQuotaRetryAttempt, delays.length - 1)]
+        libraryQuotaRetryAttempt += 1
         toast.textContent = `Le service de données est temporairement saturé. Tes chansons sont conservées. Nouvelle tentative automatique dans ${Math.round(delay / 1000)} secondes…`
         libraryQuotaRetryTimer = window.setTimeout(() => {
           libraryQuotaRetryTimer = null
