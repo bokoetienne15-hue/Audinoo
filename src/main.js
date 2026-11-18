@@ -219,9 +219,34 @@ app.innerHTML = `
         <h2>Et si tes chansons portaient ta voix ?</h2>
         <p>Crée des morceaux qui te ressemblent vraiment. Enregistre simplement ta voix, sans caméra, et fais chanter tes chansons avec ton identité.</p>
         <p class="discovery-voice-welcome-price">Pack de 2 voix · 1 000 FCFA · 30 jours</p>
-        <button type="button" class="discovery-voice-welcome-button" id="discovery-voice-welcome-button">Débloquer mes voix · 1 000 FCFA <span aria-hidden="true">→</span></button>
+        <div class="discovery-voice-welcome-actions">
+          <button type="button" class="discovery-voice-welcome-button" id="discovery-voice-welcome-button">Débloquer mes voix · 1 000 FCFA <span aria-hidden="true">→</span></button>
+          <button type="button" class="discovery-voice-how-button" id="discovery-voice-how-button">Découvrir comment ça marche <span aria-hidden="true">↗</span></button>
+        </div>
         <small class="discovery-voice-welcome-note">Paiement unique · aucun renouvellement automatique</small>
       </div>
+      <section class="discovery-voice-how-page" id="discovery-voice-how-page" hidden>
+        <button type="button" class="discovery-voice-how-back" id="discovery-voice-how-back">← Retour à la présentation</button>
+        <p class="workspace-kicker">NOUVEAU SUR AUDINOO</p>
+        <h2>Imagine tes chansons avec ta propre voix.</h2>
+        <p class="discovery-voice-how-intro">Ton identité vocale devient une nouvelle façon de créer. Voici comment passer de l’idée à ta première chanson personnalisée.</p>
+        <div class="discovery-voice-how-goal">
+          <span aria-hidden="true">♫</span>
+          <div><strong>Ton objectif</strong><p>Créer des chansons qui portent ta voix, ton style et ton identité, sans avoir besoin d’une caméra.</p></div>
+        </div>
+        <ol class="discovery-voice-how-steps">
+          <li><span>01</span><div><strong>Débloque le pack</strong><p>Appuie sur « Débloquer mes voix » et règle les <b>1 000 FCFA</b>. Ce paiement unique ouvre deux emplacements de voix personnalisées pendant 30 jours.</p></div></li>
+          <li><span>02</span><div><strong>Ajoute ta voix</strong><p>Après confirmation du paiement, choisis « Enregistrer ma voix » avec ton microphone ou « Importer un audio ». Aucun enregistrement vidéo n’est demandé.</p></div></li>
+          <li><span>03</span><div><strong>Prépare et vérifie l’audio</strong><p>Fournis un enregistrement clair d’au moins 5 secondes, écoute-le, puis confirme pour lancer la création de ta voix personnalisée.</p></div></li>
+          <li><span>04</span><div><strong>Choisis ta voix dans Audinoo</strong><p>Ta voix créée apparaît dans « Ma voix ». Sélectionne-la avant de préparer ta chanson dans le Studio.</p></div></li>
+          <li><span>05</span><div><strong>Crée ta chanson</strong><p>Décris la musique que tu imagines, choisis ton style et lance la génération. Audinoo utilise la voix sélectionnée lorsque la fonctionnalité est disponible pour ta création.</p></div></li>
+        </ol>
+        <div class="discovery-voice-how-rules">
+          <strong>À retenir sur le pack</strong>
+          <p>1 000 FCFA = deux créations de voix et 30 jours d’accès. Quand les deux emplacements sont utilisés, il faut acheter un nouveau pack pour en créer d’autres. À l’expiration, tes voix sont conservées mais bloquées ; tu peux réactiver les deux anciennes pour 500 FCFA pendant 30 jours supplémentaires. Aucun renouvellement automatique.</p>
+        </div>
+        <button type="button" class="discovery-voice-how-purchase" id="discovery-voice-how-purchase">J’ai compris · Débloquer mes voix · 1 000 FCFA</button>
+      </section>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">2 VOIX · 30 JOURS</span></div>
       <div class="discovery-voice-access"><p id="discovery-voice-access-status">Achète un pack pour configurer deux voix personnalisées pendant 30 jours.</p><button type="button" id="discovery-voice-purchase" class="discovery-voice-purchase">Débloquer 2 voix · 1 000 FCFA</button></div>
       <section class="discovery-voice-library" id="discovery-voice-library"><div class="discovery-voice-library-heading"><div><h3>Bibliothèque vocale</h3><p>Retrouve tes voix et choisis celle de tes prochaines chansons.</p></div><span id="discovery-voice-count">0 voix</span></div><div class="discovery-voice-list" id="discovery-voice-list"><p class="discovery-voice-empty">Aucune voix enregistrée pour le moment.</p></div><button class="discovery-voice-add" id="discovery-voice-add" type="button"><span aria-hidden="true">＋</span> Créer une nouvelle voix</button></section>
@@ -1391,8 +1416,9 @@ const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
 workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span>MES CRÉDITS</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">0 gratuit · 0 payant</small></div>'
 // Sur mobile, le solde reste visible en haut du Studio, juste avant les outils de création.
-const studioMobileCreditAnchor = document.querySelector('.workspace-layout > .workspace-content .workspace-intro')
+const studioMobileCreditAnchor = document.querySelector('#workspace-layout > .workspace-content > .workspace-intro') || document.querySelector('#workspace-layout .workspace-content .workspace-intro')
 if (studioMobileCreditAnchor) studioMobileCreditAnchor.insertAdjacentElement('afterend', workspaceMobileCredit)
+else document.querySelector('#workspace-layout .workspace-content')?.prepend(workspaceMobileCredit)
 const communityNotice = document.querySelector('#community-listen-notice')
 const syncCommunityNoticePlacement = () => {
   if (!communityNotice) return
@@ -3223,6 +3249,10 @@ const discoveryVoiceToggle = document.querySelector('#discovery-voice-toggle')
 const discoveryVoicePanel = document.querySelector('#discovery-voice-panel')
 const discoveryVoiceWelcome = document.querySelector('#discovery-voice-welcome')
 const discoveryVoiceWelcomeButton = document.querySelector('#discovery-voice-welcome-button')
+const discoveryVoiceHowButton = document.querySelector('#discovery-voice-how-button')
+const discoveryVoiceHowPage = document.querySelector('#discovery-voice-how-page')
+const discoveryVoiceHowBack = document.querySelector('#discovery-voice-how-back')
+const discoveryVoiceHowPurchase = document.querySelector('#discovery-voice-how-purchase')
 const discoveryVoiceHeading = discoveryVoicePanel?.querySelector('.discovery-voice-heading')
 const discoveryVoiceAccess = discoveryVoicePanel?.querySelector('.discovery-voice-access')
 let discoveryVoiceIntroSeen = false
@@ -3323,7 +3353,8 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     return
   }
   const isAdmin = verifiedAdminUid === uid
-  if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = true
+  // Afficher immédiatement l’entrée Ma voix : le chargement du solde et des profils continue en arrière-plan.
+  if (discoveryVoiceEntry) discoveryVoiceEntry.hidden = false
   if (discoveryVoicePanel) discoveryVoicePanel.hidden = true
   discoveryVoiceToggle?.setAttribute('aria-expanded', 'false')
   try {
@@ -3456,6 +3487,19 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   discoveryVoiceStatus.classList.remove('is-loading')
   discoveryVoiceStatus.textContent = 'Choisis comment ajouter ta voix.'
   setDiscoveryVoiceStep(1)
+})
+discoveryVoiceHowButton?.addEventListener('click', () => {
+  if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = true
+  if (discoveryVoiceHowPage) discoveryVoiceHowPage.hidden = false
+})
+discoveryVoiceHowBack?.addEventListener('click', () => {
+  if (discoveryVoiceHowPage) discoveryVoiceHowPage.hidden = true
+  if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = false
+})
+discoveryVoiceHowPurchase?.addEventListener('click', () => {
+  if (discoveryVoiceHowPage) discoveryVoiceHowPage.hidden = true
+  if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = false
+  discoveryVoiceWelcomeButton?.click()
 })
 discoveryVoiceWelcomeButton?.addEventListener('click', () => {
   discoveryVoiceIntroSeen = true
