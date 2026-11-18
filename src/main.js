@@ -1667,6 +1667,7 @@ let adminPresenceExpiryTimer = null
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
   latestAdminUsers = userSnapshots.docs.filter((snapshot) => latestAdminAuthUserIds.has(snapshot.id)).map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
   renderAdminNotificationRecipients()
+  if (adminNotificationSnapshot) renderAdminNotificationList(adminNotificationSnapshot)
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
@@ -3290,7 +3291,7 @@ function renderAdminNotificationList(items) {
     const readers = document.createElement('small')
     const names = [...new Set(reads.map(read => {
       const reader = latestAdminUsers.find(user => user.uid === read.userId)
-      return reader?.displayName || reader?.username || reader?.email || (reader ? 'Utilisateur' : '')
+      return reader?.displayName || reader?.username || reader?.email || (reader ? 'Utilisateur' : 'Compte ' + String(read.userId || '').slice(0,8))
     }).filter(Boolean))]
     readers.textContent = names.length ? 'Ont lu : ' + names.join(', ') : 'Aucune lecture enregistrée pour le moment.'
     content.append(title,message,date,recipient,stats,readers)
