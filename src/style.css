@@ -3868,3 +3868,33 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   .discovery-voice-welcome-art-label { font-size: 7px; }
   .discovery-voice-welcome-button { width: 100%; padding-inline: 12px; font-size: 13px; }
 }
+
+
+/* Ma voix : présentation, guide de découverte et affichage fiable des crédits mobile. */
+.discovery-voice-welcome-actions{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:360px;margin:0 auto}
+.discovery-voice-welcome-actions .discovery-voice-welcome-button{width:100%}
+.discovery-voice-how-button{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:44px;padding:10px 16px;border:1px solid rgba(210,174,238,.45);border-radius:13px;background:rgba(255,255,255,.045);color:#f0dcff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.discovery-voice-how-button:hover,.discovery-voice-how-back:hover{background:rgba(183,119,225,.14)}
+.discovery-voice-how-page{box-sizing:border-box;width:min(100%,620px);margin:10px auto;padding:22px;border:1px solid rgba(185,106,232,.28);border-radius:18px;background:radial-gradient(circle at 100% 0%,rgba(128,65,174,.16),transparent 38%),#100d18;color:#f8f5fb}
+.discovery-voice-how-page[hidden]{display:none!important}
+.discovery-voice-how-back{display:inline-flex;align-items:center;gap:8px;margin:0 0 22px;padding:8px 11px;border:1px solid #494052;border-radius:10px;background:transparent;color:#e8d5f6;font:inherit;font-size:12px;cursor:pointer}
+.discovery-voice-how-page h2{margin:0 0 10px;color:#fff;font-size:clamp(22px,4vw,29px);line-height:1.2}
+.discovery-voice-how-intro{margin:0 0 18px;color:#c9bfd4;font-size:13px;line-height:1.65}
+.discovery-voice-how-goal{display:flex;align-items:flex-start;gap:13px;margin:0 0 20px;padding:15px;border:1px solid rgba(185,106,232,.25);border-radius:14px;background:rgba(138,75,180,.12)}
+.discovery-voice-how-goal>span{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:rgba(185,106,232,.2);color:#f1d5ff;font-size:22px}
+.discovery-voice-how-goal strong,.discovery-voice-how-steps strong{display:block;color:#fff;font-size:14px}
+.discovery-voice-how-goal p,.discovery-voice-how-steps p{margin:5px 0 0;color:#c7bdcf;font-size:12px;line-height:1.6}
+.discovery-voice-how-steps{display:grid;gap:0;margin:0 0 20px;padding:0;list-style:none}
+.discovery-voice-how-steps li{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.discovery-voice-how-steps li>span{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(190,133,225,.4);border-radius:11px;background:rgba(140,80,183,.14);color:#e7c7ff;font-size:11px;font-weight:800}
+.discovery-voice-how-rules{margin:0 0 18px;padding:15px;border:1px solid rgba(255,190,120,.22);border-radius:13px;background:rgba(255,174,83,.06)}
+.discovery-voice-how-rules strong{color:#ffe1bb;font-size:13px}
+.discovery-voice-how-rules p{margin:7px 0 0;color:#d0c5d7;font-size:11px;line-height:1.65}
+.discovery-voice-how-purchase{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:11px 16px;border:0;border-radius:13px;background:linear-gradient(100deg,#873fc0,#a64bd0);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+@media(max-width:760px){
+  .workspace-mobile-credit{display:flex!important;align-items:center;flex-wrap:nowrap;width:100%;box-sizing:border-box;margin:0 0 20px;padding:12px 14px}
+  .workspace-mobile-credit-info{min-width:0;flex:1 1 auto}
+  .discovery-voice-welcome{padding:22px 16px}
+  .discovery-voice-how-page{padding:17px 14px}
+  .discovery-voice-how-steps li{grid-template-columns:32px minmax(0,1fr);gap:9px}
+}
