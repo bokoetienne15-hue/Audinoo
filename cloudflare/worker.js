@@ -623,6 +623,20 @@ async function voiceValidateInfo(request, env, db, user, url) {
   if (payload.data?.validateInfo) await db.set('users/' + user.uid + '/voiceTasks/' + taskId, { validateInfo: String(payload.data.validateInfo), stage: String(payload.data.status || 'wait_validating') }, true)
   return response(200, { taskId, status: payload.data?.status || 'processing', validateInfo: payload.data?.validateInfo || '', errorMessage: payload.data?.errorMessage || '' })
 }
+async function releaseVoicePackReservation(db, uid, taskId) {
+  const profileRef = db.doc('users/' + uid)
+  const taskRef = db.doc('users/' + uid + '/voiceTasks/' + taskId)
+  await db.runTransaction(async tx => {
+    const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
+    if (!profile.exists || !task.exists || task.data().slotReserved !== true) return
+    const packId = String(task.data().voicePackId || '')
+    const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
+    const index = packs.findIndex(pack => String(pack.packId || '') === packId)
+    if (index >= 0) packs[index] = { ...packs[index], reserved: Math.max(0, Number(packs[index].reserved || 0) - 1) }
+    tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
+    tx.update(taskRef, { slotReserved: false, stage: 'wait_validating' })
+  })
+}
 async function voiceCreate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
   const body = await request.json().catch(() => ({}))
@@ -631,7 +645,8 @@ async function voiceCreate(request, env, db, user) {
   const taskRef = db.doc('users/' + user.uid + '/voiceTasks/' + taskId)
   const profileRef = db.doc('users/' + user.uid)
   const verify = await db.get('voiceFileTokens/' + token)
-  if (!verify.exists || verify.data.uid !== user.uid) return response(400, { error: 'voice-verification-not-ready' })
+  const verifyExpiry = verify.data?.expiresAt instanceof Date ? verify.data.expiresAt.getTime() : new Date(verify.data?.expiresAt || 0).getTime()
+  if (!verify.exists || verify.data.uid !== user.uid || !Number.isFinite(verifyExpiry) || verifyExpiry <= Date.now()) return response(400, { error: 'voice-verification-not-ready' })
   let reservedPackId = ''
   try {
     await db.runTransaction(async tx => {
@@ -657,18 +672,16 @@ async function voiceCreate(request, env, db, user) {
     if (error.message === 'voice-verification-not-ready') return response(409, { error: error.message })
     throw error
   }
-  const result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
-  const payload = await result.json().catch(() => ({}))
+  let result, payload
+  try {
+    result = await fetch(SUNO_VOICE_GENERATE_URL, { method: 'POST', headers: voiceApiHeaders(env), body: JSON.stringify({ taskId, verifyUrl: new URL('/api/voice-file/' + token, request.url).toString(), voiceName: requestedVoiceName, description: 'Voix personnalisée créée par son propriétaire sur Audinoo', style: 'French singing voice', singerSkillLevel: 'beginner' }), signal: AbortSignal.timeout(25000) })
+    payload = await result.json().catch(() => ({}))
+  } catch (error) {
+    await releaseVoicePackReservation(db, user.uid, taskId)
+    throw error
+  }
   if (!result.ok || payload.code !== 200 || !payload.data?.taskId) {
-    await db.runTransaction(async tx => {
-      const [profile, task] = await Promise.all([tx.get(profileRef), tx.get(taskRef)])
-      if (!profile.exists || !task.exists || task.data().slotReserved !== true) return
-      const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
-      const index = packs.findIndex(pack => String(pack.packId) === reservedPackId)
-      if (index >= 0) packs[index] = { ...packs[index], reserved: Math.max(0, Number(packs[index].reserved || 0) - 1) }
-      tx.update(profileRef, { voicePacks: packs, updatedAt: SERVER_TIMESTAMP })
-      tx.update(taskRef, { stage: 'wait_validating', slotReserved: false, voicePackId: null })
-    })
+    await releaseVoicePackReservation(db, user.uid, taskId)
     return response(502, {
       error: 'voice-creation-rejected',
       providerMessage: String(payload.msg || payload.data?.errorMessage || 'Le fournisseur a refusé la création de la voix.'),
@@ -711,6 +724,7 @@ async function voiceStatus(request, env, db, user, url) {
   const taskId = url.searchParams.get('taskId') || ''
   const task = await db.get('users/' + user.uid + '/voiceTasks/' + taskId)
   if (!task.exists || !task.data.creationTaskId) return response(404, { error: 'voice-task-not-found' })
+  if (task.data.stage === 'success' && task.data.voiceId) return response(200, { status: 'success', ready: true, voiceId: task.data.voiceId, voiceName: task.data.voiceName || 'Ma voix' })
   const result = await fetch(SUNO_VOICE_RECORD_URL + '?taskId=' + encodeURIComponent(task.data.creationTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
   const payload = await result.json().catch(() => ({}))
   if (!result.ok || payload.code !== 200) return response(502, {
@@ -720,6 +734,7 @@ async function voiceStatus(request, env, db, user, url) {
     providerDetails: String(payload.data?.errorMessage || '').slice(0, 240)
   })
   const state = String(payload.data?.status || 'processing').toLowerCase()
+  if (['fail', 'failed', 'processing_validate_fail'].includes(state) && task.data.slotReserved === true) await releaseVoicePackReservation(db, user.uid, taskId)
   let ready = false
   const voiceId = String(payload.data?.voiceId || '')
   if (state === 'success' && voiceId) {
