@@ -1085,7 +1085,7 @@ async function createVideoForTrack(request, env, db, user) {
       if (lock.exists) throw new Error('video-generation-running')
       if (sourceTrack.videoTaskId) {
         const retryTracks = [...tracks]
-        sourceTrack = { ...sourceTrack, lastVideoTaskId: sourceTrack.videoTaskId, videoTaskId: '', videoStatus: '', videoSourceUrl: '', videoError: '' }
+        sourceTrack = { ...sourceTrack, lastVideoTaskId: sourceTrack.videoTaskId, videoTaskId: '', videoStatus: '', videoSourceUrl: '', videoError: '', videoCreditRefunded: false }
         retryTracks[trackIndex] = sourceTrack
         tx.update(generationRef, { tracks: retryTracks })
       }
@@ -1124,8 +1124,9 @@ async function createVideoForTrack(request, env, db, user) {
     const [generation, lock] = await Promise.all([tx.get(generationRef), tx.get(lockRef)])
     if (!generation.exists || !lock.exists) throw new Error('video-generation-reservation-lost')
     const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
-    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString() }
+    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString(), videoCreditRefunded: false }
     tx.update(generationRef, { tracks })
+    tx.create(db.doc('videoTasks/' + videoTaskId), { uid: user.uid, taskId, trackIndex, createdAt: SERVER_TIMESTAMP })
     tx.delete(lockRef)
   })
   return response(202, { status: 'PENDING', videoTaskId })
@@ -1170,7 +1171,7 @@ async function videoStatus(request, env, db, user, url) {
     try {
       const remote = await fetch(videoUrl, { signal: AbortSignal.timeout(90000) })
       const contentType = remote.headers.get('content-type') || 'video/mp4'
-      if (!remote.ok || !remote.body || !contentType.toLowerCase().includes('video')) throw new Error('video-download-failed')
+      if (!remote.ok || !remote.body || !(contentType.toLowerCase().includes('video') || contentType.toLowerCase().includes('octet-stream'))) throw new Error('video-download-failed')
       const videoKey = 'private/' + user.uid + '/' + taskId + '/' + trackIndex + '.video.mp4'
       await env.AUDIO_BUCKET.put(videoKey, remote.body, { httpMetadata: { contentType: 'video/mp4', cacheControl: 'private, no-store' }, customMetadata: { uid: user.uid, taskId, trackIndex: String(trackIndex) } })
       const latest = await db.get(path), tracks = [...(latest.data?.tracks || [])]
@@ -1798,16 +1799,16 @@ export default {
       const providerTaskId = String(data.task_id || data.taskId || ''), videoUrl = String(data.video_url || data.videoUrl || '')
       if (!/^[a-zA-Z0-9_-]{6,120}$/.test(providerTaskId)) return response(200, { received: true, ignored: true })
       const callbackDb = new FirestoreRest(env)
-      const rows = await callbackDb.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], where: { fieldFilter: { field: { fieldPath: 'videoTaskId' }, op: 'EQUAL', value: { stringValue: providerTaskId } } }, limit: 5 })
-      for (const row of rows || []) {
-        const match = row.document?.name?.match(/\/documents\/users\/([^/]+)\/generations\/([^/]+)$/)
-        if (!match) continue
-        const path = 'users/' + match[1] + '/generations/' + match[2], generation = await callbackDb.get(path)
+      const videoTask = await callbackDb.get('videoTasks/' + providerTaskId)
+      if (videoTask.exists) {
+        const path = 'users/' + videoTask.data.uid + '/generations/' + videoTask.data.taskId
+        const generation = await callbackDb.get(path)
         const tracks = Array.isArray(generation.data?.tracks) ? [...generation.data.tracks] : []
-        const index = tracks.findIndex(track => String(track.videoTaskId || '') === providerTaskId)
-        if (index < 0) continue
-        tracks[index] = { ...tracks[index], videoStatus: payload.code === 200 ? 'SUCCESS' : 'FAILED', ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(payload.code !== 200 ? { videoError: String(payload.msg || 'La génération vidéo a échoué.') } : {}) }
-        await callbackDb.set(path, { tracks }, true)
+        const index = Number(videoTask.data.trackIndex)
+        if (generation.exists && tracks[index] && String(tracks[index].videoTaskId || '') === providerTaskId) {
+          tracks[index] = { ...tracks[index], videoStatus: payload.code === 200 ? 'SUCCESS' : 'FAILED', ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(payload.code !== 200 ? { videoError: String(payload.msg || 'La génération vidéo a échoué.') } : {}) }
+          await callbackDb.set(path, { tracks }, true)
+        }
       }
       return response(200, { received: true })
     }
