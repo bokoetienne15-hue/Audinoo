@@ -1706,8 +1706,8 @@ async function trackEngagement(request, db, user) {
     tx.update(db.doc(trackPath), { likesCount, playCount })
     return {
       likedByMe,
-      likesCount: displayMode === 'custom' ? Math.max(0, Number(data.customLikesCount || 0)) : likesCount,
-      playCount: displayMode === 'custom' ? Math.max(0, Number(data.customPlayCount || 0)) : playCount
+      likesCount: displayMode === 'custom' ? Math.max(0, Number(data.customLikesCount ?? likesCount)) : likesCount,
+      playCount: displayMode === 'custom' ? Math.max(0, Number(data.customPlayCount ?? playCount)) : playCount
     }
   }).then(result => result.error ? response(404, { error: result.error }) : response(200, result))
 }
