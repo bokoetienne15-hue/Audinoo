@@ -3650,3 +3650,26 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
 .discovery-voice-purchase:disabled{opacity:.65;cursor:wait}
 .discovery-voice-add:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:600px){.discovery-voice-access{align-items:stretch;flex-direction:column}.discovery-voice-purchase{width:100%;min-height:44px}}
+
+
+/* Audinoo — custom voice reactivation and saved music videos */
+.discovery-voice-purchase[hidden] {
+  display: none !important;
+}
+.library-video-preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #070710;
+  border-radius: 12px;
+  margin: 10px 0;
+}
+.library-video-song-card .library-video-get-button {
+  cursor: pointer;
+}
+.library-video-song-card .library-video-get-button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
