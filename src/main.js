@@ -191,11 +191,36 @@ app.innerHTML = `
   </div>
     <section class="discovery-voice-panel" id="discovery-voice-panel" hidden>
       <div class="discovery-voice-welcome" id="discovery-voice-welcome" hidden>
-        <span class="discovery-voice-welcome-icon" aria-hidden="true">♫</span>
+        <div class="discovery-voice-welcome-art" role="img" aria-label="Illustration musicale avec microphone et ondes sonores">
+          <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="voiceArtBg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8b45bf"/><stop offset="1" stop-color="#25143d"/></linearGradient>
+              <linearGradient id="voiceArtMic" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d8b2f4"/></linearGradient>
+              <filter id="voiceArtGlow"><feGaussianBlur stdDeviation="9"/></filter>
+            </defs>
+            <rect x="1" y="1" width="518" height="228" rx="24" fill="url(#voiceArtBg)"/>
+            <circle cx="258" cy="112" r="76" fill="#d59cff" opacity=".18" filter="url(#voiceArtGlow)"/>
+            <g fill="none" stroke="#e6c3ff" stroke-linecap="round" opacity=".65">
+              <path d="M45 116h26m-13-17v34M85 91v50m17-69v88m17-63v38M376 116h26m-13-17v34m30-42v50m17-65v80m17-57v34m17-47v60" stroke-width="4"/>
+              <path d="M150 45c-28 18-28 122 0 140M370 45c28 18 28 122 0 140" stroke-width="2" opacity=".6"/>
+            </g>
+            <g transform="translate(219 36)">
+              <rect x="0" y="0" width="82" height="119" rx="41" fill="url(#voiceArtMic)" stroke="#fff" stroke-width="3"/>
+              <path d="M16 34h50M16 49h50M16 64h50M16 79h50" stroke="#9a64bc" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+              <path d="M-17 83v8a58 58 0 0 0 116 0v-8M41 149v28m-27 0h54" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+              <circle cx="41" cy="187" r="5" fill="#fff"/>
+            </g>
+            <g fill="#fff" opacity=".9"><path d="m145 58 5 12 12 5-12 5-5 12-5-12-12-5 12-5z"/><path d="m363 152 4 9 9 4-9 4-4 9-4-9-9-4 9-4z"/></g>
+          </svg>
+          <span class="discovery-voice-welcome-art-label">FAIS CHANTER TA PROPRE VOIX</span>
+        </div>
+        <div class="discovery-voice-welcome-badges"><span>NOUVEAU</span><span>2 VOIX PERSONNALISÉES</span></div>
         <p class="workspace-kicker">TA VOIX, TON IDENTITÉ</p>
         <h2>Et si tes chansons portaient ta voix ?</h2>
         <p>Crée des morceaux qui te ressemblent vraiment. Enregistre simplement ta voix, sans caméra, et fais chanter tes chansons avec ton identité.</p>
-        <button type="button" class="discovery-voice-welcome-button" id="discovery-voice-welcome-button">Découvrir ma voix <span aria-hidden="true">→</span></button>
+        <p class="discovery-voice-welcome-price">Pack de 2 voix · 1 000 FCFA · 30 jours</p>
+        <button type="button" class="discovery-voice-welcome-button" id="discovery-voice-welcome-button">Débloquer mes voix · 1 000 FCFA <span aria-hidden="true">→</span></button>
+        <small class="discovery-voice-welcome-note">Paiement unique · aucun renouvellement automatique</small>
       </div>
       <div class="discovery-voice-heading"><button class="discovery-voice-back" id="discovery-voice-back" type="button" aria-label="Retour au studio"><span aria-hidden="true">←</span><span>Retour</span></button><div><p class="workspace-kicker">TON IDENTITÉ VOCALE</p><h2>Mes voix</h2></div><span class="discovery-voice-badge">2 VOIX · 30 JOURS</span></div>
       <div class="discovery-voice-access"><p id="discovery-voice-access-status">Achète un pack pour configurer deux voix personnalisées pendant 30 jours.</p><button type="button" id="discovery-voice-purchase" class="discovery-voice-purchase">Débloquer 2 voix · 1 000 FCFA</button></div>
@@ -3433,13 +3458,16 @@ discoveryVoiceAdd?.addEventListener('click', () => {
   setDiscoveryVoiceStep(1)
 })
 discoveryVoiceWelcomeButton?.addEventListener('click', () => {
-  if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = true
-  if (discoveryVoiceHeading) discoveryVoiceHeading.hidden = false
-  if (discoveryVoiceAccess) discoveryVoiceAccess.hidden = false
-  discoveryVoiceLibrary.hidden = false
-  discoveryVoiceCreation.hidden = true
-  discoveryVoiceProgress.hidden = true
   discoveryVoiceIntroSeen = true
+  if (discoveryVoiceSlotsRemaining > 0) {
+    if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = true
+    if (discoveryVoiceHeading) discoveryVoiceHeading.hidden = false
+    if (discoveryVoiceAccess) discoveryVoiceAccess.hidden = false
+    discoveryVoiceLibrary.hidden = false
+    discoveryVoiceAdd?.click()
+    return
+  }
+  discoveryVoicePurchase?.click()
 })
 discoveryVoiceBack?.addEventListener('click', () => {
   stopActiveVoiceRecording?.()
