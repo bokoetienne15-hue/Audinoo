@@ -3056,7 +3056,8 @@ async function refreshAdminAccess(uid) {
   stopAdminStatsListeners = null
   adminSidebarButton.hidden = true
   verifiedAdminUid = null
-  discoveryVoiceEntry.hidden = true
+  // Ma voix est disponible pour tous les comptes : ne pas la masquer pendant la vérification admin.
+  discoveryVoiceEntry.hidden = false
   discoveryVoicePanel.hidden = true
   workspace.classList.remove('is-discovery-active')
   workspace.classList.add('is-plan-checking')
@@ -3529,6 +3530,7 @@ discoveryVoiceToggle?.addEventListener('click', () => {
     discoveryVoicePanel.hidden = false
     const showWelcome = discoveryVoiceProfiles.length === 0 && !discoveryVoiceIntroSeen
     if (discoveryVoiceWelcome) discoveryVoiceWelcome.hidden = !showWelcome
+    if (discoveryVoiceHowPage) discoveryVoiceHowPage.hidden = true
     if (discoveryVoiceHeading) discoveryVoiceHeading.hidden = showWelcome
     if (discoveryVoiceAccess) discoveryVoiceAccess.hidden = showWelcome
     discoveryVoiceLibrary.hidden = showWelcome
@@ -3538,7 +3540,6 @@ discoveryVoiceToggle?.addEventListener('click', () => {
     discoveryVoiceSourceChoices.hidden = false
     discoveryVoiceSourceForm.hidden = true
     discoveryVoiceVerification.hidden = true
-    if (showWelcome) discoveryVoiceIntroSeen = true
     setDiscoveryVoiceStep(1)
     renderDiscoveryVoiceLibrary()
     document.body.classList.add('discovery-voice-screen-open')
