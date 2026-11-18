@@ -1450,8 +1450,8 @@ const workspaceFreeCreditCount = document.querySelector('#workspace-free-credit-
 const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credit-caption')
 const workspaceMobileCredit = document.createElement('div')
 workspaceMobileCredit.className = 'workspace-mobile-credit'
-workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span id="workspace-mobile-credit-plan">Plan standard</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">Offre de bienvenue</small></div><button class="workspace-upgrade-button" id="workspace-mobile-upgrade-button" type="button">Mettre à niveau <span aria-hidden="true">→</span></button>'
-// Le résumé mobile est conservé hors du Studio : le solde principal est dans l’en-tête du compte.
+workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" aria-hidden="true">✦</span><div class="workspace-mobile-credit-info"><span>MES CRÉDITS</span><strong id="workspace-mobile-credit-count">0 crédit disponible</strong><small id="workspace-mobile-credit-caption">0 gratuit · 0 payant</small></div>'
+// Le récapitulatif mobile des crédits apparaît dans le Studio, juste avant le formulaire de prompt.
 const communityNotice = document.querySelector('#community-listen-notice')
 const syncCommunityNoticePlacement = () => {
   if (!communityNotice) return
@@ -1461,7 +1461,8 @@ syncCommunityNoticePlacement()
 window.addEventListener('resize', syncCommunityNoticePlacement)
 const workspaceMobileCreditCount = workspaceMobileCredit.querySelector('#workspace-mobile-credit-count')
 const workspaceMobileCreditCaption = workspaceMobileCredit.querySelector('#workspace-mobile-credit-caption')
-workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')?.addEventListener('click', windowPricingOpen)
+const studioMobileCreditAnchor = document.querySelector('.workspace-layout > .workspace-content .workspace-intro')
+if (studioMobileCreditAnchor) studioMobileCreditAnchor.insertAdjacentElement('afterend', workspaceMobileCredit)
 const workspaceCreditPanel = document.createElement('section')
 workspaceCreditPanel.className = 'admin-panel admin-credit-control'
 workspaceCreditPanel.innerHTML = '<div class="admin-panel-heading"><div><p>OFFRE DE BIENVENUE</p><h2>Crédit gratuit</h2></div><span class="admin-credit-state" id="admin-credit-state">Chargement…</span></div><p class="admin-panel-status">Un nouveau compte peut recevoir un crédit gratuit. L’offre se désactive automatiquement après 50 générations gratuites et tous les crédits gratuits restants deviennent alors inutilisables. Les crédits payants ne sont jamais modifiés.</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-credit-toggle" type="button" disabled>Chargement du réglage…</button><small id="admin-credit-note">Le réglage s’applique à tous les comptes.</small></div></section>'
@@ -3355,12 +3356,10 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     if (sidebarUpgradeButton) sidebarUpgradeButton.textContent = discoveryActive ? 'Voir les avantages →' : 'Mettre à niveau →'
     const accountUpgradeButton = document.querySelector('#workspace-upgrade-button')
     if (accountUpgradeButton) accountUpgradeButton.textContent = discoveryActive ? 'Avantages' : 'Forfaits'
-    const mobilePlanLabel = workspaceMobileCredit.querySelector('#workspace-mobile-credit-plan')
-    if (mobilePlanLabel) mobilePlanLabel.textContent = planLabel
     if (workspaceMobileCreditCount) workspaceMobileCreditCount.textContent = countLabel
-    if (workspaceMobileCreditCaption) workspaceMobileCreditCaption.textContent = caption
-    const mobileUpgradeButton = workspaceMobileCredit.querySelector('#workspace-mobile-upgrade-button')
-    if (mobileUpgradeButton) mobileUpgradeButton.textContent = discoveryActive ? 'Voir les avantages →' : 'Mettre à niveau →'
+    if (workspaceMobileCreditCaption) workspaceMobileCreditCaption.textContent = discoveryActive
+      ? discoveryCredits + ' gratuit(s) · ' + paidCredits + ' payant(s)'
+      : freeCaption
     const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
     const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
     if (discoveryPriceButton) {
