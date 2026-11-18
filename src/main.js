@@ -181,8 +181,8 @@ app.innerHTML = `
   <main class="workspace" id="workspace" hidden>
     <header class="workspace-header"><div class="workspace-header-start"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button><a class="brand" href="#studio" aria-label="Audinoo Studio"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Audinoo</span></a></div><div class="workspace-account"><span class="workspace-avatar" id="workspace-avatar">A</span><span class="workspace-username" id="workspace-username"></span><div class="workspace-side-note"><span id="workspace-plan-label">Forfait actif</span><strong id="workspace-free-credit-count">0 crédit</strong><small id="workspace-free-credit-caption">Crédits disponibles</small><button class="workspace-upgrade-button" id="workspace-upgrade-button" type="button">Voir les avantages →</button></div><button class="workspace-logout" id="workspace-logout" type="button">Se déconnecter</button></div></header>
     <section class="workspace-layout is-mobile-closed" id="workspace-layout">
-      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div></aside>
-      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
+      <aside class="workspace-sidebar"><a class="workspace-nav" href="#home"><span>⌂</span> Accueil</a><a class="workspace-nav is-active" href="#studio"><span>⌁</span> Studio de création</a><a class="workspace-nav" href="#library"><span>♫</span> Ma bibliothèque</a><a class="workspace-nav" href="#workspace-pricing"><span>€</span> Tarifs</a></aside>
+      <section class="workspace-content"><p class="workspace-kicker">Studio de création</p><div class="community-listen-notice" id="community-listen-notice"><button type="button" class="community-listen-dismiss" id="community-listen-dismiss" aria-label="Fermer ce message">×</button><p>Découvrez la qualité des chansons créées avec Audinoo. <a href="#home" class="community-listen-link" id="community-listen-button">Voir l’accueil</a></p></div><h1><span id="workspace-greeting-prefix">Bonjour</span> <span id="workspace-greeting">créateur</span>.</h1><p class="workspace-intro">Quelle musique veux-tu imaginer aujourd’hui ?</p><div class="discovery-voice-entry" id="discovery-voice-entry" hidden>
   <div class="discovery-voice-card-slot">
     <button class="discovery-voice-card" id="discovery-voice-toggle" type="button" aria-expanded="false" aria-controls="discovery-voice-panel" aria-label="Configurer ma voix">
       <span class="discovery-voice-card-plus" aria-hidden="true">+</span>
@@ -1447,13 +1447,6 @@ workspaceMobileCredit.innerHTML = '<span class="workspace-mobile-credit-icon" ar
 const studioMobileCreditAnchor = document.querySelector('#workspace-layout > .workspace-content > .workspace-intro') || document.querySelector('#workspace-layout .workspace-content .workspace-intro')
 if (studioMobileCreditAnchor) studioMobileCreditAnchor.insertAdjacentElement('afterend', workspaceMobileCredit)
 else document.querySelector('#workspace-layout .workspace-content')?.prepend(workspaceMobileCredit)
-const communityNotice = document.querySelector('#community-listen-notice')
-const syncCommunityNoticePlacement = () => {
-  if (!communityNotice) return
-  workspaceSidebar.append(communityNotice)
-}
-syncCommunityNoticePlacement()
-window.addEventListener('resize', syncCommunityNoticePlacement)
 const workspaceMobileCreditCount = workspaceMobileCredit.querySelector('#workspace-mobile-credit-count')
 const workspaceMobileCreditCaption = workspaceMobileCredit.querySelector('#workspace-mobile-credit-caption')
 const workspaceCreditPanel = document.createElement('section')
@@ -6463,7 +6456,7 @@ function openProfile(profile, { requireCountry = false } = {}) {
 function updateWorkspaceGreeting(displayName) {
   const hour = new Date().getHours()
   const prefix = document.querySelector('#workspace-greeting-prefix')
-  if (prefix) prefix.textContent = hour < 12 ? 'Bonjour' : hour < 17 ? 'Bon après-midi' : 'Bonsoir'
+  if (prefix) prefix.textContent = hour < 17 ? 'Bonjour' : 'Bonsoir'
   const firstName = typeof displayName === 'string' ? displayName.trim().split(/\s+/)[0] : ''
   workspaceGreeting.textContent = firstName || 'créateur'
 }
