@@ -1653,18 +1653,27 @@ async function deleteGenerationTrack(request, env, db, user) {
   return response(200, { deleted: true, id })
 }
 async function publicTracks(request, db, user = null) {
-  const rows = await db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
+  const [rows, settings] = await Promise.all([
+    db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 }),
+    db.get('publicHomeSettings/engagement')
+  ])
+  const displayMode = settings.data?.displayMode === 'custom' ? 'custom' : 'real'
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true)
   const liked = user ? await Promise.all(tracks.map(track => db.get('publishedTracks/' + track.id + '/likes/' + user.uid))) : []
-  const enriched = tracks.map((track, index) => ({
-    id: track.id, title: track.title, imageUrl: track.imageUrl || '',
-    coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
-    likesCount: Math.max(0, Number(track.likesCount || 0)), playCount: Math.max(0, Number(track.playCount || 0)),
-    likedByMe: user ? liked[index].exists : false,
-    audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
-  }))
+  const enriched = tracks.map((track, index) => {
+    const realLikes = Math.max(0, Number(track.likesCount || 0))
+    const realPlays = Math.max(0, Number(track.playCount || 0))
+    return {
+      id: track.id, title: track.title, imageUrl: track.imageUrl || '',
+      coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
+      likesCount: displayMode === 'custom' ? Math.max(0, Number(track.customLikesCount || 0)) : realLikes,
+      playCount: displayMode === 'custom' ? Math.max(0, Number(track.customPlayCount || 0)) : realPlays,
+      likedByMe: user ? liked[index].exists : false,
+      audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
+    }
+  })
   enriched.sort((a, b) => (b.likesCount * 3 + b.playCount) - (a.likesCount * 3 + a.playCount) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
-  return new Response(JSON.stringify({ tracks: enriched.slice(0, 40) }), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } })
+  return new Response(JSON.stringify({ tracks: enriched.slice(0, 40), displayMode }), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } })
 }
 async function trackEngagement(request, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
@@ -1674,11 +1683,14 @@ async function trackEngagement(request, db, user) {
   if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id) || !['like','unlike','play'].includes(action)) return response(400, { error: 'invalid-engagement' })
   const trackPath = 'publishedTracks/' + id
   const likePath = trackPath + '/likes/' + user.uid
+  const settings = await db.get('publicHomeSettings/engagement')
+  const displayMode = settings.data?.displayMode === 'custom' ? 'custom' : 'real'
   return await db.runTransaction(async tx => {
     const [track, like] = await Promise.all([tx.get(db.doc(trackPath)), tx.get(db.doc(likePath))])
     if (!track.exists || track.data().published !== true) return { error: 'track-not-found' }
-    let likesCount = Math.max(0, Number(track.data().likesCount || 0))
-    let playCount = Math.max(0, Number(track.data().playCount || 0))
+    const data = track.data()
+    let likesCount = Math.max(0, Number(data.likesCount || 0))
+    let playCount = Math.max(0, Number(data.playCount || 0))
     let likedByMe = like.exists
     if (action === 'like' && !like.exists) {
       tx.create(db.doc(likePath), { uid: user.uid, createdAt: SERVER_TIMESTAMP })
@@ -1691,10 +1703,50 @@ async function trackEngagement(request, db, user) {
     } else if (action === 'play') {
       playCount++
     }
-    if (action !== 'unlike' || like.exists) tx.update(db.doc(trackPath), { likesCount, playCount })
-    else if (action === 'play') tx.update(db.doc(trackPath), { playCount })
-    return { likedByMe, likesCount, playCount }
+    tx.update(db.doc(trackPath), { likesCount, playCount })
+    return {
+      likedByMe,
+      likesCount: displayMode === 'custom' ? Math.max(0, Number(data.customLikesCount || 0)) : likesCount,
+      playCount: displayMode === 'custom' ? Math.max(0, Number(data.customPlayCount || 0)) : playCount
+    }
   }).then(result => result.error ? response(404, { error: result.error }) : response(200, result))
+}
+async function adminHomeEngagement(request, db, user) {
+  if (request.method !== 'GET' && request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await adminAllowed(db, user.uid))) return response(403, { error: 'admin-required' })
+  if (request.method === 'GET') {
+    const [settings, rows] = await Promise.all([
+      db.get('publicHomeSettings/engagement'),
+      db.runQuery({ from: [{ collectionId: 'publishedTracks' }], orderBy: [{ field: { fieldPath: 'publishedAt' }, direction: 'DESCENDING' }], limit: 100 })
+    ])
+    const tracks = (rows || []).filter(row => row.document).map(row => {
+      const track = fromFields(row.document.fields || {})
+      return {
+        id: track.id, title: track.title || 'Création Audinoo',
+        likesCount: Math.max(0, Number(track.likesCount || 0)),
+        playCount: Math.max(0, Number(track.playCount || 0)),
+        customLikesCount: Math.max(0, Number(track.customLikesCount || 0)),
+        customPlayCount: Math.max(0, Number(track.customPlayCount || 0))
+      }
+    })
+    return response(200, { displayMode: settings.data?.displayMode === 'custom' ? 'custom' : 'real', tracks })
+  }
+  const body = await request.json().catch(() => ({}))
+  if (body.displayMode !== undefined) {
+    if (!['real', 'custom'].includes(body.displayMode)) return response(400, { error: 'invalid-display-mode' })
+    await db.set('publicHomeSettings/engagement', { displayMode: body.displayMode, updatedAt: new Date(), updatedBy: user.uid }, true)
+  }
+  if (body.trackId !== undefined) {
+    const id = String(body.trackId || '')
+    const likes = Number(body.customLikesCount)
+    const plays = Number(body.customPlayCount)
+    if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id) || !Number.isSafeInteger(likes) || likes < 0 || likes > 1000000000 || !Number.isSafeInteger(plays) || plays < 0 || plays > 1000000000) return response(400, { error: 'invalid-custom-engagement' })
+    const path = 'publishedTracks/' + id
+    const existing = await db.get(path)
+    if (!existing.exists || existing.data.published !== true) return response(404, { error: 'track-not-found' })
+    await db.set(path, { customLikesCount: likes, customPlayCount: plays, statsUpdatedAt: new Date(), statsUpdatedBy: user.uid }, true)
+  }
+  return response(200, { saved: true })
 }
 async function publicAudio(request, env, db) {
   const id = new URL(request.url).searchParams.get('id')
@@ -2002,6 +2054,7 @@ export default {
       if (url.pathname === '/api/admin/users/auth-list') return await adminAuthUsers(request,db,user)
       if (url.pathname === '/api/admin/users/delete') return await adminDeleteUser(request,env,db,user)
       if (url.pathname === '/api/admin/acquisition') return await adminAcquisition(request,db,user)
+      if (url.pathname === '/api/admin/home-engagement') return await adminHomeEngagement(request,db,user)
       if (url.pathname === '/api/tracks/engagement') return await trackEngagement(request, db, user)
       if (url.pathname === '/api/admin/publish') return await publishTrack(request,env,db,user)
       if (url.pathname === '/api/admin/unpublish') return await unpublishTrack(request,db,user)
