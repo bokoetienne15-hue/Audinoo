@@ -4680,6 +4680,7 @@ async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
     if (!track.videoTaskId && !track.videoUrl) {
       const created = await callAudinooApi('/api/video/create', { method: 'POST', body: JSON.stringify({ taskId, trackIndex }) })
       track.videoTaskId = created.videoTaskId || track.videoTaskId
+      if (auth.currentUser) await refreshDiscoveryPlan(auth.currentUser.uid)
       if (created.status === 'SUCCESS' && created.videoUrl) {
         await loadUserLibrary()
         return
@@ -4709,6 +4710,7 @@ async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
       track.videoTaskId = ''
       track.videoStatus = 'FAILED'
       button.textContent = 'Réessayer le clip · 1 crédit'
+      if (auth.currentUser) await refreshDiscoveryPlan(auth.currentUser.uid).catch(() => {})
     } else button.textContent = original || 'Réessayer'
     button.disabled = false
     toast.textContent = generationErrorMessage(error.message)
