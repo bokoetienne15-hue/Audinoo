@@ -5,6 +5,8 @@ const FREE_CREDIT_CAMPAIGN_ID = 'audinoo-free-credit-v1'
 const SUNO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/generate'
 const SUNO_STATUS_URL = 'https://api.sunoapi.org/api/v1/generate/record-info'
 const SUNO_CREDIT_URL = 'https://api.sunoapi.org/api/v1/generate/credit'
+const SUNO_VIDEO_GENERATE_URL = 'https://api.sunoapi.org/api/v1/mp4/generate'
+const SUNO_VIDEO_STATUS_URL = 'https://api.sunoapi.org/api/v1/mp4/record-info'
 const FAILED = new Set(['CREATE_TASK_FAILED','GENERATE_AUDIO_FAILED','CALLBACK_EXCEPTION','SENSITIVE_WORD_ERROR'])
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 const LIBRARY_CACHE_TTL_MS = 12000
@@ -265,6 +267,7 @@ const DISCOVERY_PRICE_XOF = 1000
 const DISCOVERY_CREDITS = 3
 const DISCOVERY_DURATION_MS = 30 * 24 * 60 * 60 * 1000
 const VOICE_PACK_PRICE_XOF = 1000
+const VOICE_REACTIVATION_PRICE_XOF = 500
 const VOICE_PACK_SIZE = 2
 const SUNO_VOICE_VALIDATE_URL = 'https://api.sunoapi.org/api/v1/voice/validate'
 const SUNO_VOICE_VALIDATE_INFO_URL = 'https://api.sunoapi.org/api/v1/voice/validate-info'
@@ -331,10 +334,9 @@ async function accountPlan(request, db, user) {
   const expires = currentPlan.expiresAt instanceof Date ? currentPlan.expiresAt : new Date(currentPlan.expiresAt || 0)
   const now = Date.now()
   const storedVoices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
-  const voicePacks = (Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []).filter(pack => {
-    const expiry = pack?.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack?.expiresAt || 0).getTime()
-    return Number.isFinite(expiry) && expiry > now
-  }).map(pack => ({
+  const allPacks = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const packExpiry = pack => pack?.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack?.expiresAt || 0).getTime()
+  const voicePacks = allPacks.filter(pack => Number.isFinite(packExpiry(pack)) && packExpiry(pack) > now).map(pack => ({
     packId: String(pack.packId || ''),
     used: Math.max(0, Number(pack.used || 0)),
     reserved: Math.max(0, Number(pack.reserved || 0)),
@@ -347,11 +349,19 @@ async function accountPlan(request, db, user) {
     if (!Number.isFinite(expiry) || expiry <= now) return false
     return item.packId ? activePackIds.has(String(item.packId)) : currentActive
   }).map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null, packId: item.packId || null }))
+  // Keep expired voice metadata in Firestore so a 500 FCFA reactivation can restore the same voices.
+  const expiredPacks = allPacks.filter(pack => Number.isFinite(packExpiry(pack)) && packExpiry(pack) <= now && Number(pack.used || 0) > 0)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+  const reactivationPack = expiredPacks.find(pack => storedVoices.some(voice => String(voice.packId || '') === String(pack.packId || '') && voice.voiceId))
+  const expiredVoiceProfiles = reactivationPack
+    ? storedVoices.filter(voice => String(voice.packId || '') === String(reactivationPack.packId || '') && voice.voiceId)
+      .map(item => ({ voiceId: String(item.voiceId), name: String(item.name || 'Ma voix'), createdAt: item.createdAt || null, expiresAt: item.expiresAt || null, packId: item.packId || null }))
+    : []
   const requestedVoiceId = Object.prototype.hasOwnProperty.call(profile.data || {}, 'selectedVoiceId') ? String(profile.data.selectedVoiceId || '') : String(profile.data?.voiceProfile?.voiceId || '')
   const selectedVoice = voiceProfiles.find(item => item.voiceId === requestedVoiceId) || null
   const voiceSlotsRemaining = voicePacks.reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - pack.used - pack.reserved), 0)
-  if (voiceProfiles.length !== storedVoices.length || selectedVoice?.voiceId !== requestedVoiceId) {
-    await db.set('users/' + user.uid, { voiceProfiles, selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
+  if (selectedVoice?.voiceId !== requestedVoiceId) {
+    await db.set('users/' + user.uid, { selectedVoiceId: selectedVoice?.voiceId || '', voiceProfile: selectedVoice }, true)
   }
   return response(200, {
     plan: currentActive ? 'discovery' : 'unit',
@@ -361,6 +371,9 @@ async function accountPlan(request, db, user) {
     paidCredits: Math.max(0, Number(profile.data?.paidCredits || 0)),
     voiceProfile: selectedVoice ? { name: selectedVoice.name || 'Ma voix', ready: true } : null,
     voiceProfiles,
+    expiredVoiceProfiles,
+    voiceReactivationAvailable: expiredVoiceProfiles.length > 0,
+    voiceReactivationPackId: reactivationPack?.packId || null,
     voicePacks,
     voiceSlotsRemaining,
     voiceAccessActive: voicePacks.length > 0,
@@ -465,6 +478,80 @@ async function confirmVoicePackPayment(env, db, transactionId, expectedUid = '')
   const packs = Array.isArray(refreshed.data?.voicePacks) ? refreshed.data.voicePacks : []
   const remaining = packs.filter(pack => new Date(pack.expiresAt || 0).getTime() > Date.now()).reduce((sum, pack) => sum + Math.max(0, VOICE_PACK_SIZE - Number(pack.used || 0) - Number(pack.reserved || 0)), 0)
   return { status: 'approved', purchased: true, voiceSlotsRemaining: remaining }
+}
+async function createVoiceReactivationPayment(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  const profile = await db.get('users/' + user.uid)
+  if (!profile.exists) throw new Error('profile-not-found')
+  const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const voices = Array.isArray(profile.data?.voiceProfiles) ? profile.data.voiceProfiles : (profile.data?.voiceProfile?.voiceId ? [profile.data.voiceProfile] : [])
+  const now = Date.now()
+  const expiredPack = packs.filter(pack => {
+    const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+    return Number.isFinite(expiry) && expiry <= now && Number(pack.used || 0) > 0 && voices.some(voice => String(voice.packId || '') === String(pack.packId || '') && voice.voiceId)
+  }).sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0]
+  if (!expiredPack) throw new Error('voice-reactivation-unavailable')
+  const email = typeof user.email === 'string' && user.email ? user.email : (typeof profile.data.email === 'string' ? profile.data.email : '')
+  if (!email) throw new Error('customer-email-required')
+  const origin = new URL(request.url).origin
+  const created = await fedapayRequest(env, '/transactions', { method: 'POST', body: JSON.stringify({
+    description: 'Audinoo — Réactivation de deux voix personnalisées (30 jours)',
+    amount: VOICE_REACTIVATION_PRICE_XOF, currency: { iso: 'XOF' },
+    callback_url: origin + '/?payment_return=voice_reactivation',
+    customer: { email }
+  }) })
+  const transaction = fedapayObject(created, 'v1/transaction')
+  const transactionId = String(transaction?.id || '')
+  if (!/^\d+$/.test(transactionId)) throw new Error('fedapay-invalid-transaction')
+  await db.set('fedapayOrders/' + transactionId, {
+    uid: user.uid, transactionId, amount: VOICE_REACTIVATION_PRICE_XOF, currency: 'XOF',
+    kind: 'voice_reactivation', voicePackId: String(expiredPack.packId),
+    status: 'pending', credited: false, createdAt: SERVER_TIMESTAMP
+  })
+  const tokenResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '/token', { method: 'POST', body: '{}' })
+  const checkoutUrl = fedapayCheckoutUrl(tokenResponse)
+  if (typeof checkoutUrl !== 'string' || !/^https:\/\//i.test(checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
+  return response(200, { checkoutUrl, transactionId })
+}
+async function confirmVoiceReactivationPayment(env, db, transactionId, expectedUid = '') {
+  if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
+  if (!/^\d+$/.test(String(transactionId || ''))) throw new Error('invalid-transaction-id')
+  const orderRef = db.doc('fedapayOrders/' + transactionId)
+  const order = await db.get(orderRef.path)
+  if (!order.exists || order.data.kind !== 'voice_reactivation' || (expectedUid && order.data.uid !== expectedUid)) throw new Error('payment-order-not-found')
+  if (order.data.credited === true) return { status: 'approved', reactivated: true }
+  const providerResponse = await fedapayRequest(env, '/transactions/' + encodeURIComponent(transactionId) + '?include=currency', { method: 'GET' })
+  const transaction = fedapayObject(providerResponse, 'v1/transaction')
+  const status = String(transaction?.status || '').toLowerCase()
+  if (['canceled', 'cancelled', 'declined', 'failed', 'rejected', 'expired'].includes(status)) {
+    await db.set(orderRef.path, { status: 'failed', providerStatus: status, failedAt: SERVER_TIMESTAMP }, true)
+    return { status, failed: true, reactivated: false }
+  }
+  if (status !== 'approved') return { status: status || 'pending', reactivated: false }
+  const currency = String(transaction.currency?.iso || transaction.currency?.name || transaction.currency || '').toUpperCase()
+  if (Number(transaction.amount) !== VOICE_REACTIVATION_PRICE_XOF || currency !== 'XOF') throw new Error('payment-amount-mismatch')
+  const profileRef = db.doc('users/' + order.data.uid)
+  await db.runTransaction(async tx => {
+    const [currentOrder, profile] = await Promise.all([tx.get(orderRef), tx.get(profileRef)])
+    if (!currentOrder.exists || !profile.exists) throw new Error('payment-account-not-found')
+    if (currentOrder.data().credited === true) return
+    const packId = String(currentOrder.data().voicePackId || '')
+    const packs = Array.isArray(profile.data().voicePacks) ? [...profile.data().voicePacks] : []
+    const packIndex = packs.findIndex(pack => String(pack.packId || '') === packId)
+    if (packIndex < 0) throw new Error('voice-reactivation-unavailable')
+    const voices = Array.isArray(profile.data().voiceProfiles) ? [...profile.data().voiceProfiles] : (profile.data().voiceProfile?.voiceId ? [profile.data().voiceProfile] : [])
+    const restoredVoices = voices.filter(voice => String(voice.packId || '') === packId && voice.voiceId)
+    if (!restoredVoices.length) throw new Error('voice-reactivation-unavailable')
+    const expiresAt = new Date(Date.now() + RETENTION_MS)
+    packs[packIndex] = { ...packs[packIndex], expiresAt, reactivatedAt: new Date(), reactivationCount: Math.max(0, Number(packs[packIndex].reactivationCount || 0)) + 1, lastReactivationTransactionId: String(transactionId) }
+    const nextVoices = voices.map(voice => String(voice.packId || '') === packId ? { ...voice, expiresAt: expiresAt.toISOString() } : voice)
+    const selectedId = String(profile.data().selectedVoiceId || '')
+    const selected = nextVoices.find(voice => String(voice.voiceId) === selectedId && String(voice.packId || '') === packId) || restoredVoices[0]
+    tx.update(profileRef, { voicePacks: packs, voiceProfiles: nextVoices, selectedVoiceId: selected.voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
+    tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP, reactivatedAt: SERVER_TIMESTAMP })
+  })
+  return { status: 'approved', reactivated: true, expiresAt: new Date(Date.now() + RETENTION_MS).toISOString() }
 }
 async function confirmDiscoveryPayment(env, db, transactionId, expectedUid = '') {
   if (!env.FEDAPAY_SECRET_KEY) throw new Error('fedapay-not-configured')
@@ -850,6 +937,7 @@ async function fedapayWebhook(request, env, db) {
     if (order.exists && order.data.kind === 'track_download') await confirmTrackPurchase(env, db, transactionId)
     else if (order.exists && order.data.kind === 'discovery_subscription') await confirmDiscoveryPayment(env, db, transactionId)
     else if (order.exists && order.data.kind === 'voice_pack') await confirmVoicePackPayment(env, db, transactionId)
+    else if (order.exists && order.data.kind === 'voice_reactivation') await confirmVoiceReactivationPayment(env, db, transactionId)
     else await confirmCreditPayment(env, db, transactionId)
     return response(200, { received: true })
   } catch (error) {
@@ -1524,27 +1612,7 @@ export default {
       for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
     }
-    const userRows = await db.runQuery({ from: [{ collectionId: 'users' }], limit: 1000 })
-    for (const row of userRows || []) {
-      const document = row.document
-      if (!document?.name) continue
-      const uid = document.name.split('/documents/users/')[1]
-      if (!uid || uid.includes('/')) continue
-      const data = fromFields(document.fields || {})
-      const storedVoices = Array.isArray(data.voiceProfiles) ? data.voiceProfiles : (data.voiceProfile?.voiceId ? [data.voiceProfile] : [])
-      const validVoices = storedVoices.filter(voice => {
-        if (!voice?.voiceId || !voice.expiresAt) return Boolean(voice?.voiceId)
-        const expiry = new Date(voice.expiresAt).getTime()
-        return Number.isFinite(expiry) && expiry > Date.now()
-      })
-      if (validVoices.length === storedVoices.length) continue
-      const selected = validVoices.find(voice => String(voice.voiceId) === String(data.selectedVoiceId || '')) || null
-      try {
-        await db.set('users/' + uid, { voiceProfiles: validVoices, selectedVoiceId: selected?.voiceId || '', voiceProfile: selected }, true)
-      } catch (error) {
-        console.error('[Audinoo voice retention cleanup]', { uid, error })
-      }
-    }
+    // Expired custom voices are hidden by accountPlan but retained for paid reactivation.
   },
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -1606,6 +1674,11 @@ export default {
       if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
       if (url.pathname === '/api/admin/discovery/cancel') return await adminCancelDiscovery(request,db,user)
       if (url.pathname === '/api/voice/purchase') return await createVoicePackPayment(request,env,db,user)
+      if (url.pathname === '/api/voice/reactivate') return await createVoiceReactivationPayment(request,env,db,user)
+      if (url.pathname === '/api/voice/reactivate-confirm') {
+        if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
+        return response(200, await confirmVoiceReactivationPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid))
+      }
       if (url.pathname === '/api/voice/confirm') {
         if (request.method !== 'GET') return response(405,{error:'method-not-allowed'})
         return response(200, await confirmVoicePackPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid))
