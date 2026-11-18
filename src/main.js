@@ -4705,7 +4705,11 @@ async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 5000)
   } catch (error) {
-    button.textContent = original || 'Réessayer'
+    if (error.message === 'video-generation-failed') {
+      track.videoTaskId = ''
+      track.videoStatus = 'FAILED'
+      button.textContent = 'Réessayer le clip · 1 crédit'
+    } else button.textContent = original || 'Réessayer'
     button.disabled = false
     toast.textContent = generationErrorMessage(error.message)
     toast.classList.add('show')
@@ -4835,7 +4839,7 @@ function renderLibraryGeneration(generation) {
         const action = document.createElement('button')
         action.type = 'button'
         action.className = 'library-video-get-button'
-        action.textContent = track.videoTaskId ? 'Vérifier le clip' : 'Créer le clip · 1 crédit'
+        action.textContent = track.videoTaskId ? 'Vérifier le clip' : 'Créer le clip · 1 crédit (300 FCFA)'
         action.addEventListener('click', () => { void createOrCheckLibraryVideo(taskId, index, track, action) })
         card.append(cover, info, action)
       }
@@ -4895,6 +4899,7 @@ function generationErrorMessage(errorCode) {
     'video-provider-rejected-request': 'Le fournisseur n’a pas accepté la création du clip. Ton crédit a été restitué.',
     'video-status-unavailable': 'Impossible de vérifier le clip pour le moment.',
     'video-archive-failed': 'Le clip est prêt mais son archivage a échoué. Réessaie dans quelques instants.',
+    'video-generation-failed': 'La création du clip a échoué. Ton crédit a été restitué ; tu peux réessayer.',
     'fedapay-not-configured': 'Le paiement n’est pas encore configuré sur le serveur de paiement. Réessaie après activation de FedaPay.',
     'fedapay-request-failed': 'FedaPay n’a pas pu préparer le paiement. Réessaie dans quelques instants.',
     'fedapay-invalid-transaction': 'FedaPay a retourné une transaction invalide. Réessaie.',
