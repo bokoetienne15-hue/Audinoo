@@ -569,12 +569,22 @@ async function adminCancelDiscovery(request, db, user) {
     paidCredits: Math.max(0, Number(updated.data?.paidCredits || 0))
   })
 }
+async function hasAvailableVoicePackSlot(db, uid) {
+  const profile = await db.get('users/' + uid)
+  const packs = Array.isArray(profile.data?.voicePacks) ? profile.data.voicePacks : []
+  const now = Date.now()
+  return packs.some(pack => {
+    const expiry = pack.expiresAt instanceof Date ? pack.expiresAt.getTime() : new Date(pack.expiresAt || 0).getTime()
+    return Number.isFinite(expiry) && expiry > now && Math.max(0, Number(pack.used || 0)) + Math.max(0, Number(pack.reserved || 0)) < VOICE_PACK_SIZE
+  })
+}
 function voiceApiHeaders(env) {
   if (!env.SUNOAPI_KEY) throw new Error('music-provider-not-configured')
   return { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' }
 }
 async function voiceUpload(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await hasAvailableVoicePackSlot(db, user.uid))) return response(402, { error: 'voice-pack-required' })
   if (!env.AUDIO_BUCKET) return response(503, { error: 'voice-storage-not-configured' })
   const form = await request.formData()
   const audio = form.get('audio')
@@ -598,6 +608,7 @@ async function publicVoiceFile(request, env, db, token) {
 }
 async function voiceValidate(request, env, db, user) {
   if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!(await hasAvailableVoicePackSlot(db, user.uid))) return response(402, { error: 'voice-pack-required' })
   const body = await request.json().catch(() => ({}))
   const token = String(body.token || '')
   const voiceName = String(body.voiceName || 'Ma voix').trim().slice(0, 40)
