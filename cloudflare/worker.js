@@ -547,7 +547,7 @@ async function confirmVoiceReactivationPayment(env, db, transactionId, expectedU
     packs[packIndex] = { ...packs[packIndex], expiresAt, reactivatedAt: new Date(), reactivationCount: Math.max(0, Number(packs[packIndex].reactivationCount || 0)) + 1, lastReactivationTransactionId: String(transactionId) }
     const nextVoices = voices.map(voice => String(voice.packId || '') === packId ? { ...voice, expiresAt: expiresAt.toISOString() } : voice)
     const selectedId = String(profile.data().selectedVoiceId || '')
-    const selected = nextVoices.find(voice => String(voice.voiceId) === selectedId && String(voice.packId || '') === packId) || restoredVoices[0]
+    const selected = nextVoices.find(voice => String(voice.voiceId) === selectedId && String(voice.packId || '') === packId) || nextVoices.find(voice => String(voice.packId || '') === packId)
     tx.update(profileRef, { voicePacks: packs, voiceProfiles: nextVoices, selectedVoiceId: selected.voiceId, voiceProfile: selected, updatedAt: SERVER_TIMESTAMP })
     tx.update(orderRef, { status: 'approved', credited: true, creditedAt: SERVER_TIMESTAMP, reactivatedAt: SERVER_TIMESTAMP })
   })
