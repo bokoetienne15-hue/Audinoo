@@ -15,18 +15,15 @@ Audinoo invite les utilisateurs à imaginer leur musique et à explorer différe
 
 ## Tarifs publics affichés
 
-Les tarifs actuellement affichés sur le site sont :
-- Création d'une chanson : 300 FCFA (0,99 €).
-- Plan Découverte : 1 000 FCFA par mois.
-- Plan Créateur / Artiste : 3 000 FCFA par mois.
-- Plan Pro : 6 900 FCFA par mois.
+Les offres et options à l'unité actuellement décrites :
+- Création d'une chanson : 300 FCFA par crédit de génération (deux variantes).
+- Création d'un clip vidéo : 1 crédit depuis une chanson de la bibliothèque ; le crédit est vendu 300 FCFA.
+- Pack de 2 voix personnalisées : 1 000 FCFA, paiement unique, accès pendant 30 jours.
+- Réactivation des deux voix précédentes : 500 FCFA, paiement unique, accès pendant 30 jours supplémentaires.
+- Aucun renouvellement automatique du pack vocal.
+- La création d'une voix personnalisée ne consomme pas de crédit musical. Un emplacement est consommé seulement après l'enregistrement réussi de la voix.
 
-Chaque génération musicale produit deux variantes. Les offres sont les suivantes :
-- Achat à l'unité : 300 FCFA par chanson, 1 génération (2 variantes), téléchargement MP3, sans abonnement.
-- Plan Découverte : 1 000 FCFA par mois, profil vocal personnalisé, 3 générations (6 variantes), 3 clips vidéo et téléchargement MP3.
-- Plan Créateur / Artiste : 3 000 FCFA par mois, 8 générations (16 variantes), 3 clips vidéo au choix, mode sauvage, chansons jusqu'à 8 minutes, téléchargements MP3 et WAV, pistes vocales et instrumentales séparées, licence commerciale.
-- Plan Pro : 6 900 FCFA par mois, 30 générations (60 variantes), 10 clips vidéo au choix, conservation permanente du profil vocal, séparation avancée des pistes pour 10 chansons au choix, licence commerciale et téléchargements MP3 et WAV.
-Pour les conditions à jour, consulter le site officiel.
+Les anciens abonnements qui ne sont plus commercialisés ne doivent pas être présentés comme des offres disponibles à l'achat. Les conditions historiques attachées aux comptes déjà abonnés ne sont pas effacées.
 
 ## Pages officielles de référence
 

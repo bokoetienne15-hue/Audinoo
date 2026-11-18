@@ -1422,13 +1422,37 @@ async function adminRevenue(request, db, user) {
   ])
   const resetAt = revenueSettings.data?.resetAt || null
   const timestamp = value => value instanceof Date ? value.getTime() : typeof value === 'string' ? new Date(value).getTime() : Number.NaN
-  const orders = firestoreRows(ordersRaw).map(({ data }) => data).filter(order => order.status === 'approved' && order.credited === true && (!resetAt || timestamp(order.creditedAt || order.createdAt) >= timestamp(resetAt))).map(order => ({ uid: order.uid || '', amount: Number(order.amount || 0), currency: order.currency || 'XOF', kind: order.kind || 'credit', paidAt: order.creditedAt || order.createdAt || null }))
+  const orders = firestoreRows(ordersRaw).map(({ data }) => data)
+    .filter(order => order.status === 'approved' && order.credited === true && (!resetAt || timestamp(order.creditedAt || order.createdAt) >= timestamp(resetAt)))
+    .map(order => ({
+      uid: order.uid || '',
+      transactionId: String(order.transactionId || ''),
+      amount: Number(order.amount || 0),
+      currency: order.currency || 'XOF',
+      kind: order.kind || 'credit',
+      credits: Math.max(0, Number(order.credits || 0)),
+      voiceSlots: Math.max(0, Number(order.voiceSlots || 0)),
+      taskId: String(order.taskId || ''),
+      trackIndex: order.trackIndex != null && Number.isInteger(Number(order.trackIndex)) ? Number(order.trackIndex) : null,
+      paidAt: order.creditedAt || order.createdAt || null
+    }))
   const generations = firestoreRows(generationsRaw).flatMap(({ name, data }) => {
     const parts = firestoreDocPath(name).split('/')
     if (parts.length !== 4 || parts[0] !== 'users' || parts[2] !== 'generations') return []
     const date = data.createdAt || null
     if (resetAt && (!date || timestamp(date) < timestamp(resetAt))) return []
-    return [{ uid: parts[1], createdAt: date, paidCredit: data.paidCreditUsed === true || data.downloadIncluded === true }]
+    const tracks = Array.isArray(data.tracks) ? data.tracks : []
+    const completedVideos = tracks.filter(track => Boolean(track.videoKey) || (track.videoTaskId && String(track.videoStatus || '').toUpperCase() === 'SUCCESS'))
+    return [{
+      uid: parts[1],
+      createdAt: date,
+      paidCredit: data.paidCreditUsed === true || data.downloadIncluded === true,
+      trackCount: tracks.length,
+      videoCount: completedVideos.length,
+      paidVideoCount: completedVideos.filter(track => track.videoCreditType === 'paid').length,
+      freeVideoCount: completedVideos.filter(track => track.videoCreditType === 'free').length,
+      discoveryVideoCount: completedVideos.filter(track => track.videoCreditType === 'discovery').length
+    }]
   })
   const ids = [...new Set([...orders, ...generations].map(item => item.uid).filter(Boolean))]
   const profiles = new Map()
@@ -1932,8 +1956,8 @@ export default {
       if (url.pathname === '/api/plan') return await accountPlan(request,db,user)
       if (url.pathname === '/api/discovery/purchase') return response(403,{error:'discovery-not-available'})
       if (url.pathname === '/api/discovery/confirm') { if (request.method !== 'GET') return response(405,{error:'method-not-allowed'}); return response(200, await confirmDiscoveryPayment(env,db,url.searchParams.get('transaction_id') || '',user.uid)) }
-      if (url.pathname === '/api/admin/discovery/activate-test') return await adminActivateDiscovery(request,db,user)
-      if (url.pathname === '/api/admin/discovery/cancel') return await adminCancelDiscovery(request,db,user)
+      if (url.pathname === '/api/admin/discovery/activate-test') return response(403,{error:'discovery-not-available'})
+      if (url.pathname === '/api/admin/discovery/cancel') return response(403,{error:'discovery-not-available'})
       if (url.pathname === '/api/voice/purchase') return await createVoicePackPayment(request,env,db,user)
       if (url.pathname === '/api/voice/reactivate') return await createVoiceReactivationPayment(request,env,db,user)
       if (url.pathname === '/api/voice/reactivate-confirm') {

@@ -128,7 +128,7 @@ app.innerHTML = `
       <div class="section-heading centered"><p class="section-kicker">Tarifs simples</p><h2 id="pricing-title">Choisis ton espace de création.</h2><p>Choisis la formule adaptée à tes besoins et découvre les avantages inclus dans chaque offre.</p></div>
       <div class="pricing-grid">
         <article class="price-card credit-card featured-price"><span class="popular-tag">À la demande</span><p class="price-label">Achat à l'unité</p><h3>Un crédit</h3><p class="price-description">Obtiens un crédit pour lancer une génération musicale, sans abonnement.</p><div class="price-value"><span data-price data-xof="300" data-eur="0.99">300</span> <small data-price-currency>FCFA</small><small data-price-period> / crédit</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>1 crédit de génération musicale</span><span>2 variantes musicales à écouter et télécharger en MP3</span><span>Téléchargements répétés sans frais supplémentaires</span><span>Paiement unique, sans abonnement</span></div><a class="price-button secondary-button" href="#create">Choisir cette offre</a></article>
-        <article class="price-card"><p class="price-label">Voix personnalisée</p><h3>Pack de 2 voix</h3><p class="price-description">Configure deux voix personnalisées et utilise-les pendant 30 jours.</p><div class="price-value"><span data-price data-xof="1000" data-eur="2.00">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / achat unique</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>2 configurations de voix personnalisées</span><span>Accès aux deux voix pendant 30 jours</span><span>300 FCFA par chanson générée avec ta voix</span><span>300 FCFA par vidéo musicale</span><span>Réactivation des deux voix après expiration : 500 FCFA pour 30 jours</span><span>Aucun renouvellement automatique</span></div><a class="price-button" href="#signup">Débloquer 2 voix · 1 000 FCFA</a></article>
+        <article class="price-card"><p class="price-label">Voix personnalisée</p><h3>Pack de 2 voix</h3><p class="price-description">Configure deux voix personnalisées et utilise-les pendant 30 jours.</p><div class="price-value"><span data-price data-xof="1000" data-eur="2.00">1 000</span> <small data-price-currency>FCFA</small><small data-price-period> / achat unique</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>2 configurations de voix personnalisées</span><span>Accès aux deux voix pendant 30 jours</span><span>300 FCFA par chanson générée avec ta voix</span><span>300 FCFA par vidéo musicale</span><span>Réactivation des deux voix après expiration : 500 FCFA pour 30 jours</span><span>Aucun renouvellement automatique</span></div><div class="price-information" role="note"><strong>À savoir</strong><span>Ce pack se débloque depuis la rubrique « Ma voix » dans le Studio. Aucun abonnement ni renouvellement automatique.</span></div></article>
         <article class="price-card"><p class="price-label">Plan Créateur / Artiste</p><h3>Formule mensuelle</h3><p class="price-description">Libérez tout votre potentiel créatif.</p><div class="price-value"><span data-price data-xof="3000" data-eur="4.57">3 000</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>8 générations musicales, soit 16 variantes</span><span>3 clips vidéo au choix parmi vos créations</span><span>Accès au mode sauvage</span><span>Chansons d'une durée pouvant atteindre 8 minutes</span><span>Téléchargement MP3 et WAV</span><span>Téléchargement séparé de la voix et de l'instrumental</span><span>Licence commerciale pour l'exploitation de vos créations musicales</span></div><a class="price-button" href="#signup">Choisir cette formule</a></article>
         <article class="price-card"><p class="price-label">Plan Pro</p><h3>Formule avancée</h3><p class="price-description">L'expérience complète pour vos productions musicales.</p><div class="price-value"><span data-price data-xof="6900" data-eur="10.52">6 900</span> <small data-price-currency>FCFA</small><small data-price-period> / mois</small></div><div class="benefit-placeholder"><strong>Avantages</strong><span>Création de votre propre profil vocal</span><span>30 générations musicales, soit 60 variantes</span><span>10 clips vidéo au choix parmi vos créations</span><span>Conservation permanente du profil vocal</span><span>Séparation avancée des pistes pour 10 chansons au choix</span><span>Licence commerciale</span><span>Téléchargement MP3 et WAV</span></div><a class="price-button secondary-button" href="#signup">Choisir cette formule</a></article>
       </div>
@@ -550,46 +550,6 @@ workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
   button.dataset.xofLabel = button.textContent.trim()
   const card = button.closest('.price-card')
   const isSingleCredit = Boolean(card?.classList.contains('credit-card'))
-  const isVoicePack = card?.querySelector('.price-label')?.textContent.trim() === 'Voix personnalisée'
-  if (isVoicePack) {
-    button.href = '#buy-voice'
-    button.textContent = 'Débloquer 2 voix · 1 000 FCFA'
-    button.dataset.xofLabel = button.textContent
-    button.addEventListener('click', async event => {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (workspacePricingPage.querySelector('.currency-toggle').classList.contains('is-eur')) {
-        toast.textContent = 'Le paiement du pack de voix est actuellement disponible en FCFA uniquement.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 4000)
-        return
-      }
-      if (!auth.currentUser) {
-        toast.textContent = 'Connecte-toi pour acheter ton pack de deux voix.'
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 4000)
-        return
-      }
-      const original = button.textContent
-      button.disabled = true
-      button.textContent = 'Préparation du paiement…'
-      button.setAttribute('aria-busy', 'true')
-      try {
-        const checkout = await callAudinooApi('/api/voice/purchase', { method: 'POST', body: JSON.stringify({}) })
-        if (!checkout.checkoutUrl || !/^https:\/\//i.test(checkout.checkoutUrl)) throw new Error('fedapay-checkout-unavailable')
-        if (checkout.transactionId) sessionStorage.setItem('audinooPendingVoiceTransaction', String(checkout.transactionId))
-        window.location.assign(checkout.checkoutUrl)
-      } catch (error) {
-        toast.textContent = generationErrorMessage(error.message)
-        toast.classList.add('show')
-        window.setTimeout(() => toast.classList.remove('show'), 5500)
-        button.textContent = original
-        button.disabled = false
-        button.removeAttribute('aria-busy')
-      }
-    })
-    return
-  }
   if (isSingleCredit) {
     button.textContent = 'Acheter 1 crédit · 300 FCFA'
     button.dataset.xofLabel = button.textContent
@@ -654,7 +614,6 @@ workspacePricingPage.querySelectorAll('.currency-option').forEach((option) => op
   workspacePricingPage.querySelectorAll('[data-price-currency]').forEach((label) => { label.textContent = currency === 'xof' ? 'FCFA' : '€' })
   workspacePricingPage.querySelectorAll('.price-button').forEach((button) => {
     if (button.closest('.credit-card')) button.textContent = currency === 'eur' ? 'Bientôt disponible' : 'Acheter 1 crédit · 300 FCFA'
-    if (button.closest('.price-card')?.querySelector('.price-label')?.textContent.trim() === 'Voix personnalisée') button.textContent = currency === 'eur' ? 'Bientôt disponible' : 'Débloquer 2 voix · 1 000 FCFA'
   })
 }))
 workspaceLayout.append(workspacePricingPage)
@@ -1389,52 +1348,6 @@ adminWorkspacePage.innerHTML = '<div class="admin-hero"><div><p class="workspace
 workspaceLayout.append(adminWorkspacePage)
 
 let verifiedAdminUid = null
-const adminDiscoveryPanel = document.createElement('section')
-adminDiscoveryPanel.className = 'admin-panel admin-discovery-plan-panel'
-adminDiscoveryPanel.innerHTML = '<div class="admin-panel-heading"><div><p>ABONNEMENT DU COMPTE ADMIN</p><h2>Forfait Découverte</h2></div><span class="admin-credit-state" id="admin-discovery-state">Vérification…</span></div><p class="admin-panel-status" id="admin-discovery-detail">Chargement du forfait et des crédits Découverte…</p><div class="admin-credit-actions"><button class="admin-refresh-button" id="admin-discovery-cancel" type="button" disabled>Annuler le forfait</button><small>Seuls les crédits Découverte et ses avantages seront retirés. Les crédits achetés à l’unité resteront disponibles.</small></div>'
-adminWorkspacePage.insertBefore(adminDiscoveryPanel, adminWorkspacePage.querySelector('.admin-stats-grid'))
-const adminDiscoveryState = adminDiscoveryPanel.querySelector('#admin-discovery-state')
-const adminDiscoveryDetail = adminDiscoveryPanel.querySelector('#admin-discovery-detail')
-const adminDiscoveryCancel = adminDiscoveryPanel.querySelector('#admin-discovery-cancel')
-function renderAdminDiscoveryPanel(plan = {}) {
-  const active = plan.active === true && plan.plan === 'discovery'
-  adminDiscoveryState.textContent = active ? 'ACTIF' : 'INACTIF'
-  adminDiscoveryDetail.textContent = active
-    ? Math.max(0, Number(plan.discoveryCredits || 0)) + ' crédit(s) Découverte restant(s) · expiration le ' + (plan.expiresAt ? new Date(plan.expiresAt).toLocaleDateString('fr-FR') : '—') + '. Les crédits achetés séparément sont conservés.'
-    : 'Aucun forfait Découverte actif. Le compte utilise le fonctionnement normal par achat unique.'
-  adminDiscoveryCancel.disabled = !active || adminDiscoveryCancel.dataset.loading === 'true'
-}
-adminDiscoveryCancel.addEventListener('click', async () => {
-  const user = auth.currentUser
-  if (!user || verifiedAdminUid !== user.uid) {
-    adminDiscoveryDetail.textContent = 'Accès administrateur requis.'
-    return
-  }
-  if (!window.confirm('Annuler immédiatement le forfait Découverte ? Les crédits Découverte restants et ses avantages seront retirés. Les crédits achetés séparément seront conservés.')) return
-  adminDiscoveryCancel.disabled = true
-  adminDiscoveryCancel.dataset.loading = 'true'
-  adminDiscoveryCancel.textContent = 'Annulation…'
-  adminDiscoveryDetail.textContent = 'Annulation sécurisée du forfait…'
-  try {
-    const result = await callAudinooApi('/api/admin/discovery/cancel', { method: 'POST', body: JSON.stringify({}) })
-    if (auth.currentUser?.uid !== user.uid || verifiedAdminUid !== user.uid) return
-    if (result.cancelled) {
-      await refreshDiscoveryPlan(user.uid)
-      adminDiscoveryDetail.textContent = 'Forfait Découverte annulé. Ses crédits et avantages ont été retirés ; tes crédits achetés séparément sont conservés.'
-    } else {
-      await refreshDiscoveryPlan(user.uid)
-      adminDiscoveryDetail.textContent = 'Aucun forfait Découverte actif à annuler.'
-    }
-  } catch (error) {
-    adminDiscoveryDetail.textContent = error.message === 'generation-in-progress'
-      ? 'Une génération est en cours. Attends sa fin puis réessaie.'
-      : 'Annulation impossible : ' + generationErrorMessage(error.message)
-  } finally {
-    adminDiscoveryCancel.dataset.loading = 'false'
-    adminDiscoveryCancel.textContent = 'Annuler le forfait'
-    adminDiscoveryCancel.disabled = !workspace.classList.contains('is-discovery-active')
-  }
-})
 const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestions-status')
 const adminSuggestionList = adminWorkspacePage.querySelector('#admin-suggestion-list')
 const adminNotificationForm = adminWorkspacePage.querySelector('#admin-notification-form')
@@ -1927,7 +1840,7 @@ adminEmailsSection.innerHTML += '<div class="admin-email-kpis"><article class="a
 adminGenerationsSection.innerHTML += '<div class="admin-generation-tabs" role="tablist" aria-label="État des créations"><button type="button" class="admin-generation-tab is-active" data-generation-view="pending" role="tab" aria-selected="true">À vérifier</button><button type="button" class="admin-generation-tab" data-generation-view="published" role="tab" aria-selected="false">Publiées / validées</button></div><div class="admin-data-toolbar admin-generation-toolbar"><label class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-generation-search" type="search" placeholder="Rechercher une chanson ou un créateur…" autocomplete="off"></label><label class="admin-generation-date-filter"><span>Journée</span><input id="admin-generation-date" type="date"></label><button class="admin-refresh-button" id="admin-refresh-generations" type="button">Actualiser</button><span class="admin-data-count" id="admin-generation-count">Chargement…</span></div><p class="admin-panel-status" id="admin-audio-status" role="status">Chargement des créations…</p><div class="admin-generation-cards" id="admin-generation-cards"><p class="admin-panel-status">Chargement des créations…</p></div>'
 adminAcquisitionSection.innerHTML += `<section class="admin-panel admin-acquisition-diagnostics"><div class="admin-panel-heading"><div><p>DIAGNOSTIC DU PARCOURS</p><h2>Où les visiteurs abandonnent-ils ?</h2></div><span class="admin-data-count" id="admin-acquisition-events-count">En direct</span></div><div class="admin-acquisition-funnel"><article><span>Page chargée</span><strong id="diag-page-loaded">—</strong></article><article><span>Clic inscription</span><strong id="diag-signup-clicked">—</strong></article><article><span>Fenêtre affichée</span><strong id="diag-signup-opened">—</strong></article><article><span>Formulaire envoyé</span><strong id="diag-signup-submitted">—</strong></article><article><span>Compte Firebase créé</span><strong id="diag-auth-created">—</strong></article><article><span>Profil enregistré</span><strong id="diag-profile-saved">—</strong></article><article><span>Inscription terminée</span><strong id="diag-signup-completed">—</strong></article><article><span>Échecs détectés</span><strong id="diag-signup-failed">—</strong></article></div><p class="admin-panel-status" id="admin-acquisition-events-status" role="status">Les étapes du parcours seront enregistrées après le déploiement de cette version.</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Date</th><th>Source</th><th>Navigateur</th><th>Étape atteinte</th><th>Résultat / explication</th></tr></thead><tbody id="admin-acquisition-events-rows"><tr><td colspan="5">En attente des événements…</td></tr></tbody></table></div><p class="admin-panel-status">Aucune adresse e-mail, aucun mot de passe, nom, numéro de téléphone ou identifiant personnel n’est enregistré dans ce diagnostic. Les événements sont associés à une session anonyme.</p></section>`
 adminAcquisitionSection.innerHTML += '<div class="admin-acquisition-summary"><article class="admin-stat-card"><span>VISITEURS ENREGISTRÉS</span><strong id="admin-acquisition-visits">—</strong><small>Sessions uniques enregistrées dans Firebase</small></article><article class="admin-stat-card"><span>CLICS SUR S’INSCRIRE</span><strong id="admin-acquisition-clicks">—</strong><small>Une seule fois par session</small></article><article class="admin-stat-card"><span>TAUX DE CLIC</span><strong id="admin-acquisition-rate">—</strong><small>Visiteurs ayant ouvert l’inscription</small></article><article class="admin-stat-card"><span>COMPTES CRÉÉS</span><strong id="admin-acquisition-accounts">—</strong><small>Total des profils présents dans Firebase</small></article></div><section class="admin-panel admin-acquisition-sources"><div class="admin-panel-heading"><div><p>ORIGINE DU TRAFIC</p><h2>Visiteurs et inscriptions par source</h2></div><span class="admin-data-count" id="admin-acquisition-source-count">—</span></div><p class="admin-panel-status" id="admin-acquisition-status" role="status">En attente des données Firebase…</p><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Source</th><th>Visiteurs</th><th>Clics sur S’inscrire</th><th>Taux de clic</th></tr></thead><tbody id="admin-acquisition-rows"><tr><td colspan="4">Chargement des données…</td></tr></tbody></table></div></section><p class="admin-panel-status">Les visites historiques enregistrées avant l’activation du suivi par source apparaissent comme « Non attribué ». Les chiffres concernent des sessions de navigateur, pas des personnes identifiées.</p>'
-adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button><button class="admin-refresh-button" id="admin-reset-revenue" type="button">Remettre les compteurs à zéro</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenus confirmés · FCFA</span><strong id="admin-revenue-total">—</strong></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Créations avec crédit payant</span><strong id="admin-revenue-paid-songs">—</strong></article><article class="admin-stat-card"><span>Chansons achetées pour téléchargement</span><strong id="admin-revenue-downloads">—</strong></article></div><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
+adminRevenueSection.innerHTML += '<div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Affichage</span><select id="admin-revenue-period"><option value="day">Par jour · 30 jours</option><option value="month">Par mois · 12 mois</option></select></label><label class="admin-generation-date-filter"><span>Pays</span><select id="admin-revenue-country"><option value="all">Tous les pays</option></select></label><button class="admin-refresh-button" id="admin-refresh-revenue" type="button">Actualiser</button><button class="admin-refresh-button" id="admin-reset-revenue" type="button">Remettre les compteurs à zéro</button></div><p class="admin-panel-status" id="admin-revenue-status" role="status">Les montants affichés incluent uniquement les paiements confirmés par FedaPay.</p><div class="admin-stats-grid"><article class="admin-stat-card"><span>Revenu total confirmé · FCFA</span><strong id="admin-revenue-total">—</strong><small>Toutes les catégories réunies</small></article><article class="admin-stat-card"><span>Paiements confirmés</span><strong id="admin-revenue-payments">—</strong></article><article class="admin-stat-card"><span>Crédits achetés</span><strong id="admin-revenue-credits-bought">—</strong></article><article class="admin-stat-card"><span>Crédits payants consommés</span><strong id="admin-revenue-credits-used">—</strong></article><article class="admin-stat-card"><span>Générations musicales</span><strong id="admin-revenue-paid-songs">—</strong></article><article class="admin-stat-card"><span>Clips vidéo terminés</span><strong id="admin-revenue-videos">—</strong></article><article class="admin-stat-card"><span>Packs de voix vendus</span><strong id="admin-revenue-voice-packs">—</strong></article><article class="admin-stat-card"><span>Réactivations vocales</span><strong id="admin-revenue-reactivations">—</strong></article><article class="admin-stat-card"><span>Coût API estimé · FCFA</span><strong id="admin-revenue-api-cost">—</strong><small id="admin-revenue-api-cost-detail">Estimation des générations et clips</small></article><article class="admin-stat-card"><span>Marge indicative · FCFA</span><strong id="admin-revenue-margin">—</strong><small>Avant frais non suivis et coûts vocaux</small></article><article class="admin-stat-card"><span>Téléchargements MP3 payés</span><strong id="admin-revenue-downloads">—</strong></article></div><section class="admin-panel"><div class="admin-panel-heading"><div><p>DÉTAIL DES RECETTES</p><h3>Paiements par fonctionnalité</h3></div><strong id="admin-revenue-breakdown-total">—</strong></div><div class="admin-data-table-wrap"><table class="admin-data-table"><thead><tr><th>Catégorie</th><th>Nombre</th><th>Montant confirmé</th></tr></thead><tbody id="admin-revenue-category-rows"><tr><td colspan="3">Chargement…</td></tr></tbody></table></div><p class="admin-panel-status">Un clip vidéo consomme un crédit déjà acheté : son coût d’achat est comptabilisé dans « Crédits musicaux », et n’est pas ajouté une seconde fois aux recettes vidéo. Les anciennes transactions Découverte restent visibles dans l’historique.</p></section><section class="admin-panel admin-chart-panel"><div class="admin-panel-heading"><div><p>ACTIVITÉ FINANCIÈRE</p><h3>Revenus confirmés</h3></div><strong id="admin-revenue-chart-total">—</strong></div><div class="admin-chart-wrap"><svg id="admin-revenue-chart" viewBox="0 0 720 250" role="img" aria-label="Graphique des revenus confirmés"></svg></div></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>CRÉATIONS MUSICALES</p><h3>Chansons créées par pays</h3></div><strong id="admin-country-songs-total">—</strong></div><div class="admin-country-list" id="admin-paid-country-list"></div><p class="admin-panel-status">Les créations anciennes sans marqueur de paiement sont comptées dans l’activité totale, mais pas comme chansons financées par un crédit acheté.</p></section>'
 adminDangerSection.innerHTML += '<section class="admin-panel"><div class="admin-panel-heading"><div><p>SUPPRESSION DÉFINITIVE</p><h3>Supprimer un compte utilisateur</h3></div><span aria-hidden="true">⚠</span></div><p class="admin-panel-status">Supprime le compte Firebase Authentication, le profil et ses données Audinoo (créations, commandes, reçus, publications et fichiers audio). Les comptes administrateurs sont protégés.</p><div class="admin-data-toolbar"><label class="admin-generation-date-filter"><span>Compte à supprimer</span><select id="admin-delete-user"><option value="">Choisir un compte…</option></select></label><label class="admin-search-field"><span>Confirmation exacte</span><input id="admin-delete-confirmation" type="text" autocomplete="off" placeholder="Saisis l’adresse e-mail affichée"></label><button class="admin-refresh-button" id="admin-delete-user-button" type="button" disabled>Supprimer définitivement</button></div><p class="admin-panel-status" id="admin-delete-status" role="status"></p></section><section class="admin-panel"><div class="admin-panel-heading"><div><p>REMISE À ZÉRO DES STATISTIQUES</p><h3>Repartir de zéro pour l’acquisition</h3></div><span aria-hidden="true">↺</span></div><p class="admin-panel-status">Efface uniquement l’historique des visites anonymes et les événements du parcours d’inscription (clics, ouvertures, formulaires, réussites et erreurs). Le compteur des comptes créés repartira de zéro à partir de cette date. Les comptes existants, profils, chansons, crédits, paiements et autres données ne seront pas supprimés.</p><div class="admin-data-toolbar"><label class="admin-search-field"><span>Confirmation à saisir</span><input id="admin-reset-acquisition-confirmation" type="text" autocomplete="off" placeholder="RESET ACQUISITION"></label><button class="admin-refresh-button" id="admin-reset-acquisition-button" type="button" disabled>Remettre les statistiques à zéro</button></div><p class="admin-panel-status" id="admin-reset-acquisition-status" role="status"></p></section>'
 const adminPersonalNotificationForm = adminOnlineSection.querySelector('#admin-personal-notification-form')
 const adminPersonalNotificationStatus = adminOnlineSection.querySelector('#admin-personal-notification-status')
@@ -2602,13 +2515,55 @@ function renderAdminRevenue() {
   const afterReset = value => !adminRevenueData.resetAt || (value && new Date(value).getTime() >= new Date(adminRevenueData.resetAt).getTime())
   const orders = adminRevenueData.orders.filter(item => afterReset(item.paidAt) && (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.paidAt, period))
   const generations = adminRevenueData.generations.filter(item => afterReset(item.createdAt) && (country === 'all' || item.countryCode === country) && adminRevenueInRange(item.createdAt, period))
-  const total = orders.reduce((sum, item) => sum + (item.currency === 'XOF' ? Number(item.amount || 0) : 0), 0)
-  const paid = generations.filter(item => item.paidCredit).length
-  const downloads = orders.filter(item => item.kind === 'track_download').length
+  const kind = item => item.kind || 'credit'
+  const byKind = value => orders.filter(item => kind(item) === value)
+  const sumAmount = rows => rows.reduce((sum, item) => sum + (item.currency === 'XOF' ? Number(item.amount || 0) : 0), 0)
+  const total = sumAmount(orders)
+  const creditOrders = orders.filter(item => ['credit', 'music_credit'].includes(kind(item)))
+  const voicePacks = byKind('voice_pack')
+  const reactivations = byKind('voice_reactivation')
+  const downloads = byKind('track_download')
+  const legacyDiscovery = byKind('discovery_subscription')
+  const otherOrders = orders.filter(item => !['credit', 'music_credit', 'voice_pack', 'voice_reactivation', 'track_download', 'discovery_subscription'].includes(kind(item)))
+  const creditsBought = creditOrders.reduce((sum, item) => sum + Math.max(0, Number(item.credits || 0)), 0)
+  const paidMusicCreditsUsed = generations.filter(item => item.paidCredit).length
+  const videoCount = generations.reduce((sum, item) => sum + Math.max(0, Number(item.videoCount || 0)), 0)
+  const paidVideoCreditsUsed = generations.reduce((sum, item) => sum + Math.max(0, Number(item.paidVideoCount || 0)), 0)
+  const paidCreditsUsed = paidMusicCreditsUsed + paidVideoCreditsUsed
+  const apiCredits = generations.length * 12 + videoCount * 2
+  const apiCostUsd = apiCredits * 0.005
+  const apiCostXof = Math.round(apiCostUsd * 600)
+  const indicativeMargin = total - apiCostXof
   adminRevenueSection.querySelector('#admin-revenue-total').textContent = adminNumber(total)
   adminRevenueSection.querySelector('#admin-revenue-payments').textContent = adminNumber(orders.length)
-  adminRevenueSection.querySelector('#admin-revenue-paid-songs').textContent = adminNumber(paid)
-  adminRevenueSection.querySelector('#admin-revenue-downloads').textContent = adminNumber(downloads)
+  adminRevenueSection.querySelector('#admin-revenue-credits-bought').textContent = adminNumber(creditsBought)
+  adminRevenueSection.querySelector('#admin-revenue-credits-used').textContent = adminNumber(paidCreditsUsed)
+  adminRevenueSection.querySelector('#admin-revenue-paid-songs').textContent = adminNumber(generations.length)
+  adminRevenueSection.querySelector('#admin-revenue-videos').textContent = adminNumber(videoCount)
+  adminRevenueSection.querySelector('#admin-revenue-voice-packs').textContent = adminNumber(voicePacks.length)
+  adminRevenueSection.querySelector('#admin-revenue-reactivations').textContent = adminNumber(reactivations.length)
+  adminRevenueSection.querySelector('#admin-revenue-api-cost').textContent = adminNumber(apiCostXof)
+  adminRevenueSection.querySelector('#admin-revenue-api-cost-detail').textContent = apiCredits + ' crédits fournisseur · ' + apiCostUsd.toFixed(3) + ' USD · conversion indicative 600 FCFA/USD'
+  adminRevenueSection.querySelector('#admin-revenue-margin').textContent = adminNumber(indicativeMargin)
+  adminRevenueSection.querySelector('#admin-revenue-downloads').textContent = adminNumber(downloads.length)
+  adminRevenueSection.querySelector('#admin-revenue-breakdown-total').textContent = adminNumber(total) + ' FCFA'
+  const categories = [
+    ['Crédits musicaux', creditOrders.length, sumAmount(creditOrders)],
+    ['Packs de 2 voix personnalisées', voicePacks.length, sumAmount(voicePacks)],
+    ['Réactivation de voix', reactivations.length, sumAmount(reactivations)],
+    ['Téléchargements MP3', downloads.length, sumAmount(downloads)],
+    ['Ancien forfait Découverte · historique', legacyDiscovery.length, sumAmount(legacyDiscovery)],
+    ['Autres paiements', otherOrders.length, sumAmount(otherOrders)]
+  ]
+  const categoryRows = adminRevenueSection.querySelector('#admin-revenue-category-rows')
+  replaceNodeChildren(categoryRows)
+  categories.forEach(([label, count, amount]) => {
+    const row = document.createElement('tr')
+    const nameCell = document.createElement('td'); nameCell.textContent = label
+    const countCell = document.createElement('td'); countCell.textContent = adminNumber(count)
+    const amountCell = document.createElement('td'); amountCell.textContent = adminNumber(amount) + ' FCFA'
+    row.append(nameCell, countCell, amountCell); categoryRows.append(row)
+  })
   adminRevenueSection.querySelector('#admin-revenue-chart-total').textContent = `${adminNumber(total)} FCFA`
   adminRevenueSection.querySelector('#admin-country-songs-total').textContent = `${adminNumber(generations.length)} créations`
   const dates = []
@@ -2655,7 +2610,7 @@ async function loadAdminRevenue() {
     ;[...(adminRevenueData.orders || []), ...(adminRevenueData.generations || [])].forEach(item => { if (item.countryCode) countries.set(item.countryCode, item.country || item.countryCode) })
     ;[...countries].sort((a,b) => a[1].localeCompare(b[1], 'fr')).forEach(([code,name]) => select.add(new Option(`${countryFlag(code)} ${name}`, code)))
     if (countries.has(previous)) select.value = previous
-    status.textContent = `${adminNumber(adminRevenueData.orders.length)} paiements FedaPay confirmés · ${adminNumber(adminRevenueData.generations.length)} créations synchronisées.${adminRevenueData.resetAt ? ' Compteurs depuis le ' + adminDateLabel(adminRevenueData.resetAt) + '.' : ''}${adminRevenueData.limited ? ' Affichage limité aux 1 000 dernières entrées.' : ''}`
+    status.textContent = `${adminNumber(adminRevenueData.orders.length)} paiements confirmés · ${adminNumber(adminRevenueData.generations.length)} générations musicales synchronisées. Les coûts API sont estimatifs et n'incluent pas les opérations vocales ni les frais annexes.${adminRevenueData.resetAt ? ' Compteurs depuis le ' + adminDateLabel(adminRevenueData.resetAt) + '.' : ''}${adminRevenueData.limited ? ' Affichage limité aux 1 000 dernières entrées.' : ''}`
     renderAdminRevenue()
   } catch (error) { status.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message) }
   finally { adminRevenueRequestRunning = false }
@@ -3063,7 +3018,7 @@ async function refreshAdminAccess(uid) {
       workspace.classList.remove('is-discovery-active')
       workspaceCredits.hidden = false
       workspaceMobileCredit.hidden = false
-      renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
+      
       return false
     }
     verifiedAdminUid = uid
@@ -3364,12 +3319,6 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     if (workspaceMobileCreditCaption) workspaceMobileCreditCaption.textContent = discoveryActive
       ? discoveryCredits + ' gratuit(s) · ' + paidCredits + ' payant(s)'
       : freeCaption
-    const discoveryPriceCard = [...workspacePricingPage.querySelectorAll('.price-card')].find(card => card.querySelector('.price-label')?.textContent.trim() === 'Plan Découverte')
-    const discoveryPriceButton = discoveryPriceCard?.querySelector('.price-button')
-    if (discoveryPriceButton) {
-      discoveryPriceButton.textContent = discoveryActive ? 'Plan activé · 1 000 FCFA' : 'Activer le plan · 1 000 FCFA'
-      discoveryPriceButton.dataset.xofLabel = discoveryPriceButton.textContent
-    }
     workspace.classList.toggle('is-discovery-active', discoveryActive)
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
@@ -3388,7 +3337,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
         : 'Tu as utilisé tes emplacements ou ton accès a expiré. Achète un nouveau pack pour configurer deux autres voix.'
     }
     if (discoveryVoicePurchase) discoveryVoicePurchase.textContent = 'Acheter 2 voix supplémentaires · 1 000 FCFA'
-    if (isAdmin) renderAdminDiscoveryPanel(plan)
+    if (isAdmin) 
     if (discoveryVoiceProfiles.length) discoveryVoiceStatus.textContent = 'Tes voix sont enregistrées dans ta bibliothèque. Coche celle que tu veux utiliser.'
     else if (plan.voiceReactivationAvailable === true) discoveryVoiceStatus.textContent = 'Tes deux voix précédentes sont conservées. Réactive-les pour 500 FCFA et retrouve-les pendant 30 jours.'
   } catch (error) {
@@ -3396,7 +3345,7 @@ async function refreshDiscoveryPlan(uid = auth.currentUser?.uid) {
     workspace.classList.remove('is-discovery-active')
     workspaceCredits.hidden = false
     workspaceMobileCredit.hidden = false
-    if (isAdmin) renderAdminDiscoveryPanel({ active: false, plan: 'unit' })
+    if (isAdmin) 
   } finally {
     workspace.classList.remove('is-plan-checking')
   }
