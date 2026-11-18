@@ -4818,7 +4818,7 @@ function generationErrorMessage(errorCode) {
     'songwriter-not-configured': 'La composition intelligente du mode Simple n’est pas encore activée sur Cloudflare. Active Workers AI pour ce Worker puis réessaie.',
     'songwriting-failed': 'Audinoo n’a pas réussi à composer les paroles et le style. Aucun crédit n’a été consommé. Réessaie dans quelques instants.',
     'backend-not-configured': 'Le backend Firebase n’est pas encore configuré sur le serveur Cloudflare. Vérifie le secret FIREBASE_SERVICE_ACCOUNT_JSON dans le Worker audinoo-test.',
-    'firestore-quota-exceeded': 'Le service de données a temporairement atteint sa limite. Tes chansons et tes informations restent conservées. Audinoo réessaie automatiquement de charger ta bibliothèque.',
+    'firestore-quota-exceeded': 'Le service de données Firebase a temporairement atteint sa limite. Tes informations et tes chansons restent conservées. Audinoo reprendra les chargements automatiquement ; une nouvelle création ne sera pas relancée sans ton accord.',
     'firebase-quota-exceeded': 'Un service Firebase est temporairement limité. Tes données restent conservées. Réessaie dans quelques instants ; Audinoo ne relancera pas automatiquement une création ou un paiement.',
     'prompt-too-short': 'Décris un peu plus la musique que tu veux créer.',
     'prompt-too-long': 'Ta description dépasse la limite du mode choisi. En mode Simple, utilise 400 caractères maximum.',
