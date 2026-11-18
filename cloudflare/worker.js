@@ -1053,6 +1053,119 @@ async function generate(request, env, db, user) {
   })
   return response(202, { taskId, status: 'PENDING', freeCreditUsed: true,  })
 }
+async function releaseVideoCredit(db, uid, lockPath) {
+  const profileRef = db.doc('users/' + uid), lockRef = db.doc(lockPath)
+  await db.runTransaction(async tx => {
+    const [profile, lock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)])
+    if (!lock.exists || lock.data().uid !== uid) return
+    if (profile.exists) tx.update(profileRef, { paidCredits: Math.max(0, Number(profile.data().paidCredits || 0)) + 1, updatedAt: SERVER_TIMESTAMP })
+    tx.delete(lockRef)
+  })
+}
+async function createVideoForTrack(request, env, db, user) {
+  if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+  if (!env.SUNOAPI_KEY) return response(503, { error: 'music-provider-not-configured' })
+  if (!env.AUDIO_BUCKET) return response(503, { error: 'video-storage-not-configured' })
+  const body = await request.json().catch(() => ({}))
+  const taskId = String(body.taskId || ''), trackIndex = Number(body.trackIndex)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > 1) return response(400, { error: 'invalid-video-request' })
+  const path = 'users/' + user.uid + '/generations/' + taskId
+  const profileRef = db.doc('users/' + user.uid), generationRef = db.doc(path)
+  const lockPath = 'videoGenerationLocks/' + user.uid + '_' + taskId + '_' + trackIndex, lockRef = db.doc(lockPath)
+  let existingVideoTaskId = '', sourceTrack = null, alreadyArchived = false
+  try {
+    await db.runTransaction(async tx => {
+      const [profile, generation, lock] = await Promise.all([tx.get(profileRef), tx.get(generationRef), tx.get(lockRef)])
+      if (!profile.exists || !generation.exists) throw new Error('generation-not-found')
+      const tracks = Array.isArray(generation.data().tracks) ? generation.data().tracks : []
+      sourceTrack = tracks[trackIndex] || null
+      if (!sourceTrack || sourceTrack.deleted === true || !sourceTrack.id) throw new Error('video-source-not-ready')
+      if (sourceTrack.videoKey) { alreadyArchived = true; return }
+      if (sourceTrack.videoTaskId) { existingVideoTaskId = String(sourceTrack.videoTaskId); return }
+      if (lock.exists) throw new Error('video-generation-running')
+      const balance = Math.max(0, Math.floor(Number(profile.data().paidCredits || 0)))
+      if (balance < 1) throw new Error('video-credit-required')
+      tx.update(profileRef, { paidCredits: balance - 1, updatedAt: SERVER_TIMESTAMP })
+      tx.create(lockRef, { uid: user.uid, taskId, trackIndex, createdAt: SERVER_TIMESTAMP })
+    })
+  } catch (error) {
+    const mapped = { 'generation-not-found':[404,'generation-not-found'], 'video-source-not-ready':[409,'video-source-not-ready'], 'video-generation-running':[409,'video-generation-running'], 'video-credit-required':[402,'video-credit-required'] }[error.message]
+    if (mapped) return response(mapped[0], { error: mapped[1] })
+    throw error
+  }
+  if (alreadyArchived) return response(200, { status: 'SUCCESS', videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+  if (existingVideoTaskId) return response(200, { status: 'PENDING', videoTaskId: existingVideoTaskId })
+  let upstream, payload
+  try {
+    upstream = await fetch(SUNO_VIDEO_GENERATE_URL, {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ taskId, audioId: String(sourceTrack.id), callBackUrl: new URL('/api/video-callback', request.url).toString(), author: 'Audinoo', domainName: 'audinoo.com' }),
+      signal: AbortSignal.timeout(25000)
+    })
+    payload = await upstream.json().catch(() => ({}))
+  } catch (error) {
+    await releaseVideoCredit(db, user.uid, lockPath)
+    console.error('[Audinoo video provider]', error)
+    return response(502, { error: 'video-provider-unavailable' })
+  }
+  if (!upstream.ok || payload.code !== 200 || !payload.data?.taskId) {
+    await releaseVideoCredit(db, user.uid, lockPath)
+    return response(payload.code === 429 ? 402 : 502, { error: payload.code === 429 ? 'video-provider-credit-limit' : 'video-provider-rejected-request', providerMessage: String(payload.msg || '').slice(0, 240) })
+  }
+  const videoTaskId = String(payload.data.taskId)
+  await db.runTransaction(async tx => {
+    const [generation, lock] = await Promise.all([tx.get(generationRef), tx.get(lockRef)])
+    if (!generation.exists || !lock.exists) throw new Error('video-generation-reservation-lost')
+    const tracks = Array.isArray(generation.data().tracks) ? [...generation.data().tracks] : []
+    tracks[trackIndex] = { ...tracks[trackIndex], videoTaskId, videoStatus: 'PENDING', videoCreatedAt: new Date().toISOString() }
+    tx.update(generationRef, { tracks })
+    tx.delete(lockRef)
+  })
+  return response(202, { status: 'PENDING', videoTaskId })
+}
+async function videoStatus(request, env, db, user, url) {
+  if (request.method !== 'GET') return response(405, { error: 'method-not-allowed' })
+  const taskId = url.searchParams.get('taskId') || '', trackIndex = Number(url.searchParams.get('track') || 0)
+  if (!/^[a-zA-Z0-9_-]{6,120}$/.test(taskId) || !Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > 1) return response(400, { error: 'invalid-video-request' })
+  const path = 'users/' + user.uid + '/generations/' + taskId, generation = await db.get(path)
+  const track = generation.data?.tracks?.[trackIndex]
+  if (!generation.exists || !track) return response(404, { error: 'generation-not-found' })
+  if (track.videoKey) return response(200, { status: 'SUCCESS', completed: true, videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+  if (!track.videoTaskId) return response(404, { error: 'video-task-not-found' })
+  let videoUrl = String(track.videoSourceUrl || ''), state = String(track.videoStatus || 'PENDING').toUpperCase()
+  if (!videoUrl || state === 'PENDING') {
+    const upstream = await fetch(SUNO_VIDEO_STATUS_URL + '?taskId=' + encodeURIComponent(track.videoTaskId), { headers: { authorization: 'Bearer ' + env.SUNOAPI_KEY, accept: 'application/json' }, signal: AbortSignal.timeout(20000) })
+    const payload = await upstream.json().catch(() => ({}))
+    if (!upstream.ok || payload.code !== 200) return response(502, { error: 'video-status-unavailable' })
+    const data = payload.data || {}
+    state = String(data.response?.successFlag || data.successFlag || data.status || 'PENDING').toUpperCase()
+    videoUrl = String(data.response?.videoUrl || data.response?.video_url || data.videoUrl || data.video_url || videoUrl)
+    if (videoUrl || state !== 'PENDING') {
+      const tracks = [...generation.data.tracks]
+      tracks[trackIndex] = { ...track, videoStatus: state, ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(state.includes('FAILED') || state === 'CALLBACK_EXCEPTION' ? { videoError: String(data.response?.errorMessage || data.errorMessage || 'La génération vidéo a échoué.') } : {}) }
+      await db.set(path, { tracks }, true)
+    }
+  }
+  if (state === 'SUCCESS' && videoUrl) {
+    try {
+      const remote = await fetch(videoUrl, { signal: AbortSignal.timeout(90000) })
+      const contentType = remote.headers.get('content-type') || 'video/mp4'
+      if (!remote.ok || !remote.body || !contentType.toLowerCase().includes('video')) throw new Error('video-download-failed')
+      const videoKey = 'private/' + user.uid + '/' + taskId + '/' + trackIndex + '.video.mp4'
+      await env.AUDIO_BUCKET.put(videoKey, remote.body, { httpMetadata: { contentType: 'video/mp4', cacheControl: 'private, no-store' }, customMetadata: { uid: user.uid, taskId, trackIndex: String(trackIndex) } })
+      const latest = await db.get(path), tracks = [...(latest.data?.tracks || [])]
+      tracks[trackIndex] = { ...tracks[trackIndex], videoKey, videoStatus: 'SUCCESS', videoArchivedAt: new Date().toISOString(), videoSourceUrl: '' }
+      await db.set(path, { tracks }, true)
+      return response(200, { status: 'SUCCESS', completed: true, videoUrl: '/api/my-video?taskId=' + encodeURIComponent(taskId) + '&track=' + trackIndex })
+    } catch (error) {
+      console.error('[Audinoo video archive]', error)
+      return response(502, { error: 'video-archive-failed' })
+    }
+  }
+  if (state.includes('FAILED') || state === 'CALLBACK_EXCEPTION') return response(200, { status: 'FAILED', failed: true, message: track.videoError || 'La création du clip a échoué.' })
+  return response(200, { status: 'PENDING', completed: false })
+}
 async function sunoHealth(request, env) {
   if (request.method !== 'GET') return response(405, { connected: false, error: 'method-not-allowed' })
   if (!env.SUNOAPI_KEY) return response(503, { connected: false, error: 'music-provider-not-configured' })
@@ -1120,10 +1233,10 @@ async function privateMedia(request, env, db, user, kind = 'audio', admin = fals
   const track = snap.data?.tracks?.[index]
   if (!snap.exists || (!admin && snap.data.uid !== user.uid)) return response(404, { error: 'media-not-found' })
   if (kind === 'download' && track?.downloadPurchased !== true && snap.data.downloadIncluded !== true) return response(403, { error: 'download-purchase-required' })
-  const key = kind === 'cover' ? track?.coverKey : track?.r2Key
+  const key = kind === 'cover' ? track?.coverKey : kind === 'video' ? track?.videoKey : track?.r2Key
   if (key) {
     const object = await env.AUDIO_BUCKET?.get(key)
-    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : 'audio/mpeg'), 'cache-control': 'private, no-store', ...(kind === 'download' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'chanson').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp3"' } : {}), ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
+    if (object) return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || (kind === 'cover' ? 'image/jpeg' : kind === 'video' ? 'video/mp4' : 'audio/mpeg'), 'cache-control': 'private, no-store', ...(kind === 'download' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'chanson').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp3"' } : kind === 'video' && url.searchParams.get('download') === '1' ? { 'content-disposition': 'attachment; filename="audinoo-' + encodeURIComponent(String(track.title || 'clip').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) + '.mp4"' } : {}), ...(kind === 'audio' ? { 'accept-ranges': 'bytes' } : {}) } })
   }
   // Legacy/unarchived tracks can still be listened to by an authenticated administrator.
   // Publishing will archive this provider URL into R2 before making it public.
@@ -1548,7 +1661,7 @@ async function library(request, env, db, user) {
   const generations = owned.map(row => {
     const x = fromFields(row.document.fields || {})
     const createdAt = x.createdAt instanceof Date ? x.createdAt : null
-    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
+    return { taskId:x.taskId, title:x.title || '', prompt:x.prompt || '', status:x.state || 'PENDING', downloadIncluded:x.downloadIncluded === true, tracks:Array.isArray(x.tracks) ? x.tracks.map((track,index) => ({ ...track, downloadPurchased:track.downloadPurchased === true || x.downloadIncluded === true, coverImageUrl:track.imageUrl || '', audioUrl:track.r2Key ? '/api/my-audio?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : track.audioUrl, videoStatus:track.videoStatus || '', videoUrl:track.videoKey ? '/api/my-video?taskId=' + encodeURIComponent(x.taskId) + '&track=' + index : '', videoError:track.videoError || '' })) : [], createdAt:createdAt?.toISOString() || null, expiresAt:x.expiresAt instanceof Date ? x.expiresAt.toISOString() : null }
   }).filter(item => item.createdAt && Date.parse(item.createdAt) > cutoff)
   libraryResponseCache.set(user.uid, { generations, expiresAt: Date.now() + LIBRARY_CACHE_TTL_MS })
   if (libraryResponseCache.size > 500) {
@@ -1609,7 +1722,9 @@ export default {
       if (!row.document) continue
       const data = fromFields(row.document.fields || {})
       if (!(data.createdAt instanceof Date) || data.createdAt.getTime() > cutoff) continue
-      for (const track of data.tracks || []) if (track.r2Key) { try { await env.AUDIO_BUCKET.delete(track.r2Key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
+      for (const track of data.tracks || []) {
+        for (const key of [track.r2Key, track.videoKey]) if (key) { try { await env.AUDIO_BUCKET.delete(key) } catch (error) { console.error('[Audinoo cleanup R2]', error) } }
+      }
       try { await db.commit([{ delete: { name: row.document.name } }]) } catch (error) { console.error('[Audinoo cleanup Firestore]', error) }
     }
     // Expired custom voices are hidden by accountPlan but retained for paid reactivation.
@@ -1654,6 +1769,25 @@ export default {
       const merged = tracks.length ? tracks.map((track,index) => ({ ...(existing.tracks?.[index] || {}), ...track, imageUrl: track.imageUrl || track.sourceImageUrl || existing.tracks?.[index]?.imageUrl || '' })) : (existing.tracks || [])
       await callbackDb.set(path,{ state, ...(merged.length ? { tracks: merged } : {}), callbackType, callbackMessage: String(payload.msg || '') },true)
       return response(200,{received:true,savedTracks:merged.length})
+    }
+    if (url.pathname === '/api/video-callback') {
+      if (request.method !== 'POST') return response(405, { error: 'method-not-allowed' })
+      const payload = await request.json().catch(() => ({})), data = payload?.data || {}
+      const providerTaskId = String(data.task_id || data.taskId || ''), videoUrl = String(data.video_url || data.videoUrl || '')
+      if (!/^[a-zA-Z0-9_-]{6,120}$/.test(providerTaskId)) return response(200, { received: true, ignored: true })
+      const callbackDb = new FirestoreRest(env)
+      const rows = await callbackDb.runQuery({ from: [{ collectionId: 'generations', allDescendants: true }], where: { fieldFilter: { field: { fieldPath: 'videoTaskId' }, op: 'EQUAL', value: { stringValue: providerTaskId } } }, limit: 5 })
+      for (const row of rows || []) {
+        const match = row.document?.name?.match(/\/documents\/users\/([^/]+)\/generations\/([^/]+)$/)
+        if (!match) continue
+        const path = 'users/' + match[1] + '/generations/' + match[2], generation = await callbackDb.get(path)
+        const tracks = Array.isArray(generation.data?.tracks) ? [...generation.data.tracks] : []
+        const index = tracks.findIndex(track => String(track.videoTaskId || '') === providerTaskId)
+        if (index < 0) continue
+        tracks[index] = { ...tracks[index], videoStatus: payload.code === 200 ? 'SUCCESS' : 'FAILED', ...(videoUrl ? { videoSourceUrl: videoUrl } : {}), ...(payload.code !== 200 ? { videoError: String(payload.msg || 'La génération vidéo a échoué.') } : {}) }
+        await callbackDb.set(path, { tracks }, true)
+      }
+      return response(200, { received: true })
     }
     if (url.pathname === '/api/fedapay-webhook') return await fedapayWebhook(request,env,new FirestoreRest(env))
     if (url.pathname === '/api/suno-health') return await sunoHealth(request,env)
@@ -1701,6 +1835,9 @@ export default {
         if (!order.exists || order.data.uid !== user.uid) return response(404,{error:'payment-order-not-found'})
         return response(200, await confirmCreditPayment(env,db,transactionId))
       }
+      if (url.pathname === '/api/video/create') return await createVideoForTrack(request,env,db,user)
+      if (url.pathname === '/api/video/status') return await videoStatus(request,env,db,user,url)
+      if (url.pathname === '/api/my-video') return await privateMedia(request,env,db,user,'video')
       if (url.pathname === '/api/generate') return await generate(request,env,db,user)
       if (url.pathname === '/api/generation-status') return await generationStatus(request,env,db,user)
       if (url.pathname === '/api/my-library') return await library(request,env,db,user)
@@ -1739,6 +1876,10 @@ export default {
       if (url.pathname.startsWith('/api/voice/')) {
         const voiceError = status === 401 ? 'invalid-session' : String(e?.message || 'voice-operation-failed').slice(0, 160)
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
+      }
+      if (url.pathname.startsWith('/api/video/')) {
+        const videoErrors = new Set(['video-credit-required','video-provider-credit-limit','video-generation-running','video-source-not-ready','video-storage-not-configured','generation-not-found','video-task-not-found','video-provider-unavailable','video-provider-rejected-request','video-status-unavailable','video-archive-failed','invalid-video-request'])
+        return response(status, { error: videoErrors.has(e.message) ? e.message : 'video-generation-failed', providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
       const quotaDetails = [e?.firestoreStatus, e?.firebaseStatus, e?.message].filter(Boolean).join(' · ')
       const isFirebaseQuota = e?.service === 'firebase-auth' || e?.firestoreStatus === 'RESOURCE_EXHAUSTED' || e?.firebaseStatus === 'RESOURCE_EXHAUSTED' || /RESOURCE_EXHAUSTED|quota exceeded/i.test(quotaDetails)
