@@ -1666,8 +1666,8 @@ async function publicTracks(request, db, user = null) {
     return {
       id: track.id, title: track.title, imageUrl: track.imageUrl || '',
       coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
-      likesCount: displayMode === 'custom' ? Math.max(0, Number(track.customLikesCount || 0)) : realLikes,
-      playCount: displayMode === 'custom' ? Math.max(0, Number(track.customPlayCount || 0)) : realPlays,
+      likesCount: displayMode === 'custom' ? Math.max(0, Number(track.customLikesCount ?? realLikes)) : realLikes,
+      playCount: displayMode === 'custom' ? Math.max(0, Number(track.customPlayCount ?? realPlays)) : realPlays,
       likedByMe: user ? liked[index].exists : false,
       audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
     }
@@ -1725,8 +1725,8 @@ async function adminHomeEngagement(request, db, user) {
         id: track.id, title: track.title || 'Création Audinoo',
         likesCount: Math.max(0, Number(track.likesCount || 0)),
         playCount: Math.max(0, Number(track.playCount || 0)),
-        customLikesCount: Math.max(0, Number(track.customLikesCount || 0)),
-        customPlayCount: Math.max(0, Number(track.customPlayCount || 0))
+        customLikesCount: Math.max(0, Number(track.customLikesCount ?? track.likesCount ?? 0)),
+        customPlayCount: Math.max(0, Number(track.customPlayCount ?? track.playCount ?? 0))
       }
     })
     return response(200, { displayMode: settings.data?.displayMode === 'custom' ? 'custom' : 'real', tracks })
