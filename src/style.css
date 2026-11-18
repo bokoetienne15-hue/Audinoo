@@ -3898,3 +3898,8 @@ button.discovery-voice-card{display:flex!important;align-items:center!important;
   .discovery-voice-how-page{padding:17px 14px}
   .discovery-voice-how-steps li{grid-template-columns:32px minmax(0,1fr);gap:9px}
 }
+
+@media(max-width:760px){
+  /* Le résumé des crédits reste visible même pendant la vérification du compte. */
+  .workspace.is-plan-checking .workspace-mobile-credit{display:flex!important;visibility:visible!important}
+}
