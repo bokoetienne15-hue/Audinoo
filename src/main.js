@@ -6508,8 +6508,8 @@ window.addEventListener('pageshow',()=>{if(activePresenceRef) void updateDoc(act
 function openWorkspace(profile) {
   const communityNotice = document.querySelector('#community-listen-notice')
   if (communityNotice) {
-    let dismissed = false
-    try { dismissed = localStorage.getItem(`audinoo-community-notice-dismissed-${profile.uid}`) === '1' } catch (_) {}
+    let dismissed = Boolean(profile.communityListenNoticeDismissed)
+    try { dismissed = dismissed || localStorage.getItem(`audinoo-community-notice-dismissed-${profile.uid}`) === '1' } catch (_) {}
     communityNotice.hidden = dismissed
   }
   hasAudinooProfile = true
@@ -7049,6 +7049,10 @@ document.querySelector('#community-listen-dismiss')?.addEventListener('click', (
   if (notice) notice.hidden = true
   if (profileUid) {
     try { localStorage.setItem(`audinoo-community-notice-dismissed-${profileUid}`, '1') } catch (_) {}
+    void updateDoc(doc(db, 'users', profileUid), {
+      communityListenNoticeDismissed: true,
+      updatedAt: serverTimestamp()
+    }).catch(error => console.warn('[Audinoo community notice] Could not save dismissal', error))
   }
 })
 
