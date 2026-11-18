@@ -852,6 +852,10 @@ function renderHomeTracks() {
     const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
     artist.textContent = (track.creatorName || track.username ? 'Par ' + (track.creatorName || track.username) : 'Généré sur Audinoo') + ' · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
     details.append(title, artist)
+    const views = document.createElement('small')
+    views.className = 'home-track-views'
+    views.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>' + adminNumber(Math.max(0, Number(track.playCount || 0))) + ' écoutes</span>'
+    details.append(views)
     const play = document.createElement('button')
     play.type = 'button'
     play.className = 'home-track-play'
@@ -1409,6 +1413,22 @@ const adminSuggestionStatus = adminWorkspacePage.querySelector('#admin-suggestio
 const adminSuggestionList = adminWorkspacePage.querySelector('#admin-suggestion-list')
 const adminNotificationForm = adminWorkspacePage.querySelector('#admin-notification-form')
 const adminNotificationStatus = adminWorkspacePage.querySelector('#admin-notification-status')
+const adminNotificationRecipientLabel = document.createElement('label')
+adminNotificationRecipientLabel.textContent = 'Destinataire'
+adminNotificationRecipientLabel.htmlFor = 'admin-notification-recipient'
+const adminNotificationRecipient = document.createElement('select')
+adminNotificationRecipient.id = 'admin-notification-recipient'
+adminNotificationRecipient.innerHTML = '<option value="">Tous les utilisateurs</option>'
+adminNotificationForm.querySelector('button[type="submit"]')?.before(adminNotificationRecipientLabel, adminNotificationRecipient)
+function renderAdminNotificationRecipients() {
+  const selected = adminNotificationRecipient.value
+  adminNotificationRecipient.replaceChildren(new Option('Tous les utilisateurs', ''))
+  ;[...latestAdminUsers].sort((a,b) => String(a.displayName || a.username || a.email || '').localeCompare(String(b.displayName || b.username || b.email || ''), 'fr')).forEach(user => {
+    const label = user.displayName || user.username || user.email || user.uid
+    adminNotificationRecipient.add(new Option(label + (user.email ? ' · ' + user.email : ''), user.uid))
+  })
+  if ([...adminNotificationRecipient.options].some(option => option.value === selected)) adminNotificationRecipient.value = selected
+}
 const adminStatsStatus = adminWorkspacePage.querySelector('#admin-stats-status')
 const workspaceFreeCreditCount = document.querySelector('#workspace-free-credit-count')
 const workspaceFreeCreditCaption = document.querySelector('#workspace-free-credit-caption')
@@ -1640,6 +1660,7 @@ let latestAdminPresenceSessions = []
 let adminPresenceExpiryTimer = null
 function renderAdminStats(userSnapshots, visitorSnapshots, generationSnapshots) {
   latestAdminUsers = userSnapshots.docs.filter((snapshot) => latestAdminAuthUserIds.has(snapshot.id)).map((snapshot) => ({ ...snapshot.data(), uid: snapshot.id }))
+  renderAdminNotificationRecipients()
   latestAdminVisitors = visitorSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id }))
   latestAdminGenerations = generationSnapshots.docs.map((snapshot) => ({ ...snapshot.data(), uid: snapshot.ref.parent.parent?.id || snapshot.data().uid || '' }))
   renderAdminUsersTable()
@@ -2758,6 +2779,7 @@ adminNavigation.addEventListener('click', (event) => {
   if (button.dataset.adminSection === 'revenue') void loadAdminRevenue()
   if (button.dataset.adminSection === 'acquisition') renderAdminAcquisition()
   if (button.dataset.adminSection === 'emails') renderAdminEmailContacts()
+  if (button.dataset.adminSection === 'communications') void loadAdminHomeEngagement()
 })
 activateAdminSection('overview')
 
@@ -3085,6 +3107,7 @@ async function refreshAdminAccess(uid) {
     adminSidebarButton.hidden = false
     startAdminStatsListeners(uid)
     startAdminNotificationListener()
+    void loadAdminHomeEngagement()
     void loadAdminGenerations()
     return true
   } catch (error) {
@@ -3138,9 +3161,91 @@ const adminNotificationList = document.createElement('section')
 adminNotificationList.className = 'admin-panel admin-notification-manager'
 adminNotificationList.innerHTML = '<div class="admin-panel-heading"><div><p>GESTION DES ANNONCES</p><h2>Notifications publiées</h2></div><button type="button" class="admin-refresh-button" id="admin-refresh-notifications">Actualiser</button></div><p class="admin-panel-status" id="admin-notification-list-status" role="status">Chargement des notifications…</p><div class="admin-notification-list" id="admin-notification-list"></div>'
 adminCommunicationSection.append(adminNotificationList)
+
+const adminHomeEngagementPanel = document.createElement('section')
+adminHomeEngagementPanel.className = 'admin-panel admin-home-engagement'
+adminHomeEngagementPanel.innerHTML = '<div class="admin-panel-heading"><div><p>ACCUEIL COMMUNAUTAIRE</p><h2>Likes et écoutes affichés</h2></div><button type="button" class="admin-refresh-button" id="admin-home-engagement-refresh">Actualiser</button></div><p class="admin-panel-status" id="admin-home-engagement-status">Configure les chiffres affichés sur les chansons publiées. Les vrais likes et les vraies écoutes continuent toujours d’être enregistrés séparément.</p><div class="admin-home-engagement-toolbar"><strong id="admin-home-engagement-mode-label">Mode réel</strong><button type="button" class="admin-home-engagement-mode" id="admin-home-engagement-toggle">Chargement…</button></div><div class="admin-home-engagement-list" id="admin-home-engagement-list"></div>'
+adminCommunicationSection.append(adminHomeEngagementPanel)
+const adminHomeEngagementStatus = adminHomeEngagementPanel.querySelector('#admin-home-engagement-status')
+const adminHomeEngagementList = adminHomeEngagementPanel.querySelector('#admin-home-engagement-list')
+const adminHomeEngagementModeLabel = adminHomeEngagementPanel.querySelector('#admin-home-engagement-mode-label')
+const adminHomeEngagementToggle = adminHomeEngagementPanel.querySelector('#admin-home-engagement-toggle')
+let adminHomeEngagementData = { displayMode: 'real', tracks: [] }
+function renderAdminHomeEngagement() {
+  const custom = adminHomeEngagementData.displayMode === 'custom'
+  adminHomeEngagementModeLabel.textContent = custom ? 'Mode personnalisé actif' : 'Mode réel actif'
+  adminHomeEngagementToggle.textContent = custom ? 'Afficher les vrais chiffres' : 'Afficher mes chiffres personnalisés'
+  replaceNodeChildren(adminHomeEngagementList)
+  if (!adminHomeEngagementData.tracks.length) {
+    const empty = document.createElement('p')
+    empty.className = 'admin-panel-status'
+    empty.textContent = 'Aucune chanson publiée à configurer pour le moment.'
+    adminHomeEngagementList.append(empty)
+    return
+  }
+  adminHomeEngagementData.tracks.forEach(track => {
+    const row = document.createElement('div')
+    row.className = 'admin-home-engagement-row'
+    const title = document.createElement('div')
+    const name = document.createElement('strong'); name.textContent = track.title
+    const real = document.createElement('small'); real.textContent = 'Réels : ' + adminNumber(track.likesCount) + ' likes · ' + adminNumber(track.playCount) + ' écoutes'
+    title.append(name,real)
+    const likesLabel = document.createElement('label'); likesLabel.textContent = 'Likes personnalisés'
+    const likesInput = document.createElement('input'); likesInput.type = 'number'; likesInput.min = '0'; likesInput.max = '1000000000'; likesInput.step = '1'; likesInput.value = String(track.customLikesCount || 0); likesInput.setAttribute('aria-label','Likes personnalisés pour '+track.title)
+    likesLabel.append(likesInput)
+    const playsLabel = document.createElement('label'); playsLabel.textContent = 'Vues / écoutes'
+    const playsInput = document.createElement('input'); playsInput.type = 'number'; playsInput.min = '0'; playsInput.max = '1000000000'; playsInput.step = '1'; playsInput.value = String(track.customPlayCount || 0); playsInput.setAttribute('aria-label','Vues personnalisées pour '+track.title)
+    playsLabel.append(playsInput)
+    const save = document.createElement('button'); save.type = 'button'; save.textContent = 'Enregistrer'
+    save.addEventListener('click', async () => {
+      const likes = Number(likesInput.value), plays = Number(playsInput.value)
+      if (!Number.isSafeInteger(likes) || likes < 0 || likes > 1000000000 || !Number.isSafeInteger(plays) || plays < 0 || plays > 1000000000) {
+        adminHomeEngagementStatus.textContent = 'Entre des nombres entiers positifs, sans dépasser un milliard.'
+        return
+      }
+      save.disabled = true
+      try {
+        await callAudinooApi('/api/admin/home-engagement', { method: 'POST', body: JSON.stringify({ trackId: track.id, customLikesCount: likes, customPlayCount: plays }) })
+        track.customLikesCount = likes; track.customPlayCount = plays
+        adminHomeEngagementStatus.textContent = 'Chiffres personnalisés enregistrés pour « ' + track.title + ' ».'
+      } catch (error) {
+        adminHomeEngagementStatus.textContent = 'Enregistrement impossible : ' + generationErrorMessage(error.message)
+      } finally { save.disabled = false }
+    })
+    row.append(title,likesLabel,playsLabel,save)
+    adminHomeEngagementList.append(row)
+  })
+}
+async function loadAdminHomeEngagement() {
+  if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
+  adminHomeEngagementStatus.textContent = 'Chargement des chansons publiées…'
+  try {
+    adminHomeEngagementData = await callAudinooApi('/api/admin/home-engagement')
+    adminHomeEngagementData.tracks = Array.isArray(adminHomeEngagementData.tracks) ? adminHomeEngagementData.tracks : []
+    renderAdminHomeEngagement()
+    adminHomeEngagementStatus.textContent = adminHomeEngagementData.tracks.length + ' chanson(s) publiées chargées. Les compteurs réels restent conservés.'
+  } catch (error) {
+    adminHomeEngagementStatus.textContent = 'Chargement impossible : ' + generationErrorMessage(error.message)
+  }
+}
+adminHomeEngagementToggle.addEventListener('click', async () => {
+  const next = adminHomeEngagementData.displayMode === 'custom' ? 'real' : 'custom'
+  adminHomeEngagementToggle.disabled = true
+  try {
+    await callAudinooApi('/api/admin/home-engagement', { method: 'POST', body: JSON.stringify({ displayMode: next }) })
+    adminHomeEngagementData.displayMode = next
+    renderAdminHomeEngagement()
+    adminHomeEngagementStatus.textContent = next === 'custom' ? 'Les chiffres personnalisés sont maintenant affichés sur la page d’accueil.' : 'Les vrais likes et les vraies écoutes sont maintenant affichés.'
+  } catch (error) {
+    adminHomeEngagementStatus.textContent = 'Modification impossible : ' + generationErrorMessage(error.message)
+  } finally { adminHomeEngagementToggle.disabled = false }
+})
+adminHomeEngagementPanel.querySelector('#admin-home-engagement-refresh').addEventListener('click', loadAdminHomeEngagement)
+
 const adminNotificationListStatus = adminNotificationList.querySelector('#admin-notification-list-status')
 const adminNotificationListBody = adminNotificationList.querySelector('#admin-notification-list')
 let adminNotificationSnapshot = null
+let adminNotificationReadItems = []
 function renderAdminNotificationList(items) {
   replaceNodeChildren(adminNotificationListBody)
   const ordered = [...items].sort((a,b) => {
@@ -3162,8 +3267,22 @@ function renderAdminNotificationList(items) {
     const title = document.createElement('strong'); title.textContent = item.title || 'Notification Audinoo'
     const message = document.createElement('p'); message.textContent = item.message || ''
     const date = document.createElement('small'); date.textContent = adminDateLabel(item.createdAt)
-    const recipient = document.createElement('small'); const targetUser = latestAdminUsers.find(user => user.uid === item.recipientUid); recipient.textContent = item.recipientUid ? 'Destinataire : ' + (targetUser?.displayName || targetUser?.username || 'Utilisateur ciblé') : 'Destinataire : tous les utilisateurs'
-    content.append(title,message,date,recipient)
+    const targetUser = latestAdminUsers.find(user => user.uid === item.recipientUid)
+    const recipient = document.createElement('small')
+    recipient.textContent = item.recipientUid ? 'Destinataire : ' + (targetUser?.displayName || targetUser?.username || targetUser?.email || 'Utilisateur ciblé') : 'Destinataire : tous les utilisateurs'
+    const reads = adminNotificationReadItems.filter(read => read.notificationId === item.id)
+    const sentCount = Math.max(0, Number(item.sentCount ?? (item.audience === 'user' ? 1 : latestAdminUsers.length)))
+    const rate = sentCount ? Math.min(100, reads.length / sentCount * 100) : 0
+    const stats = document.createElement('small')
+    stats.className = 'admin-notification-read-stats'
+    stats.textContent = 'Envoyées : ' + adminNumber(sentCount) + ' · Lues : ' + adminNumber(reads.length) + ' · ' + rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %'
+    const readers = document.createElement('small')
+    const names = [...new Set(reads.map(read => {
+      const reader = latestAdminUsers.find(user => user.uid === read.userId)
+      return reader?.displayName || reader?.username || reader?.email || (reader ? 'Utilisateur' : '')
+    }).filter(Boolean))]
+    readers.textContent = names.length ? 'Ont lu : ' + names.join(', ') : 'Aucune lecture enregistrée pour le moment.'
+    content.append(title,message,date,recipient,stats,readers)
     const remove = document.createElement('button')
     remove.type = 'button'; remove.className = 'admin-refresh-button is-danger'; remove.textContent = 'Supprimer'
     remove.addEventListener('click', async () => {
@@ -3184,8 +3303,10 @@ function renderAdminNotificationList(items) {
   })
 }
 let stopAdminNotificationListener = null
+let stopAdminNotificationReadListener = null
 function startAdminNotificationListener() {
   stopAdminNotificationListener?.()
+  stopAdminNotificationReadListener?.()
   if (!auth.currentUser || verifiedAdminUid !== auth.currentUser.uid) return
   stopAdminNotificationListener = onSnapshot(collection(db,'notifications'), snapshot => {
     adminNotificationSnapshot = snapshot.docs.map(item => ({ id:item.id, ...item.data() }))
@@ -3193,6 +3314,13 @@ function startAdminNotificationListener() {
   }, error => {
     console.error('[Audinoo admin] Could not load notifications',error)
     adminNotificationListStatus.textContent = 'Chargement impossible : ' + exactErrorDetails(error)
+  })
+  stopAdminNotificationReadListener = onSnapshot(collection(db,'notificationReads'), snapshot => {
+    adminNotificationReadItems = snapshot.docs.map(item => ({ id:item.id, ...item.data() }))
+    renderAdminNotificationList(adminNotificationSnapshot || [])
+  }, error => {
+    console.error('[Audinoo admin] Could not load notification reads',error)
+    adminNotificationListStatus.textContent = 'Statistiques de lecture indisponibles : ' + exactErrorDetails(error)
   })
 }
 adminNotificationList.querySelector('#admin-refresh-notifications').addEventListener('click', () => {
@@ -3208,6 +3336,12 @@ adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('s
   }
   const title = adminNotificationForm.elements.title.value.trim()
   const message = adminNotificationForm.elements.message.value.trim()
+  const recipientUid = adminNotificationRecipient.value
+  const recipientProfile = recipientUid ? latestAdminUsers.find(item => item.uid === recipientUid) : null
+  if (recipientUid && !recipientProfile) {
+    adminNotificationStatus.textContent = 'Sélectionne un utilisateur valide ou choisis Tous les utilisateurs.'
+    return
+  }
   const submitButton = adminNotificationForm.querySelector('button[type="submit"]')
   submitButton.disabled = true
   adminNotificationStatus.textContent = 'Publication…'
@@ -3215,12 +3349,14 @@ adminWorkspacePage.querySelector('#admin-notification-form').addEventListener('s
     await addDoc(collection(db, 'notifications'), {
       title,
       message,
-      audience: 'all',
+      audience: recipientUid ? 'user' : 'all',
+      ...(recipientUid ? { recipientUid } : {}),
+      sentCount: recipientUid ? 1 : latestAdminUsers.length,
       createdBy: user.uid,
       createdAt: serverTimestamp()
     })
     adminNotificationForm.reset()
-    adminNotificationStatus.textContent = 'Notification publiée.'
+    adminNotificationStatus.textContent = recipientUid ? 'Notification envoyée à ' + (recipientProfile.displayName || recipientProfile.username || recipientProfile.email || 'l’utilisateur') + '.' : 'Notification publiée pour tous les utilisateurs.'
   } catch (error) {
     console.error('[Audinoo admin] Could not publish notification', error)
     adminNotificationStatus.textContent = `Publication refusée. Détail exact : ${exactErrorDetails(error)}`
@@ -6253,6 +6389,36 @@ async function syncGoogleProfilePhoto(user, profile) {
   return { ...profile, photoURL: googlePhotoURL }
 }
 
+const whatsNewOverlay = document.createElement('section')
+whatsNewOverlay.className = 'audinoo-whats-new'
+whatsNewOverlay.hidden = true
+whatsNewOverlay.setAttribute('role', 'dialog')
+whatsNewOverlay.setAttribute('aria-modal', 'true')
+whatsNewOverlay.setAttribute('aria-labelledby', 'audinoo-whats-new-title')
+whatsNewOverlay.innerHTML = '<div class="audinoo-whats-new-card"><div class="audinoo-whats-new-copy"><span class="audinoo-whats-new-badge">✦ NOUVEAUTÉ AUDINOO</span><h2 id="audinoo-whats-new-title">Et si ta voix devenait ta signature&nbsp;?</h2><p>Tu peux maintenant créer des chansons avec <strong>ta propre voix</strong>. Enregistre quelques secondes de ta voix ou importe un audio, configure ton profil vocal et retrouve ta voix dans tes prochaines créations.</p><div class="audinoo-whats-new-actions"><button type="button" class="audinoo-whats-new-cta" id="audinoo-whats-new-discover">Découvrir Ma voix</button><button type="button" class="audinoo-whats-new-dismiss" id="audinoo-whats-new-close">Plus tard</button></div></div><div class="audinoo-whats-new-art"><img src="/new-feature-voice.svg" alt="Illustration d’un microphone et d’ondes musicales"></div></div>'
+workspace.append(whatsNewOverlay)
+function showWhatsNewForLogin(user) {
+  if (!user?.uid) return
+  const now = new Date()
+  const day = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-')
+  const storageKey = 'audinoo-whats-new-voice-' + user.uid + '-' + day
+  let shown = 0
+  try { shown = Math.max(0, Number(window.localStorage.getItem(storageKey) || 0)) } catch (_) {}
+  if (shown >= 5) return
+  try { window.localStorage.setItem(storageKey, String(shown + 1)) } catch (_) {}
+  whatsNewOverlay.hidden = false
+  document.getElementById('audinoo-whats-new-close')?.focus()
+}
+function closeWhatsNew() { whatsNewOverlay.hidden = true }
+whatsNewOverlay.querySelector('#audinoo-whats-new-close').addEventListener('click', closeWhatsNew)
+whatsNewOverlay.querySelector('#audinoo-whats-new-discover').addEventListener('click', () => {
+  closeWhatsNew()
+  document.querySelector('#discovery-voice-toggle')?.click()
+  window.setTimeout(() => document.querySelector('#discovery-voice-how-button')?.click(), 80)
+})
+whatsNewOverlay.addEventListener('click', event => { if (event.target === whatsNewOverlay) closeWhatsNew() })
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !whatsNewOverlay.hidden) closeWhatsNew() })
+
 function openProfile(profile, { requireCountry = false } = {}) {
   hasAudinooProfile = true
   profileUid = profile.uid
@@ -6260,11 +6426,13 @@ function openProfile(profile, { requireCountry = false } = {}) {
     // Show the studio first, then ask for the country on top of it. The
     // signup flow must never fall back to the landing page between steps.
     openWorkspace(profile)
+    showWhatsNewForLogin(auth.currentUser || profile)
     showCountrySelection(profile)
     return
   }
   closeCountrySelection()
   openWorkspace(profile)
+  showWhatsNewForLogin(auth.currentUser || profile)
   window.setTimeout(() => { void showPendingFeedbackInvitation(profile.uid) }, 900)
 }
 
