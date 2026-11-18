@@ -1478,6 +1478,16 @@ export default {
         const voiceError = status === 401 ? 'invalid-session' : String(e?.message || 'voice-operation-failed').slice(0, 160)
         return response(status, { error: voiceError, providerMessage: String(e?.providerMessage || '').slice(0, 240) })
       }
+      const quotaDetails = [e?.firestoreStatus, e?.firebaseStatus, e?.message].filter(Boolean).join(' · ')
+      const isFirebaseQuota = e?.service === 'firebase-auth' || e?.firestoreStatus === 'RESOURCE_EXHAUSTED' || e?.firebaseStatus === 'RESOURCE_EXHAUSTED' || /RESOURCE_EXHAUSTED|quota exceeded/i.test(quotaDetails)
+      if (isFirebaseQuota && url.pathname !== '/api/my-library') {
+        const isFirestore = Boolean(e?.firestoreStatus) || /firestore/i.test(String(e?.message || ''))
+        return response(429, {
+          error: isFirestore ? 'firestore-quota-exceeded' : 'firebase-quota-exceeded',
+          service: isFirestore ? 'firestore' : 'firebase-auth',
+          retryable: false
+        }, { 'retry-after': '60' })
+      }
       if (url.pathname === '/api/my-library') {
         const rawDetails = String(e?.message || 'firestore-library-query-failed').slice(0, 200)
         const details = [e?.firestoreStatus, rawDetails].filter(Boolean).join(' · ')
