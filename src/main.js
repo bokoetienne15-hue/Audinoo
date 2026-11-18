@@ -740,7 +740,7 @@ homeWorkspacePage.className = 'workspace-content workspace-home-page'
 homeWorkspacePage.id = 'home-page'
 homeWorkspacePage.hidden = true
 workspaceLayout.append(homeWorkspacePage)
-homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>La musique créée par la communauté.<br><span>À écouter sans limite.</span></h1><p>Retrouve ici les chansons générées sur Audinoo par les créateurs de la communauté. Explore les styles, découvre de nouveaux talents et lance l’écoute de tes morceaux préférés.</p></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire 🔥</h2><p>Les morceaux générés sur Audinoo et publiés dans la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons publiées dans la communauté apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><div class="home-player-cover" aria-hidden="true">♫</div><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small>Généré sur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
+homeWorkspacePage.innerHTML = '<div class="home-hero"><div class="home-hero-copy"><p class="home-eyebrow">L’UNIVERS MUSICAL DE LA COMMUNAUTÉ</p><h1>La musique créée par la communauté.<br><span>À écouter sans limite.</span></h1><p>Retrouve ici les chansons générées sur Audinoo par les créateurs de la communauté. Explore les styles, découvre de nouveaux talents et lance l’écoute de tes morceaux préférés.</p></div><div class="home-hero-art" aria-hidden="true"><div class="home-hero-glow"></div></div></div><section class="home-music-section" id="home-music-section"><div class="home-category-list" id="home-category-list" aria-label="Catégories musicales"></div><div class="home-section-heading"><div><h2>Musique populaire 🔥</h2><p>Les morceaux générés sur Audinoo et publiés dans la communauté</p></div><button type="button" id="home-see-all">Voir tout <span aria-hidden="true">›</span></button></div><label class="home-search"><span aria-hidden="true">⌕</span><input id="home-track-search" type="search" placeholder="Rechercher une chanson…" autocomplete="off"></label><div class="home-track-list" id="home-track-list"></div></section><section class="home-no-music" id="home-no-music" hidden><div class="home-empty-note" aria-hidden="true">♫</div><h2>Les premières chansons arrivent bientôt</h2><p>Les chansons publiées dans la communauté apparaîtront ici. Reviens découvrir les nouveautés.</p></section><section class="home-mini-player" id="home-mini-player" hidden><div class="home-player-cover" aria-hidden="true">♫</div><div class="home-player-info"><strong class="home-player-title">Aucune lecture</strong><small class="home-player-creator">Créateur Audinoo</small></div><button type="button" class="home-player-toggle" id="home-player-toggle" aria-label="Lire la chanson">▶</button><audio id="home-player-audio" preload="none"></audio></section>'
 
 const homeHeroArt = homeWorkspacePage.querySelector('.home-hero-art')
 const homeHeroArtwork = document.createElement('img')
@@ -764,6 +764,7 @@ const homeMiniPlayer = homeWorkspacePage.querySelector('#home-mini-player')
 const homePlayerAudio = homeWorkspacePage.querySelector('#home-player-audio')
 const homePlayerToggle = homeWorkspacePage.querySelector('#home-player-toggle')
 const homePlayerTitle = homeWorkspacePage.querySelector('.home-player-title')
+const homePlayerCreator = homeWorkspacePage.querySelector('.home-player-creator')
 const homePlayerCover = homeWorkspacePage.querySelector('.home-player-cover')
 const homeCoverPalettes = ['violet', 'ocean', 'sunset', 'electric', 'rose', 'lime']
 function homePaletteForTrack(track, index = 0) {
@@ -850,7 +851,7 @@ function renderHomeTracks() {
     const artist = document.createElement('small')
     const rawDuration = track.duration
     const durationText = typeof rawDuration === 'string' && rawDuration.includes(':') ? rawDuration : Number(rawDuration) > 0 ? Math.floor(Number(rawDuration) / 60) + ':' + String(Math.floor(Number(rawDuration) % 60)).padStart(2, '0') : ''
-    artist.textContent = (track.creatorName || track.username ? 'Par ' + (track.creatorName || track.username) : 'Généré sur Audinoo') + ' · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
+    artist.textContent = 'Par ' + (String(track.creatorName || '').trim() || 'Créateur Audinoo') + ' · ' + (track.genre || 'Autre') + (durationText ? ' · ' + durationText : '')
     details.append(title, artist)
     const views = document.createElement('small')
     views.className = 'home-track-views'
@@ -917,6 +918,7 @@ async function playHomeTrack(index) {
       homeActiveTrackIndex = index
       homePlayerAudio.src = track.audioUrl
       homePlayerTitle.textContent = track.title || 'Création Audinoo'
+      homePlayerCreator.textContent = 'Par ' + (String(track.creatorName || '').trim() || 'Créateur Audinoo')
       homePlayerCover.replaceChildren()
       homePlayerCover.classList.remove('is-missing')
       homePlayerCover.dataset.palette = homePaletteForTrack(track, index)
