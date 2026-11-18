@@ -4713,6 +4713,7 @@ async function createOrCheckLibraryVideo(taskId, trackIndex, track, button) {
       if (auth.currentUser) await refreshDiscoveryPlan(auth.currentUser.uid).catch(() => {})
     } else button.textContent = original || 'Réessayer'
     button.disabled = false
+    if (auth.currentUser) await refreshDiscoveryPlan(auth.currentUser.uid).catch(() => {})
     toast.textContent = generationErrorMessage(error.message)
     toast.classList.add('show')
     window.setTimeout(() => toast.classList.remove('show'), 5000)
