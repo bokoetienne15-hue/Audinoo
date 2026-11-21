@@ -6441,6 +6441,28 @@ function openProfile(profile, { requireCountry = false } = {}) {
   hasAudinooProfile = true
   profileUid = profile.uid
   if (requireCountry && (!profile.countryCode || !profile.country)) {
+    const accountEmail = String(auth.currentUser?.email || profile.email || '').trim().toLowerCase()
+    if (accountEmail === 'derickmsp07@gmail.com') {
+      // Complete only this known interrupted signup with the country the
+      // account owner has explicitly asked us to assign.
+      void updateDoc(doc(db, 'users', profile.uid), {
+        countryCode: 'BJ',
+        country: 'Bénin',
+        updatedAt: serverTimestamp()
+      }).then(() => {
+        const completedProfile = { ...profile, countryCode: 'BJ', country: 'Bénin' }
+        closeCountrySelection()
+        openWorkspace(completedProfile)
+        showWhatsNewForLogin(auth.currentUser || completedProfile)
+        void recordAcquisitionEvent('signup_completed', 'Compte complété avec pays Bénin')
+        window.setTimeout(() => { void showPendingFeedbackInvitation(profile.uid) }, 900)
+      }).catch(error => {
+        console.error('[Audinoo signup recovery] Could not assign Benin to the requested account', error)
+        openWorkspace(profile)
+        showCountrySelection(profile)
+      })
+      return
+    }
     // Show the studio first, then ask for the country on top of it. The
     // signup flow must never fall back to the landing page between steps.
     openWorkspace(profile)
