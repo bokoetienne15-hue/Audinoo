@@ -980,9 +980,23 @@ async function loadPublishedHome(force = false) {
     const apiOrigin = window.location.hostname.endsWith('.netlify.app') ? 'https://audinoo.com' : window.location.origin
     const viewerToken = auth.currentUser ? await auth.currentUser.getIdToken() : ''
     const response = await fetch(apiOrigin + '/api/public-tracks', { cache: 'no-store', headers: viewerToken ? { authorization: 'Bearer ' + viewerToken } : {} })
-    if (!response.ok) throw new Error('public-tracks-unavailable')
-    const body = await response.json()
-    homePublishedTracks = (Array.isArray(body.tracks) ? body.tracks : []).map(track => ({
+    const responseText = await response.text()
+    let body = {}
+    try { body = responseText ? JSON.parse(responseText) : {} } catch { body = { rawResponse: responseText.slice(0, 500) } }
+    if (!response.ok) {
+      const detail = String(body.error || body.message || body.rawResponse || response.statusText || 'Réponse vide').replace(/[\\r\\n]+/g, ' ').slice(0, 300)
+      const error = new Error(detail)
+      error.status = response.status
+      error.statusText = response.statusText
+      error.apiDetails = body.details || body.code || ''
+      throw error
+    }
+    if (!body || !Array.isArray(body.tracks)) {
+      const error = new Error('Réponse API invalide : le champ « tracks » est absent ou n’est pas un tableau.')
+      error.status = response.status
+      throw error
+    }
+    homePublishedTracks = body.tracks.map(track => ({
       ...track,
       audioUrl: typeof track.audioUrl === 'string' && track.audioUrl.startsWith('/') ? apiOrigin + track.audioUrl : track.audioUrl
     }))
@@ -992,8 +1006,11 @@ async function loadPublishedHome(force = false) {
   } catch (error) {
     homeNoMusic.hidden = false
     homeNoMusic.querySelector('h2').textContent = 'Le catalogue est momentanément indisponible'
-    homeNoMusic.querySelector('p').textContent = 'Les catégories restent accessibles. Réessaie dans quelques instants.'
-    console.error('[Audinoo public home]', error)
+    const technicalDetail = String(error?.message || error || 'Erreur inconnue').replace(/[\\r\\n]+/g, ' ').slice(0, 300)
+    const statusDetail = error?.status ? ' (HTTP ' + error.status + (error.statusText ? ' ' + error.statusText : '') + ')' : ''
+    const apiDetail = error?.apiDetails ? ' · Code : ' + String(error.apiDetails).slice(0, 100) : ''
+    homeNoMusic.querySelector('p').textContent = 'Les catégories restent accessibles. Détail technique : ' + technicalDetail + statusDetail + apiDetail
+    console.error('[Audinoo public home] Catalogue error:', { message: technicalDetail, status: error?.status || null, statusText: error?.statusText || '', apiDetails: error?.apiDetails || null, error })
   }
 }
 
