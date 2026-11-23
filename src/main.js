@@ -984,11 +984,11 @@ async function loadPublishedHome(force = false) {
     let body = {}
     try { body = responseText ? JSON.parse(responseText) : {} } catch { body = { rawResponse: responseText.slice(0, 500) } }
     if (!response.ok) {
-      const detail = String(body.error || body.message || body.rawResponse || response.statusText || 'Réponse vide').replace(/[\\r\\n]+/g, ' ').slice(0, 300)
+      const detail = String(body.message || body.rawResponse || body.error || response.statusText || 'Réponse vide').replace(/[\\r\\n]+/g, ' ').slice(0, 300)
       const error = new Error(detail)
       error.status = response.status
       error.statusText = response.statusText
-      error.apiDetails = body.details || body.code || ''
+      error.apiDetails = body.details || body.code || body.upstreamStatus || ''
       throw error
     }
     if (!body || !Array.isArray(body.tracks)) {
