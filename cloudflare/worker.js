@@ -1666,14 +1666,17 @@ async function publicTracks(request, db, user = null) {
   // This keeps the public catalogue comfortably below the Workers Free subrequest limit.
   const likedTrackIds = new Set()
   if (user) {
+    // Avoid a collection-group field filter here: Firestore requires a
+    // collection-group index for uid, which may not exist in every deployment.
+    // Read a bounded page and filter locally so the public catalogue still loads.
     const likeRows = await db.runQuery({
       from: [{ collectionId: 'likes', allDescendants: true }],
-      where: { fieldFilter: { field: { fieldPath: 'uid' }, op: 'EQUAL', value: { stringValue: user.uid } } },
       limit: 1000
     })
     for (const row of likeRows || []) {
       const path = String(row.document?.name || '').split('/documents/')[1]?.split('/') || []
-      if (path.length === 4 && path[0] === 'publishedTracks' && path[2] === 'likes') likedTrackIds.add(path[1])
+      const like = fromFields(row.document?.fields || {})
+      if (path.length === 4 && path[0] === 'publishedTracks' && path[2] === 'likes' && like.uid === user.uid) likedTrackIds.add(path[1])
     }
   }
 
