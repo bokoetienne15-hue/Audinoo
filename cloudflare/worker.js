@@ -1974,7 +1974,23 @@ export default {
     }
 
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found',{status:404})
-    if (url.pathname === '/api/public-tracks') { const db = new FirestoreRest(env); let viewer = null; try { viewer = await userFrom(request, env) } catch {} return await publicTracks(request, db, viewer) }
+    if (url.pathname === '/api/public-tracks') {
+      const db = new FirestoreRest(env)
+      let viewer = null
+      try { viewer = await userFrom(request, env) } catch (error) { console.warn('[Audinoo public-tracks auth]', error?.message || error) }
+      try {
+        return await publicTracks(request, db, viewer)
+      } catch (error) {
+        const detail = String(error?.message || 'unknown-public-tracks-error').replace(/[\\r\\n]+/g, ' ').slice(0, 240)
+        const code = String(error?.code || error?.firestoreStatus || '').slice(0, 80)
+        const status = Number(error?.status) || 500
+        console.error('[Audinoo public-tracks] Failed:', { detail, code, status, stack: error?.stack })
+        return new Response(JSON.stringify({ error: 'public-tracks-failed', message: detail, code, upstreamStatus: status }), {
+          status: status >= 400 && status < 600 ? status : 500,
+          headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }
+        })
+      }
+    }
     if (url.pathname === '/api/public-audio') { const db = new FirestoreRest(env); return await publicAudio(request, env, db) }
     const voiceFileMatch = url.pathname.match(/^\/api\/voice-file\/([a-f0-9]{48})$/)
     if (voiceFileMatch) return await publicVoiceFile(request, env, new FirestoreRest(env), voiceFileMatch[1])
