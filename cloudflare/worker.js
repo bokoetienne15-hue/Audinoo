@@ -1661,19 +1661,31 @@ async function publicTracks(request, db, user = null) {
   ])
   const displayMode = settings.data?.displayMode === 'custom' ? 'custom' : 'real'
   const tracks = (rows || []).filter(x => x.document).map(x => fromFields(x.document.fields || {})).filter(track => track.published === true)
-  const legacyUids = [...new Set(tracks.filter(track => !String(track.creatorName || '').trim() && track.uid).map(track => String(track.uid)))]
-  const legacyProfiles = await Promise.all(legacyUids.map(uid => db.get('users/' + uid)))
-  const creatorNames = new Map(legacyUids.map((uid, index) => [uid, String(legacyProfiles[index].data?.displayName || '').trim().slice(0, 60) || 'Créateur Audinoo']))
-  const liked = user ? await Promise.all(tracks.map(track => db.get('publishedTracks/' + track.id + '/likes/' + user.uid))) : []
-  const enriched = tracks.map((track, index) => {
+
+  // One collection-group query replaces one Firestore read per published track.
+  // This keeps the public catalogue comfortably below the Workers Free subrequest limit.
+  const likedTrackIds = new Set()
+  if (user) {
+    const likeRows = await db.runQuery({
+      from: [{ collectionId: 'likes', allDescendants: true }],
+      where: { fieldFilter: { field: { fieldPath: 'uid' }, op: 'EQUAL', value: { stringValue: user.uid } } },
+      limit: 1000
+    })
+    for (const row of likeRows || []) {
+      const path = String(row.document?.name || '').split('/documents/')[1]?.split('/') || []
+      if (path.length === 4 && path[0] === 'publishedTracks' && path[2] === 'likes') likedTrackIds.add(path[1])
+    }
+  }
+
+  const enriched = tracks.map(track => {
     const realLikes = Math.max(0, Number(track.likesCount || 0))
     const realPlays = Math.max(0, Number(track.playCount || 0))
     return {
-      id: track.id, title: track.title, creatorName: String(track.creatorName || creatorNames.get(String(track.uid || '')) || 'Créateur Audinoo'), imageUrl: track.imageUrl || '',
+      id: track.id, title: track.title, creatorName: String(track.creatorName || 'Créateur Audinoo'), imageUrl: track.imageUrl || '',
       coverPalette: track.coverPalette || 'violet', genre: track.genre || 'Autre', duration: track.duration || null,
       likesCount: displayMode === 'custom' ? Math.max(0, Number(track.customLikesCount ?? realLikes)) : realLikes,
       playCount: displayMode === 'custom' ? Math.max(0, Number(track.customPlayCount ?? realPlays)) : realPlays,
-      likedByMe: user ? liked[index].exists : false,
+      likedByMe: user ? likedTrackIds.has(String(track.id)) : false,
       audioUrl: '/api/public-audio?id=' + encodeURIComponent(track.id), publishedAt: track.publishedAt || null
     }
   })
