@@ -5368,7 +5368,9 @@ if (paymentReturnType === 'credits') {
   if (transactionId) verificationScreen.querySelector('.payment-verification-reference').textContent = 'Référence : ' + transactionId
   returnButton.addEventListener('click', () => { window.location.href = '/#studio' })
   void (async () => {
+    let redirectOperationStep = 'récupération du résultat Google'
     try {
+      redirectOperationStep = 'préparation de la session Firebase'
       await authPersistenceReady
       if (!auth.currentUser || !transactionId) throw new Error('payment-reference-missing')
       let result = null
@@ -6666,8 +6668,9 @@ countrySubmit.addEventListener('click', async () => {
   }
 })
 // Signup names are display names; unique usernames are generated automatically.
-async function completeGoogleSignIn(result, mode) {
+async function completeGoogleSignIn(result, mode, onStep = () => {}) {
   const user = result.user
+  onStep('lecture du profil Google dans Firestore')
   const name = user.displayName || user.email
   const profileSnapshot = await getDoc(doc(db, 'users', user.uid))
   if (mode === 'login' && !profileSnapshot.exists() && getAdditionalUserInfo(result)?.isNewUser) {
@@ -6682,12 +6685,18 @@ async function completeGoogleSignIn(result, mode) {
   // interrupted signup: recreate only the missing profile, never a new Auth user.
   let profile = profileSnapshot.exists()
     ? { ...profileSnapshot.data(), created: false }
-    : await createGoogleProfile(user)
+    : await (onStep('création et réservation du profil Audinoo'), createGoogleProfile(user))
   if (mode === 'signup' && profile.created) {
     void recordAcquisitionEvent('auth_account_created', 'Compte Google créé')
     void recordAcquisitionEvent('profile_saved', 'Profil Audinoo enregistré dans Firestore')
   }
-  profile = await syncGoogleProfilePhoto(user, profile)
+  onStep('synchronisation facultative de la photo Google')
+  try {
+    profile = await syncGoogleProfilePhoto(user, profile)
+  } catch (photoError) {
+    console.warn('[Audinoo Google] Photo synchronization skipped; sign-in continues', photoError)
+  }
+  onStep('ouverture du studio et reprise des étapes obligatoires')
   hasAudinooProfile = true
   closeAuth()
   const savedProfile = { ...profile, uid: user.uid, displayName: user.displayName || profile.displayName || '' }
@@ -6738,8 +6747,10 @@ googleButton.addEventListener('click', async () => {
   label.textContent = 'Connexion à Google...'
   authFlowInProgress = true
   let redirectStarted = false
+  let googleOperationStep = 'initialisation de la connexion Google'
 
   try {
+    googleOperationStep = 'préparation de la session Firebase'
     await authPersistenceReady
     if (useRedirect) {
       currentUrl.searchParams.delete('google')
@@ -6750,14 +6761,15 @@ googleButton.addEventListener('click', async () => {
       return
     }
 
+    googleOperationStep = 'authentification auprès de Google'
     const result = await signInWithPopup(auth, googleProvider)
-    await completeGoogleSignIn(result, authMode)
+    await completeGoogleSignIn(result, authMode, (step) => { googleOperationStep = step })
   } catch (error) {
     if (redirectStarted) {
       try { window.sessionStorage.removeItem('audinoo-google-redirect-mode') } catch {}
       redirectStarted = false
     }
-    showAuthError(error, authMode)
+    showAuthError(error, authMode, googleOperationStep)
   } finally {
     if (!redirectStarted) authFlowInProgress = false
     googleButton.disabled = false
@@ -6879,7 +6891,8 @@ if (pendingGoogleRedirectMode) {
       await authPersistenceReady
       const redirectResult = await getRedirectResult(auth)
       if (redirectResult) {
-        await completeGoogleSignIn(redirectResult, pendingGoogleRedirectMode)
+        redirectOperationStep = 'finalisation du compte Google'
+        await completeGoogleSignIn(redirectResult, pendingGoogleRedirectMode, (step) => { redirectOperationStep = step })
       } else {
         authFeedback.textContent = 'La connexion Google n’a pas abouti. Réessaie ou utilise ton adresse e-mail.'
         authFeedback.hidden = false
@@ -6887,7 +6900,7 @@ if (pendingGoogleRedirectMode) {
         authOverlay.setAttribute('aria-hidden', 'false')
       }
     } catch (error) {
-      showAuthError(error, pendingGoogleRedirectMode)
+      showAuthError(error, pendingGoogleRedirectMode, redirectOperationStep)
     } finally {
       try { window.sessionStorage.removeItem('audinoo-google-redirect-mode') } catch {}
       authFlowInProgress = false
